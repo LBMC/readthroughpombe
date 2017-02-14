@@ -1,0 +1,4 @@
+data/*
+bin/*
+results/*
+!data/examples
