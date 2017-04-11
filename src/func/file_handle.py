@@ -125,6 +125,18 @@ class Dated_file:
         '''
         return(str(self.file_path))
 
+    def __getitem__(self, key):
+        '''
+        return the full name of the file of indice key in the list of files
+        ordering from the newest to the oldest file
+        '''
+        if key >= 0 and key < len(self.date_list):
+            return(
+                str(self.date_list[key].strftime("%Y_%m_%d_")) +
+                str(self.file_name))
+        else:
+            return(None)
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         prog="file_handle.py",
