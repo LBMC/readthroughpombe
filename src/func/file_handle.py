@@ -161,6 +161,44 @@ class Dated_file:
     def __str__(self):
         return(self.get_full_file_name())
 
+
+class Dated_file_list:
+    def __init__(self, file_name_list, date_list):
+        self.file_name_list = file_name_list
+        self.date_list = date_list
+        self.file_date_list = list()
+        self.__load_files()
+
+    def __list_len(self):
+        if type(self.date_list) is list and len(self.date_list) > 1:
+            list_len = min(len(self.file_name_list), len(self.date_list))
+        else:
+            list_len = len(self.file_name_list)
+        return(int(list_len))
+
+    def __load_files(self):
+        for i in range(self.__list_len()):
+            if type(self.date_list) is list:
+                date = self.date_list[i]
+            else:
+                date = self.date_list
+            self.file_date_list.append(
+                Dated_file(self.file_name_list[i], date)
+            )
+
+    def __getitem__(self, key):
+        if key >= 0 and key <= len(self.file_date_list):
+            return(self.file_date_list[key])
+        else:
+            return(None)
+
+    def __str__(self):
+        output = ""
+        for i in range(self.__list_len()):
+            output += str(self[i])
+        return(output)
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         prog="file_handle.py",
