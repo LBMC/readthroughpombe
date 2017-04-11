@@ -175,3 +175,26 @@ if __name__ == '__main__':
         dest="input_file",
         required=True,
         nargs=1)
+    parser.add_argument(
+        "-d",
+        help="date to write if not file with this date exist, otherwise return \
+        the file corresponding to this date.",
+        default=None,
+        action="store",
+        dest="date",
+        required=False,
+        nargs=1)
+    parser.add_argument(
+        "-v",
+        help="version information",
+        default=False,
+        action="store_true",
+        dest="version")
+
+    args = parser.parse_args()
+
+    if args.version:
+        print("0.0.1")
+        exit(0)
+
+    file_handle = Dated_file(str(args.input_file), args.date)
