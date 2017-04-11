@@ -37,6 +37,14 @@ class Dated_file_TestCase(unittest.TestCase):
             "2003_10_02"
         )
 
+    def test_date_setting(self):
+        datefile = Dated_file("/path/2003_10_02_test_file.txt")
+        datefile.set_date("2005_11_04")
+        self.assertEqual(
+            datefile.get_date(),
+            "2005_11_04"
+        )
+
     def test_tuncate_file_name(self):
         datefile = Dated_file("/path/2003_10_02_test_file.txt")
         self.assertEqual(
