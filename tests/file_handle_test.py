@@ -107,5 +107,40 @@ class Dated_file_TestCase(unittest.TestCase):
             datefile.get_full_file_name(),
             "2004_12_02_test_file.txt"
         )
+
+    def test_date_existed_file(self):
+        with open(os.path.abspath("./data/examples/test_file2.txt"), 'w'):
+            datefile = Dated_file("./data/examples/test_file2.txt")
+            datefile = Dated_file("./data/examples/test_file2.txt")
+            current_date = datetime.date.today()
+            self.assertTrue(
+                os.path.isfile(
+                    "./data/examples/" +
+                    current_date.strftime("%Y_%m_%d_") +
+                    "test_file2.txt"))
+            self.assertEqual(
+                datefile.get_full_file_name(),
+                current_date.strftime("%Y_%m_%d_") + "test_file2.txt"
+            )
+            os.remove(os.path.abspath(
+                "./data/examples/" +
+                current_date.strftime("%Y_%m_%d_") +
+                "test_file2.txt"))
+
+    def test_set_date_existed_file(self):
+        with open(os.path.abspath("./data/examples/test_file2.txt"), 'w'):
+            datefile = Dated_file(
+                "./data/examples/test_file2.txt",
+                "2008_12_02")
+            datefile = Dated_file("./data/examples/2008_12_02_test_file2.txt")
+            self.assertEqual(
+                datefile.get_full_file_name(),
+                "2008_12_02_test_file2.txt"
+            )
+            os.remove(os.path.abspath(
+                "./data/examples/2008_12_02_test_file2.txt"))
+
+
+
 if __name__ == '__main__':
     unittest.main()
