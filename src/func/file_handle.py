@@ -25,6 +25,7 @@ class Dated_file:
         self.file_path = os.path.abspath(os.path.dirname(file_name))
         self.date = datetime.date(1, 1, 1)
         self.set_date(date)
+        self.__truncate_file_name()
 
     def __test_date(self, date):
         '''
@@ -50,6 +51,22 @@ class Dated_file:
         if return_date:
             return date
         self.date = date
+
+    def __truncate_file_name(self):
+        '''
+        remove date tag from file name
+        '''
+        format_search = re.search(
+                r"\d{4}\_\d{2}\_\d{2}\_(.*)",
+                self.file_name)
+        if format_search is not None:
+            self.file_name = format_search.group(1)
+
+    def get_date(self):
+        '''
+        output date of the current file in yyyy_mm_dd format
+        '''
+        return(str(self.date.strftime("%Y_%m_%d")))
 
     def set_date(self, date):
         '''
