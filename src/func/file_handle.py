@@ -24,6 +24,19 @@ class Dated_file:
         self.file_name = os.path.basename(file_name)
         self.file_path = os.path.abspath(os.path.dirname(file_name))
         self.date = datetime.date(1, 1, 1)
+        self.set_date(date)
+    def set_date(self, date):
+        '''
+        test if the date is in the yyyy_mm_dd format and is a real date
+        if true, set date to current date, else exctact it
+        '''
+        if date is None:
+            date = self.file_name
+        if not self.__test_date(date):
+            self.date = datetime.date.today()
+        else:
+            self.__extract_date(date)
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         prog="file_handle.py",
