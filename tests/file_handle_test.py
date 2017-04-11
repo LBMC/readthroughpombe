@@ -37,5 +37,12 @@ class Dated_file_TestCase(unittest.TestCase):
             "2003_10_02"
         )
 
+    def test_abs_path(self):
+        datefile = Dated_file("/path/2003_10_02_test_file.txt")
+        self.assertEqual(
+            datefile.get_file_path(),
+            os.path.abspath("/path/")
+        )
+
 if __name__ == '__main__':
     unittest.main()
