@@ -29,6 +29,7 @@ class Dated_file:
         self.date_list = list()
         self.__list_files()
         self.__set_to_last(date)
+        self.__date_file()
 
     def __test_date(self, date):
         '''
@@ -112,6 +113,16 @@ class Dated_file:
             self.date == datetime.date.today()
         if test and len(self.date_list) > 0:
             self.date = self.date_list[0]
+
+    def __date_file(self):
+        '''
+        if the file exist but it's not dated, we date it
+        '''
+        if len(self.date_list) == 0:
+            path_in = self.file_path + "/" + self.get_file_name()
+            if os.path.isfile(path_in):
+                path_out = self.file_path + "/" + self.get_full_file_name()
+                os.rename(path_in, path_out)
 
     def get_file_name(self):
         '''
