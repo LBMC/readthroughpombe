@@ -7,6 +7,7 @@ import os
 import sys
 sys.path.append(os.path.abspath("src/func/"))
 from file_handle import Dated_file
+from file_handle import Dated_file_list
 
 
 class Dated_file_TestCase(unittest.TestCase):
@@ -140,6 +141,19 @@ class Dated_file_TestCase(unittest.TestCase):
             os.remove(os.path.abspath(
                 "./data/examples/2008_12_02_test_file2.txt"))
 
+
+class Dated_file_list_TestCase(unittest.TestCase):
+    def test_read_list(self):
+        file_list = [
+            "./data/examples/2004_10_02_test_file.txt",
+            "./data/examples/2004_12_02_test_file.txt",
+            "./data/examples/2006_02_08_test_file.txt"]
+        datefile_list = Dated_file_list(file_list)
+        for i in range(len(file_list)):
+            self.assertEqual(
+                datefile_list[i].get_full_file_name(),
+                os.path.basename(file_list[i])
+            )
 
 
 if __name__ == '__main__':
