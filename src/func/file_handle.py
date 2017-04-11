@@ -26,6 +26,8 @@ class Dated_file:
         self.date = datetime.date(1, 1, 1)
         self.set_date(date)
         self.__truncate_file_name()
+        self.date_list = list()
+        self.__list_files()
 
     def __test_date(self, date):
         '''
@@ -79,6 +81,26 @@ class Dated_file:
             self.date = datetime.date.today()
         else:
             self.__extract_date(date)
+
+    def __list_files(self):
+        '''
+        we get the list the date of the different versions of the file
+        '''
+        date_list = glob.glob(
+            self.get_file_path() +
+            "/*" +
+            self.get_file_name())
+        if len(date_list) > 0:
+            format_search = re.compile(
+                r".*" +
+                re.escape(str(self.file_name)))
+            for i in range(len(date_list)):
+                if format_search.match(date_list[i]):
+                    date = os.path.basename(date_list[i])
+                    if self.__test_date(date):
+                        date = self.__extract_date(date, True)
+                        self.date_list.append(date)
+            self.date_list.sort(reverse=True)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
