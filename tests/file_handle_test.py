@@ -78,5 +78,20 @@ class Dated_file_TestCase(unittest.TestCase):
             "2006_02_08_test_file.txt"
         )
 
+    def test_set_to_last_existing_file(self):
+        datefile = Dated_file("./data/examples/test_file.txt")
+        self.assertEqual(
+            datefile.get_date(),
+            "2006_02_08"
+        )
+        self.assertEqual(
+            datefile.get_file_name(),
+            "test_file.txt"
+        )
+        self.assertEqual(
+            datefile.get_full_file_name(),
+            "2006_02_08_test_file.txt"
+        )
+
 if __name__ == '__main__':
     unittest.main()
