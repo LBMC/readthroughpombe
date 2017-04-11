@@ -20,9 +20,9 @@ class Dated_file:
     yyyy_mm_dd_filemames.
     '''
     def __init__(self, file_name, date=None):
-        file_name = os.path.abspath(file_name)
-        self.file_name = os.path.basename(file_name)
-        self.file_path = os.path.abspath(os.path.dirname(file_name))
+        file_name = os.path.abspath(str(file_name))
+        self.file_name = os.path.basename(str(file_name))
+        self.file_path = os.path.dirname(str(file_name))
         self.date = datetime.date(1, 1, 1)
         self.set_date(date)
         self.__truncate_file_name()
@@ -79,10 +79,10 @@ class Dated_file:
         '''
         if date is None:
             date = self.file_name
-        if not self.__test_date(date):
+        if not self.__test_date(str(date)):
             self.date = datetime.date.today()
         else:
-            self.__extract_date(date)
+            self.__extract_date(str(date))
 
     def __list_files(self):
         '''
@@ -212,7 +212,7 @@ if __name__ == '__main__':
         action="store",
         dest="input_file",
         required=True,
-        nargs=1)
+        nargs='*')
     parser.add_argument(
         "-d",
         help="date to write if not file with this date exist, otherwise return \
@@ -221,7 +221,7 @@ if __name__ == '__main__':
         action="store",
         dest="date",
         required=False,
-        nargs=1)
+        nargs='*')
     parser.add_argument(
         "-v",
         help="version information",
@@ -235,4 +235,4 @@ if __name__ == '__main__':
         print("0.0.1")
         exit(0)
 
-    file_handle = Dated_file(str(args.input_file), args.date)
+    files_handle = Dated_file_list(args.input_file, args.date)
