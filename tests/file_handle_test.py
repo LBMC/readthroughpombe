@@ -37,6 +37,17 @@ class Dated_file_TestCase(unittest.TestCase):
             "2003_10_02"
         )
 
+    def test_tuncate_file_name(self):
+        datefile = Dated_file("/path/2003_10_02_test_file.txt")
+        self.assertEqual(
+            datefile.get_file_name(),
+            "test_file.txt"
+        )
+        self.assertEqual(
+            datefile.get_full_file_name(),
+            "2003_10_02_test_file.txt"
+        )
+
     def test_abs_path(self):
         datefile = Dated_file("/path/2003_10_02_test_file.txt")
         self.assertEqual(
