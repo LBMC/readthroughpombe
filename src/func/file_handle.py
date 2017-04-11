@@ -25,6 +25,16 @@ class Dated_file:
         self.file_path = os.path.abspath(os.path.dirname(file_name))
         self.date = datetime.date(1, 1, 1)
         self.set_date(date)
+
+    def __test_date(self, date):
+        '''
+        test if the file_name contain a date tag
+        '''
+        format_test = re.match(
+            r"\d{4}\_\d{2}\_\d{2}.*",
+            date)
+        return(format_test is not None)
+
     def set_date(self, date):
         '''
         test if the date is in the yyyy_mm_dd format and is a real date
