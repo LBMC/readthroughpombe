@@ -13,6 +13,17 @@ if sys.version_info[0] == 2:
     'python3 file_handle.py'")
     exit(1)
 
+
+class Dated_file:
+    '''
+    Dated_file class to manage file prefixed with a date in the format \
+    yyyy_mm_dd_filemames.
+    '''
+    def __init__(self, file_name, date=None):
+        file_name = os.path.abspath(file_name)
+        self.file_name = os.path.basename(file_name)
+        self.file_path = os.path.abspath(os.path.dirname(file_name))
+        self.date = datetime.date(1, 1, 1)
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         prog="file_handle.py",
