@@ -137,6 +137,19 @@ class Dated_file:
         else:
             return(None)
 
+    def get_full_file_name(self):
+        '''
+        get the full name (date tag and file_name) of sur current file
+        '''
+        return(
+            str(self.get_date()) +
+            "_" +
+            str(self.get_file_name())
+            )
+
+    def __str__(self):
+        return(self.get_full_file_name())
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         prog="file_handle.py",
