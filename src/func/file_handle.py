@@ -112,6 +112,19 @@ class Dated_file:
             self.date == datetime.date.today()
         if test and len(self.date_list) > 0:
             self.date = self.date_list[0]
+
+    def get_file_name(self):
+        '''
+        return the file name without date
+        '''
+        return(str(self.file_name))
+
+    def get_file_path(self):
+        '''
+        return absolute path toward the file
+        '''
+        return(str(self.file_path))
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         prog="file_handle.py",
