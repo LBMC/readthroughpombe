@@ -155,6 +155,18 @@ class Dated_file_list_TestCase(unittest.TestCase):
                 os.path.basename(file_list[i])
             )
 
+    def test_read_list_with_date(self):
+        file_list = [
+            "./data/examples/test_file.txt",
+            "./data/examples/test_file.txt",
+            "./data/examples/test_file.txt"]
+        date_list = ["2004_10_02", "2004_12_02", "2006_02_08"]
+        datefile_list = Dated_file_list(file_list, date_list)
+        for i in range(len(file_list)):
+            self.assertEqual(
+                datefile_list[i].get_full_file_name(),
+                date_list[i] + "_" + os.path.basename(file_list[i])
+            )
 
 if __name__ == '__main__':
     unittest.main()
