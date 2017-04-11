@@ -35,6 +35,22 @@ class Dated_file:
             date)
         return(format_test is not None)
 
+    def __extract_date(self, date, return_date=False):
+        '''
+        extract date from a str beginning with yyyy_mm_dd
+        '''
+        format_search = re.search(
+                r"(\d{4})\_(\d{2})\_(\d{2}).*",
+                date)
+        date = datetime.date(
+            int(format_search.group(1)),
+            int(format_search.group(2)),
+            int(format_search.group(3))
+        )
+        if return_date:
+            return date
+        self.date = date
+
     def set_date(self, date):
         '''
         test if the date is in the yyyy_mm_dd format and is a real date
