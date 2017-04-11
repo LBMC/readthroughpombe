@@ -28,6 +28,7 @@ class Dated_file:
         self.__truncate_file_name()
         self.date_list = list()
         self.__list_files()
+        self.__set_to_last(date)
 
     def __test_date(self, date):
         '''
@@ -102,6 +103,15 @@ class Dated_file:
                         self.date_list.append(date)
             self.date_list.sort(reverse=True)
 
+    def __set_to_last(self, date):
+        '''
+        if the file exist in different version and we don't have a date
+        set file to the last version
+        '''
+        test = date is None and \
+            self.date == datetime.date.today()
+        if test and len(self.date_list) > 0:
+            self.date = self.date_list[0]
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         prog="file_handle.py",
