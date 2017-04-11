@@ -163,7 +163,7 @@ class Dated_file:
 
 
 class Dated_file_list:
-    def __init__(self, file_name_list, date_list):
+    def __init__(self, file_name_list, date_list=None):
         self.file_name_list = file_name_list
         self.date_list = date_list
         self.file_date_list = list()
