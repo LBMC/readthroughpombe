@@ -180,10 +180,13 @@ class Dated_file_list:
 
     def __load_files(self):
         for i in range(self.__list_len()):
-            if type(self.date_list) is list:
+            if type(self.date_list) is list and len(self.date_list) >= 1:
                 date = self.date_list[i]
             else:
-                date = self.date_list
+                if len(self.date_list) == 0:
+                    date = None
+                else:
+                    date = self.date_list[0]
             self.file_date_list.append(
                 Dated_file(self.file_name_list[i], date)
             )
@@ -210,15 +213,15 @@ if __name__ == '__main__':
         'yyyy_mm_dd_filemames'. By default return the last file corresponding \
         to the filename if existing or create it with the current date.")
     parser.add_argument(
-        "-f",
+        "-f", "--file",
         help="input filename",
         default=None,
         action="store",
         dest="input_file",
         required=True,
-        nargs='*')
+        nargs='+')
     parser.add_argument(
-        "-d",
+        "-d", "--date",
         help="date to write if not file with this date exist, otherwise return \
         the file corresponding to this date.",
         default=None,
