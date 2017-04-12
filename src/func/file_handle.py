@@ -159,7 +159,7 @@ class Dated_file:
             )
 
     def __str__(self):
-        return(self.get_full_file_name())
+        return(self.get_file_path() + "/" + self.get_full_file_name())
 
 
 class Dated_file_list:
@@ -236,3 +236,4 @@ if __name__ == '__main__':
         exit(0)
 
     files_handle = Dated_file_list(args.input_file, args.date)
+    print(str(files_handle))
