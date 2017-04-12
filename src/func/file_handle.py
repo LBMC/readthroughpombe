@@ -159,7 +159,9 @@ class Dated_file:
             )
 
     def __str__(self):
-        return(self.get_file_path() + "/" + self.get_full_file_name())
+        return(
+            '"' + self.get_file_path() +
+            "/" + self.get_full_file_name() + '"')
 
 
 class Dated_file_list:
@@ -195,6 +197,8 @@ class Dated_file_list:
     def __str__(self):
         output = ""
         for i in range(self.__list_len()):
+            if i > 0:
+                output += " "
             output += str(self[i])
         return(output)
 
