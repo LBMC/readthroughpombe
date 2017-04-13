@@ -175,6 +175,26 @@ class Dated_file_list:
     def __list_len(self):
         if type(self.date_list) is list and len(self.date_list) > 1:
             list_len = min(len(self.file_name_list), len(self.date_list))
+            if list_len < len(self.file_name_list):
+                print(
+                    "warning: number of date provided (" +
+                    str(len(self.date_list)) +
+                    ") inferior to the number of file provided (" +
+                    str(len(self.file_name_list)) +
+                    ") loading " +
+                    str(len(self.date_list)) +
+                    "files."
+                )
+            if list_len < len(self.file_name_list):
+                print(
+                    "warning: number of date provided (" +
+                    str(len(self.date_list)) +
+                    ") superior to the number of file provided (" +
+                    str(len(self.file_name_list)) +
+                    ") loading " +
+                    str(len(self.file_name_list)) +
+                    "files."
+                )
         else:
             list_len = len(self.file_name_list)
         return(int(list_len))
