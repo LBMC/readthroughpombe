@@ -6,6 +6,7 @@ import os.path
 import argparse
 import datetime
 import re
+import fnmatch
 import glob
 if sys.version_info[0] == 2:
     print("file_handle.py is only compatible with python3.\
