@@ -246,6 +246,7 @@ if __name__ == '__main__':
         help="date to write if not file with this date exist, otherwise return \
         the file corresponding to this date.",
         default=None,
+        default=list(),
         action="store",
         dest="date",
         required=False,
