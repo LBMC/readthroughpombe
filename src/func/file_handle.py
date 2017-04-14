@@ -6,7 +6,6 @@ import os.path
 import argparse
 import datetime
 import re
-import fnmatch
 import glob
 if sys.version_info[0] == 2:
     print("file_handle.py is only compatible with python3.\
@@ -166,11 +165,52 @@ class Dated_file:
 
 
 class Dated_file_list:
-    def __init__(self, file_name_list, date_list=None):
-        self.file_name_list = file_name_list
-        self.date_list = date_list
+    def __init__(self, file_name_list, date_list=list()):
+        self.file_name_list = list()
+        self.file_name_list.extend(file_name_list)
+        self.date_list = list()
+        self.date_list.extend(date_list)
+        self.__expend_files_name_from_wildcard()
         self.file_date_list = list()
         self.__load_files()
+
+    def __handle_wildcard(self, file_name):
+        '''
+        list file corresponding to the UNIX wildcard of a file_name
+        '''
+        file_name = str(file_name)
+        file_name = os.path.abspath(file_name)
+        file_path = os.path.dirname(str(file_name))
+        file_name = os.path.basename(str(file_name))
+        file_names = glob.glob(file_path + "/*" + file_name)
+        for i in range(len(file_names)):
+            file_names[i] = os.path.basename(file_names[i])
+            # if we don't have specified the date in the file name we remove it
+            if re.match(r"\d{4}\_\d{2}\_\d{2}\_", file_name) is None:
+                file_names[i] = re.search(
+                    r"(\d{4}\_\d{2}\_\d{2}\_){0,1}(.*)",
+                    file_names[i]).group(2)
+            file_names[i] = file_path + "/" + file_names[i]
+        file_names = list(set(file_names))
+        file_names.sort()
+        return(file_names)
+
+    def __expend_files_name_from_wildcard(self):
+        '''
+        get all the files corresponding to the UNIX wildcard for a list of
+        file_names
+        '''
+        if not isinstance(self.file_name_list, list):
+            print(type(self.file_name_list))
+            print("error : file_name_list is not a list")
+        if not isinstance(self.date_list, list):
+            print(type(self.date_list))
+            print("error : date_list is not a list")
+        file_name_list = list()
+        for i in range(self.__list_len()):
+            file_name_list.extend(
+                self.__handle_wildcard(self.file_name_list[i]))
+        self.file_name_list = file_name_list[:]
 
     def __list_len(self):
         if type(self.date_list) is list and len(self.date_list) > 1:
@@ -185,7 +225,7 @@ class Dated_file_list:
                     str(len(self.date_list)) +
                     "files."
                 )
-            if list_len < len(self.file_name_list):
+            if list_len < len(self.date_list):
                 print(
                     "warning: number of date provided (" +
                     str(len(self.date_list)) +
@@ -201,13 +241,12 @@ class Dated_file_list:
 
     def __load_files(self):
         for i in range(self.__list_len()):
-            if type(self.date_list) is list and len(self.date_list) >= 1:
+            if len(self.date_list) > 1:
                 date = self.date_list[i]
+            elif len(self.date_list) == 1:
+                date = self.date_list[0]
             else:
-                if len(self.date_list) == 0:
-                    date = None
-                else:
-                    date = self.date_list[0]
+                date = None
             self.file_date_list.append(
                 Dated_file(self.file_name_list[i], date)
             )
@@ -245,7 +284,6 @@ if __name__ == '__main__':
         "-d", "--date",
         help="date to write if not file with this date exist, otherwise return \
         the file corresponding to this date.",
-        default=None,
         default=list(),
         action="store",
         dest="date",
