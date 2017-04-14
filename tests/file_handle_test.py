@@ -171,14 +171,27 @@ class Dated_file_list_TestCase(unittest.TestCase):
     def test_read_list_with_wildcard(self):
         file_list = ["./data/examples/test_file.*"]
         file_list_check = [
-            "./data/examples/test_file.txt",
-            "./data/examples/test_file.csv"]
+            "./data/examples/2008_04_12_test_file.csv",
+            "./data/examples/2004_12_02_test_file.txt"]
         date_list = [""]
         datefile_list = Dated_file_list(file_list, date_list)
         for i in range(len(file_list_check)):
             self.assertEqual(
                 datefile_list[i].get_full_file_name(),
-                date_list[i] + "_" + os.path.basename(file_list_check[i])
+                os.path.basename(file_list_check[i])
+            )
+
+    def test_read_list_with_wildcard_and_date(self):
+        file_list = ["./data/examples/test_file.*"]
+        file_list_check = [
+            "./data/examples/2008_04_12_test_file.csv",
+            "./data/examples/2004_12_02_test_file.txt"]
+        date_list = ["2008_04_12", "2004_12_02"]
+        datefile_list = Dated_file_list(file_list, date_list)
+        for i in range(len(file_list_check)):
+            self.assertEqual(
+                datefile_list[i].get_full_file_name(),
+                os.path.basename(file_list_check[i])
             )
 
 
