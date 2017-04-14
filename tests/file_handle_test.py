@@ -172,8 +172,8 @@ class Dated_file_list_TestCase(unittest.TestCase):
         file_list = ["./data/examples/test_file.*"]
         file_list_check = [
             "./data/examples/2008_04_12_test_file.csv",
-            "./data/examples/2004_12_02_test_file.txt"]
-        date_list = [""]
+            "./data/examples/2006_02_08_test_file.txt"]
+        date_list = list()
         datefile_list = Dated_file_list(file_list, date_list)
         for i in range(len(file_list_check)):
             self.assertEqual(
