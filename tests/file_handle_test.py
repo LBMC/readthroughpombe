@@ -227,7 +227,7 @@ class Dated_file_list_TestCase(unittest.TestCase):
                 os.path.basename(file_list_check[i])
             )
 
-    def test_redate(self):
+    def test_read_list_redate(self):
         with open(os.path.abspath(
                 "./data/examples/2017_04_04_test_file3.txt"), 'w'):
             current_date = datetime.date.today()
@@ -238,11 +238,39 @@ class Dated_file_list_TestCase(unittest.TestCase):
                 current_date.strftime("%Y_%m_%d") + "_test_file3.txt"]
             datefile_list = Dated_file_list(
                 file_list,
-                current_date.strftime("%Y_%m_%d"))
+                "2098_02_12",
+                False,
+                True)
             for i in range(len(file_list_check)):
                 self.assertEqual(
                     datefile_list[i].get_full_file_name(),
                     os.path.basename(file_list_check[i])
+                )
+            os.remove(os.path.abspath(
+                "./data/examples/" +
+                current_date.strftime("%Y_%m_%d_") +
+                "test_file3.txt"))
+
+    def test_read_list_redate_file(self):
+        with open(os.path.abspath(
+                "./data/examples/2017_04_04_test_file3.txt"), 'w'):
+            current_date = datetime.date.today()
+            file_list = [
+                "./data/examples/2017_04_04_test_file3.txt"]
+            file_list_check = [
+                "./data/examples/" +
+                current_date.strftime("%Y_%m_%d") + "_test_file3.txt"]
+            Dated_file_list(
+                file_list,
+                check=False,
+                redate=True)
+            for i in range(len(file_list_check)):
+                self.assertEqual(
+                    os.path.isfile(os.path.abspath(
+                        "./data/examples/" +
+                        current_date.strftime("%Y_%m_%d_") +
+                        "test_file3.txt")),
+                    True
                 )
             os.remove(os.path.abspath(
                 "./data/examples/" +
