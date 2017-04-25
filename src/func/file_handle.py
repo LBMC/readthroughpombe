@@ -52,8 +52,9 @@ class Dated_file:
     Dated_file class to manage file prefixed with a date in the format \
     yyyy_mm_dd_filemames.
     '''
-    def __init__(self, file_name, date=None):
+    def __init__(self, file_name, date=None, redate=False):
         file_name = os.path.abspath(str(file_name))
+        self.redate = redate
         self.file_name = os.path.basename(str(file_name))
         self.file_path = os.path.dirname(str(file_name))
         self.date = datetime.date(1, 1, 1)
@@ -211,8 +212,10 @@ class Dated_file:
 
 
 class Dated_file_list:
-    def __init__(self, file_name_list, date_list=list(), check=False):
+    def __init__(
+            self, file_name_list, date_list=list(), check=False, redate=False):
         self.check = check
+        self.redate = redate
         self.file_name_list = list()
         self.file_name_list.extend(file_name_list)
         self.date_list = list()
@@ -281,7 +284,7 @@ class Dated_file_list:
             else:
                 date = None
             self.file_date_list.append(
-                Dated_file(self.file_name_list[i], date)
+                Dated_file(self.file_name_list[i], date, self.redate)
             )
             if self.check:
                 if not self.file_date_list[len(self.file_date_list)-1].check():
@@ -353,8 +356,9 @@ if __name__ == '__main__':
         print("0.0.1")
         exit(0)
 
-    if args.redate:
-        args.date = datetime.date.today().strftime("%Y_%m_%d")
-
-    files_handle = Dated_file_list(args.input_file, args.date, args.check)
+    files_handle = Dated_file_list(
+        args.input_file,
+        args.date,
+        args.check,
+        args.redate)
     print(str(files_handle))
