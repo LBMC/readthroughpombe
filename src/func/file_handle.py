@@ -268,26 +268,6 @@ class Dated_file_list:
     def __list_len(self):
         if type(self.date_list) is list and len(self.date_list) > 1:
             list_len = min(len(self.file_name_list), len(self.date_list))
-            if list_len < len(self.file_name_list):
-                print(
-                    "warning: number of date provided (" +
-                    str(len(self.date_list)) +
-                    ") inferior to the number of file provided (" +
-                    str(len(self.file_name_list)) +
-                    ") loading " +
-                    str(len(self.date_list)) +
-                    "files."
-                )
-            if list_len < len(self.date_list):
-                print(
-                    "warning: number of date provided (" +
-                    str(len(self.date_list)) +
-                    ") superior to the number of file provided (" +
-                    str(len(self.file_name_list)) +
-                    ") loading " +
-                    str(len(self.file_name_list)) +
-                    "files."
-                )
         else:
             list_len = len(self.file_name_list)
         return(int(list_len))
@@ -347,6 +327,13 @@ if __name__ == '__main__':
         required=False,
         nargs='*')
     parser.add_argument(
+        "-r", "--redate",
+        help="date file with the current date even if dated",
+        default=False,
+        action="store_true",
+        dest="redate",
+        required=False)
+    parser.add_argument(
         "-c", "--check",
         help="Return an error if the dated file is not found",
         default=False,
@@ -365,6 +352,9 @@ if __name__ == '__main__':
     if args.version:
         print("0.0.1")
         exit(0)
+
+    if args.redate:
+        args.date = datetime.date.today().strftime("%Y_%m_%d")
 
     files_handle = Dated_file_list(args.input_file, args.date, args.check)
     print(str(files_handle))
