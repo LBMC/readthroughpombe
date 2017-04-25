@@ -196,9 +196,23 @@ class Dated_file:
             '"' + self.get_file_path() +
             "/" + self.get_full_file_name() + '"')
 
+    def check(self):
+        """            print("test")
+
+        check if file exist
+        """
+        file_name = self.get_file_path() + \
+            "/" + self.get_full_file_name()
+        if os.path.isfile(file_name) and file_name != "":
+            return True
+        else:
+            print("error: " + file_name + " not found")
+            return False
+
 
 class Dated_file_list:
-    def __init__(self, file_name_list, date_list=list()):
+    def __init__(self, file_name_list, date_list=list(), check=False):
+        self.check = check
         self.file_name_list = list()
         self.file_name_list.extend(file_name_list)
         self.date_list = list()
@@ -216,7 +230,13 @@ class Dated_file_list:
         file_path = os.path.dirname(str(file_name))
         file_name = os.path.basename(str(file_name))
         file_names = glob.glob(file_path + "/*" + file_name)
+        if self.check and len(file_names) == 0:
+            print("error: no file found")
+            exit(1)
         for i in range(len(file_names)):
+            if self.check and not os.path.isfile(file_names[i]):
+                print("error: " + str(file_names[i]) + " not found")
+                exit(1)
             file_names[i] = os.path.basename(file_names[i])
             # if we don't have specified the date in the file name we remove it
             if re.match(r"\d{4}\_\d{2}\_\d{2}\_", file_name) is None:
@@ -283,6 +303,10 @@ class Dated_file_list:
             self.file_date_list.append(
                 Dated_file(self.file_name_list[i], date)
             )
+            if self.check:
+                if not self.file_date_list[len(self.file_date_list)-1].check():
+                    print("error")
+                    exit()
 
     def __getitem__(self, key):
         if key >= 0 and key <= len(self.file_date_list):
@@ -323,6 +347,13 @@ if __name__ == '__main__':
         required=False,
         nargs='*')
     parser.add_argument(
+        "-c", "--check",
+        help="Return an error if the dated file is not found",
+        default=False,
+        action="store_true",
+        dest="check",
+        required=False)
+    parser.add_argument(
         "-v",
         help="version information",
         default=False,
@@ -335,5 +366,5 @@ if __name__ == '__main__':
         print("0.0.1")
         exit(0)
 
-    files_handle = Dated_file_list(args.input_file, args.date)
+    files_handle = Dated_file_list(args.input_file, args.date, args.check)
     print(str(files_handle))
