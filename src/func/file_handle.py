@@ -157,6 +157,13 @@ class Dated_file:
             if os.path.isfile(path_in):
                 path_out = self.file_path + "/" + self.get_full_file_name()
                 os.rename(path_in, path_out)
+        if self.redate:
+            print("redating !")
+            path_in = self.file_path + "/" + self.get_full_file_name()
+            self.date = datetime.date.today()
+            path_out = self.file_path + "/" + self.get_full_file_name()
+            if os.path.isfile(path_in):
+                os.rename(path_in, path_out)
 
     def get_file_name(self):
         '''
