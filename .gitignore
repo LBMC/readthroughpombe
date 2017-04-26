@@ -4,4 +4,4 @@ results/*
 !data/examples
 __pycache__
 work
-.nextflow.log*
+.nextflow*
