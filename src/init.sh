@@ -5,4 +5,6 @@ cd bin
 wget -qO- get.nextflow.io | bash
 pip install argparse
 pip install docker
-pip install multiqc
+pip2 install multiqc
+pip2 install click
+pip2 install jinja2
