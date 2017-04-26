@@ -52,9 +52,10 @@ class Dated_file:
     Dated_file class to manage file prefixed with a date in the format \
     yyyy_mm_dd_filemames.
     '''
-    def __init__(self, file_name, date=None, redate=False):
+    def __init__(self, file_name, date=None, redate=False, escape=False):
         file_name = os.path.abspath(str(file_name))
         self.redate = redate
+        self.escape = escape
         self.file_name = os.path.basename(str(file_name))
         self.file_path = os.path.dirname(str(file_name))
         self.date = datetime.date(1, 1, 1)
@@ -158,7 +159,6 @@ class Dated_file:
                 path_out = self.file_path + "/" + self.get_full_file_name()
                 os.rename(path_in, path_out)
         if self.redate:
-            print("redating !")
             path_in = self.file_path + "/" + self.get_full_file_name()
             self.date = datetime.date.today()
             path_out = self.file_path + "/" + self.get_full_file_name()
@@ -200,9 +200,14 @@ class Dated_file:
             )
 
     def __str__(self):
-        return(
-            '"' + self.get_file_path() +
-            "/" + self.get_full_file_name() + '"')
+        if self.escape:
+            return(
+                self.get_file_path().replace(" ", "\ ") +
+                "/" + self.get_full_file_name().replace(" ", "\ "))
+        else:
+            return(
+                '"' + self.get_file_path() +
+                "/" + self.get_full_file_name() + '"')
 
     def check(self):
         """            print("test")
@@ -220,9 +225,11 @@ class Dated_file:
 
 class Dated_file_list:
     def __init__(
-            self, file_name_list, date_list=list(), check=False, redate=False):
+            self, file_name_list, date_list=list(),
+            check=False, redate=False, escape=False):
         self.check = check
         self.redate = redate
+        self.escape = escape
         self.file_name_list = list()
         self.file_name_list.extend(file_name_list)
         self.date_list = list()
@@ -291,7 +298,11 @@ class Dated_file_list:
             else:
                 date = None
             self.file_date_list.append(
-                Dated_file(self.file_name_list[i], date, self.redate)
+                Dated_file(
+                    self.file_name_list[i],
+                    date,
+                    self.redate,
+                    self.escape)
             )
             if self.check:
                 if not self.file_date_list[len(self.file_date_list)-1].check():
@@ -308,7 +319,10 @@ class Dated_file_list:
         output = ""
         for i in range(self.__list_len()):
             if i > 0:
-                output += " "
+                if self.escape:
+                    output += "\\n"
+                else:
+                    output += " "
             output += str(self[i])
         return(output)
 
@@ -351,6 +365,13 @@ if __name__ == '__main__':
         dest="check",
         required=False)
     parser.add_argument(
+        "-e", "--escape",
+        help="escape file name instead of coting them",
+        default=False,
+        action="store_true",
+        dest="escape",
+        required=False)
+    parser.add_argument(
         "-v",
         help="version information",
         default=False,
@@ -367,5 +388,6 @@ if __name__ == '__main__':
         args.input_file,
         args.date,
         args.check,
-        args.redate)
+        args.redate,
+        args.escape)
     print(str(files_handle))
