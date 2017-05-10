@@ -142,9 +142,23 @@ class Dated_file_TestCase(unittest.TestCase):
             "2004_12_02_test_file.txt"
         )
 
+    def test_set_to_dated_existing_folder(self):
+        datefile = Dated_file("./data/examples/2004_12_02_test_folder")
+        self.assertEqual(
+            datefile.get_date(),
+            "2004_12_02"
+        )
+        self.assertEqual(
+            datefile.get_file_name(),
+            "test_folder"
+        )
+        self.assertEqual(
+            datefile.get_full_file_name(),
+            "2004_12_02_test_folder"
+        )
+
     def test_date_existed_file(self):
         with open(os.path.abspath("./data/examples/test_file2.txt"), 'w'):
-            datefile = Dated_file("./data/examples/test_file2.txt")
             datefile = Dated_file("./data/examples/test_file2.txt")
             current_date = datetime.date.today()
             self.assertTrue(
