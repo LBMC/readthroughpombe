@@ -210,6 +210,21 @@ class Dated_file_TestCase(unittest.TestCase):
             os.remove(os.path.abspath(
                 "./data/examples/2008_12_02_test_file2.txt"))
 
+    def test_set_date_existed_folder(self):
+        newpath = "./data/examples/test_folder2"
+        if not os.path.exists(newpath):
+            os.makedirs(newpath)
+            datefile = Dated_file(
+                "./data/examples/test_folder2",
+                "2008_12_02")
+            datefile = Dated_file("./data/examples/2008_12_02_test_folder2")
+            self.assertEqual(
+                datefile.get_full_file_name(),
+                "2008_12_02_test_folder2"
+            )
+            os.rmdir(os.path.abspath(
+                "./data/examples/2008_12_02_test_folder2"))
+
 
 class Dated_file_list_TestCase(unittest.TestCase):
     def test_read_list(self):
