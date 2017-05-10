@@ -39,12 +39,16 @@ results_path = baseDir + '/../../results'
 quality_control_path = results_path + '/quality_control'
 fastqc_res_path = quality_control_path + '/fastqc'
 multiqc_res_path = quality_control_path + '/multiqc'
+trimming_res_path = quality_control_path + '/trimming'
 src_path = baseDir + '/../../src'
 params.name = "quality control analysis"
 params.fastqc = "/usr/bin/fastqc"
 if( !file(params.fastqc).exists() ) exit 1, "fastqc binary not found at: ${params.fastqc}"
 params.multiqc = "/usr/bin/multiqc"
 if( !file(params.multiqc).exists() ) exit 1, "multiqc binary not found at: ${params.multiqc}"
+params.trimmer = "UrQt"
+params.urqt = "/usr/bin/UrQt"
+params.trimmomatic = "/usr/bin/trimmomatic"
 
 params.steps = "all"
 
@@ -55,6 +59,13 @@ log.info "multiqc : ${params.multiqc}"
 log.info "query : ${params.fastq_files}"
 log.info "results folder : ${results_path}"
 log.info "fastq_files : ${params.fastq_files}"
+log.info "trimmer : ${params.trimmer}"
+if (params.trimmer == "UrQt") {
+  log.info "UrQt path : ${params.urqt}"
+}
+if (params.trimmer == 'trimmomatic') {
+  log.info "trimmomatic path : ${params.trimmomatic}"
+}
 log.info "\n"
 
 Channel
@@ -100,10 +111,48 @@ process fastqc {
   """
 }
 
+process trimming {
+  tag "${file(name[0]).name}"
+  publishDir "${trimming_res_path}", mode: 'copy'
+  input:
+    set val(name), val(file_name) from trimming_input
+  output:
+    file "*.trimmed.fastq.gz" into trimming_output
+  when:
+    file(file_name[0]).name =~ /^.*\.fastq$/ || file(file_name[0]).name =~ /^.*\.fastq\.gz$/
+  script:
+  if (params.trimmer == "UrQt") {
+  """
+    ${params.urqt} --gz --in ${file_name[0]} --out ${file(file_name[0]).baseName}.trimmed.fastq.gz
+    ${src_path}/func/file_handle.py -f *.trimmed.fastq.gz -r
+  """
+  }
+}
+
+trimming_output.map{ n -> tuple(n, n) }.into{ fastqc_trimmed_input }
+
+process fastqc_trimmed {
+  tag "${name.name}"
+  publishDir "${fastqc_res_path}", mode: 'copy'
+  input:
+    set file(name), file(file_name) from fastqc_trimmed_input
+  output:
+    file "*_fastqc.{zip,html}" into fastqc_trimmed_output
+  when:
+    file_name.name =~ /^.*\.fastq$/ || file_name.name =~ /^.*\.fastq\.gz$/
+  script:
+  """
+    ${params.fastqc} --quiet --outdir ./ ${file_name}
+    ${src_path}/func/file_handle.py -f *.html -r
+    ${src_path}/func/file_handle.py -f *.zip -r
+  """
+}
+
 process multiqc {
     publishDir "${multiqc_res_path}", mode: 'copy'
     input:
       file fastqc_results from fastqc_output.collect()
+      file fastqc_trimmed_results from fastqc_trimmed_output.collect()
     output:
       file "*multiqc_{report,data}*" into multiqc_report
     script:
@@ -113,8 +162,6 @@ process multiqc {
     ${src_path}/func/file_handle.py -f multiqc_data -r
     """
 }
-
-trimming_input.subscribe { println "Channel 1: ${it[0]}" }
 
 workflow.onComplete {
     println "Pipeline completed at: $workflow.complete"
