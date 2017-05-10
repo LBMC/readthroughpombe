@@ -175,6 +175,28 @@ class Dated_file_TestCase(unittest.TestCase):
                 current_date.strftime("%Y_%m_%d_") +
                 "test_file2.txt"))
 
+    def test_date_existed_folder(self):
+        newpath = "./data/examples/test_folder"
+        if not os.path.exists(newpath):
+            os.makedirs(newpath)
+        datefile = Dated_file("./data/examples/test_folder",
+                              date=None,
+                              redate=True)
+        current_date = datetime.date.today()
+        self.assertTrue(
+            os.path.exists(
+                "./data/examples/" +
+                current_date.strftime("%Y_%m_%d_") +
+                "test_folder"))
+        self.assertEqual(
+            datefile.get_full_file_name(),
+            current_date.strftime("%Y_%m_%d_") + "test_folder"
+        )
+        os.rmdir(os.path.abspath(
+            "./data/examples/" +
+            current_date.strftime("%Y_%m_%d_") +
+            "test_folder"))
+
     def test_set_date_existed_file(self):
         with open(os.path.abspath("./data/examples/test_file2.txt"), 'w'):
             datefile = Dated_file(
@@ -260,10 +282,6 @@ class Dated_file_list_TestCase(unittest.TestCase):
                     datefile_list[i].get_full_file_name(),
                     os.path.basename(file_list_check[i])
                 )
-            os.remove(os.path.abspath(
-                "./data/examples/" +
-                current_date.strftime("%Y_%m_%d_") +
-                "test_file3.txt"))
 
     def test_read_list_redate_file(self):
         with open(os.path.abspath(
