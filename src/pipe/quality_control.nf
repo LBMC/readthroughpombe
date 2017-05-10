@@ -35,15 +35,18 @@
 * knowledge of the CeCILL license and that you accept its terms.
 */
 
-results_path = baseDir + '/../../results/'
-src_path = baseDir + '/../../src/'
+results_path = baseDir + '/../../results'
+quality_control_path = results_path + '/quality_control'
+fastqc_res_path = quality_control_path + '/fastqc'
+multiqc_res_path = quality_control_path + '/multiqc'
+src_path = baseDir + '/../../src'
 params.name = "quality control analysis"
 params.fastqc = "/usr/bin/fastqc"
-fastqc_res_path = results_path+'/quality_control/fastqc/'
 if( !file(params.fastqc).exists() ) exit 1, "fastqc binary not found at: ${params.fastqc}"
 params.multiqc = "/usr/bin/multiqc"
-multiqc_res_path = results_path+'/quality_control/multiqc/'
 if( !file(params.multiqc).exists() ) exit 1, "multiqc binary not found at: ${params.multiqc}"
+
+params.steps = "all"
 
 log.info params.name
 log.info "============================================"
@@ -51,64 +54,63 @@ log.info "fastqc : ${params.fastqc}"
 log.info "multiqc : ${params.multiqc}"
 log.info "query : ${params.fastq_files}"
 log.info "results folder : ${results_path}"
-fastq_files = params.fastq_files.tokenize(' ')
-log.info "fastq_files : ${fastq_files}"
+log.info "fastq_files : ${params.fastq_files}"
 log.info "\n"
 
-/*
-We get the dated names of the files and we send them to:
-fastqc
-trimming programme
-*/
-dated_fastq_files_fastqc = Channel.create()
-dated_fastq_files_trimming = Channel.create()
-dated_fastq_files_names = Channel.create()
-dated_fastq_files_names.flatMap{ n -> n.split("\n") }
-                       .map{ n -> file(n) }
-                       .into( dated_fastq_files_fastqc )
+Channel
+  .from( params.fastq_files )
+  .set{ file_names }
+Channel
+  .create()
+  .set{ dated_file_names }
+Channel
+  .create()
+  .set{ dated_fastqc_files }
+Channel
+  .create()
+  .set{ multiqc_report }
+
+
 process get_file_name {
   input:
-  val fastq_file from fastq_files
+    val file_name from file_names
   output:
-  stdout dated_fastq_file into dated_fastq_files_names
+    stdout dated_file_name into dated_file_names
   script:
   """
-  echo -e \$(${src_path}/func/file_handle.py --file $baseDir/../../${fastq_file} --check --escape)
+  echo \$(${src_path}/func/file_handle.py -f $baseDir/../../${file_name} -c)
   """
 }
 
-/*
-We run fastqc on a list for fastq files
-*/
-fastqc_results = Channel.create()
 process fastqc {
-  publishDir fastqc_res_path, mode: 'copy'
+  publishDir "${fastqc_res_path}", mode: 'copy'
   input:
-  file dated_fastq_file from dated_fastq_files_fastqc
+    val dated_file_name from dated_file_names
   output:
-  file "*_fastqc.{zip,html}" into fastqc_results
+    file "*_fastqc.{zip,html}" into fastqc_files
   when:
-  dated_fastq_file.extension =~ /^fastq/ || dated_fastq_file_to_qc.extension =~ /^fastq\.gz/
+    dated_file_name =~ /^.*\.fastq\"{0,1}$/ || dated_file_name =~ /^.*\.fastq\.gz\"{0,1}$/
   script:
   """
-    ${params.fastqc} --quiet $dated_fastq_file
-    ${src_path}/func/file_handle.py --file ${dated_fastq_file.baseName}_fastqc.* --redate
+    ${params.fastqc} --quiet --outdir ./ ${dated_file_name}
+    ${src_path}/func/file_handle.py -f *.html -r
+    ${src_path}/func/file_handle.py -f *.zip -r
   """
 }
 
-/*
-We run multiqc on the results of fastqc
-*/
 process multiqc {
     publishDir "${multiqc_res_path}", mode: 'copy'
+    echo true
     input:
-    file ("$fastqc_res_path/*") from fastqc_results.flatten().toList()
+      file fastqc_results from fastqc_files.collect()
     output:
-    file '*multiqc_report.html' into multiqc_html
-    file '*multiqc_data' into multiqc_data
+      file "*multiqc_{report,data}*" into multiqc_report
     script:
     """
-    python2 ${params.multiqc} -f .
+    ${params.multiqc} -f .
+    ${src_path}/func/file_handle.py -f *multiqc_report.html -r
+    ${src_path}/func/file_handle.py -f *multiqc_data -r
+    ls -l
     """
 }
 
