@@ -70,7 +70,6 @@ Channel
   .create()
   .set{ multiqc_report }
 
-
 process get_file_name {
   input:
     val file_name from file_names
@@ -78,21 +77,24 @@ process get_file_name {
     stdout dated_file_name into dated_file_names
   script:
   """
-  echo \$(${src_path}/func/file_handle.py -f $baseDir/../../${file_name} -c)
+  echo -e \$(${src_path}/func/file_handle.py -f $baseDir/../../${file_name} -c -e)
   """
 }
 
+dated_file_names.splitCsv().map{ n -> tuple(n, n) }.into{ fastqc_input; trimming_input }
+
 process fastqc {
+  tag "${file(name[0]).name}"
   publishDir "${fastqc_res_path}", mode: 'copy'
   input:
-    val dated_file_name from dated_file_names
+    set val(name), val(file_name) from fastqc_input
   output:
-    file "*_fastqc.{zip,html}" into fastqc_files
+    file "*_fastqc.{zip,html}" into fastqc_output
   when:
-    dated_file_name =~ /^.*\.fastq\"{0,1}$/ || dated_file_name =~ /^.*\.fastq\.gz\"{0,1}$/
+    file(file_name[0]).name =~ /^.*\.fastq$/ || file(file_name[0]).name =~ /^.*\.fastq\.gz$/
   script:
   """
-    ${params.fastqc} --quiet --outdir ./ ${dated_file_name}
+    ${params.fastqc} --quiet --outdir ./ ${file_name[0]}
     ${src_path}/func/file_handle.py -f *.html -r
     ${src_path}/func/file_handle.py -f *.zip -r
   """
@@ -100,19 +102,19 @@ process fastqc {
 
 process multiqc {
     publishDir "${multiqc_res_path}", mode: 'copy'
-    echo true
     input:
-      file fastqc_results from fastqc_files.collect()
+      file fastqc_results from fastqc_output.collect()
     output:
       file "*multiqc_{report,data}*" into multiqc_report
     script:
     """
     ${params.multiqc} -f .
-    ${src_path}/func/file_handle.py -f *multiqc_report.html -r
-    ${src_path}/func/file_handle.py -f *multiqc_data -r
-    ls -l
+    ${src_path}/func/file_handle.py -f multiqc_report.html -r
+    ${src_path}/func/file_handle.py -f multiqc_data -r
     """
 }
+
+trimming_input.subscribe { println "Channel 1: ${it[0]}" }
 
 workflow.onComplete {
     println "Pipeline completed at: $workflow.complete"
