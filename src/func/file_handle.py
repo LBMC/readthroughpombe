@@ -155,14 +155,14 @@ class Dated_file:
         '''
         if len(self.date_list) == 0:
             path_in = self.file_path + "/" + self.get_file_name()
-            if os.path.isfile(path_in):
+            if os.path.isfile(path_in) or os.path.exists(path_in):
                 path_out = self.file_path + "/" + self.get_full_file_name()
                 os.rename(path_in, path_out)
         if self.redate:
             path_in = self.file_path + "/" + self.get_full_file_name()
             self.date = datetime.date.today()
             path_out = self.file_path + "/" + self.get_full_file_name()
-            if os.path.isfile(path_in):
+            if os.path.isfile(path_in) or os.path.exists(path_in):
                 os.rename(path_in, path_out)
 
     def get_file_name(self):
@@ -216,7 +216,8 @@ class Dated_file:
         """
         file_name = self.get_file_path() + \
             "/" + self.get_full_file_name()
-        if os.path.isfile(file_name) and file_name != "":
+        if (os.path.isfile(file_name) or os.path.exists(file_name)) \
+                and file_name != "":
             return True
         else:
             print("error: " + file_name + " not found")
