@@ -39,6 +39,7 @@ results_path = baseDir + '/../../results'
 quality_control_path = results_path + '/quality_control'
 fastqc_res_path = quality_control_path + '/fastqc'
 multiqc_res_path = quality_control_path + '/multiqc'
+adaptor_removal_res_path = quality_control_path + '/adaptor_removed'
 trimming_res_path = quality_control_path + '/trimming'
 src_path = baseDir + '/../../src'
 params.name = "quality control analysis"
@@ -46,11 +47,17 @@ params.fastqc = "/usr/bin/fastqc"
 if( !file(params.fastqc).exists() ) exit 1, "fastqc binary not found at: ${params.fastqc}"
 params.multiqc = "/usr/bin/multiqc"
 if( !file(params.multiqc).exists() ) exit 1, "multiqc binary not found at: ${params.multiqc}"
+paired = false
+params.adaptor_removal = "cutadapt"
+params.adaptor_sequence = "-a AGATCGGAAGAG -g CTCTTCCGATCT"
+if(paired){
+  params.adaptor_sequence = "-a AGATCGGAAGAG -g CTCTTCCGATCT -A AGATCGGAAGAG -G CTCTTCCGATCT"
+}
 params.trimmer = "UrQt"
+params.quality_threshold = 20
 params.urqt = "/usr/bin/UrQt"
 params.trimmomatic = "/usr/bin/trimmomatic"
-
-params.steps = "all"
+params.cutadapt = "/usr/bin/cutadapt"
 
 log.info params.name
 log.info "============================================"
@@ -63,8 +70,8 @@ log.info "trimmer : ${params.trimmer}"
 if (params.trimmer == "UrQt") {
   log.info "UrQt path : ${params.urqt}"
 }
-if (params.trimmer == 'trimmomatic') {
-  log.info "trimmomatic path : ${params.trimmomatic}"
+if (params.trimmer == 'cutadapt') {
+  log.info "cutadapt path : ${params.cutadapt}"
 }
 log.info "\n"
 
@@ -92,7 +99,7 @@ process get_file_name {
   """
 }
 
-dated_file_names.splitCsv().map{ n -> tuple(n, n) }.into{ fastqc_input; trimming_input }
+dated_file_names.splitCsv().map{ n -> tuple(n, n) }.into{ fastqc_input; adaptor_rm_input }
 
 process fastqc {
   tag "${file(name[0]).name}"
@@ -111,19 +118,45 @@ process fastqc {
   """
 }
 
-process trimming {
+process adaptor_removal {
   tag "${file(name[0]).name}"
-  publishDir "${trimming_res_path}", mode: 'copy'
+  publishDir "${adaptor_removal_res_path}", mode: 'copy'
   input:
-    set val(name), val(file_name) from trimming_input
+    set val(name), val(file_name) from adaptor_rm_input
   output:
-    file "*.trimmed.fastq.gz" into trimming_output
+    file "*.fastq.gz" into adaptor_rm_output
   when:
     file(file_name[0]).name =~ /^.*\.fastq$/ || file(file_name[0]).name =~ /^.*\.fastq\.gz$/
   script:
+  if (params.adaptor_removal == "cutadapt") {
+  """
+    ${params.cutadapt} ${params.adaptor_sequence} ${file_name[0]} -o ${file(file_name[0]).baseName}.fastq.gz
+    ${src_path}/func/file_handle.py -f *.fastq.gz -r
+  """
+  }
+}
+
+adaptor_rm_output.map{ n -> tuple(n, n) }.into{ trimming_input }
+
+process trimming {
+  tag "${name.name}"
+  publishDir "${trimming_res_path}", mode: 'copy'
+  input:
+    set file(name), file(file_name) from trimming_input
+  output:
+    file "*.trimmed.fastq.gz" into trimming_output
+  when:
+    file_name.name =~ /^.*\.fastq$/ || file_name.name =~ /^.*\.fastq\.gz$/
+  script:
   if (params.trimmer == "UrQt") {
   """
-    ${params.urqt} --gz --in ${file_name[0]} --out ${file(file_name[0]).baseName}.trimmed.fastq.gz
+    ${params.urqt} -t ${params.quality_threshold} --gz --in ${file_name} --out ${file_name.baseName}.trimmed.fastq.gz
+    ${src_path}/func/file_handle.py -f *.trimmed.fastq.gz -r
+  """
+  }
+  if (params.trimmer == "cutadapt") {
+  """
+    ${params.cutadapt} -q ${params.quality_threshold},${params.quality_threshold} ${file_name} -o ${file_name.baseName}.trimmed.fastq.gz
     ${src_path}/func/file_handle.py -f *.trimmed.fastq.gz -r
   """
   }
