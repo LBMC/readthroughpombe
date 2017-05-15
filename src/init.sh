@@ -8,3 +8,4 @@ pip install docker
 pip2 install multiqc
 pip2 install click
 pip2 install jinja2
+sudo pip install cutadapt
