@@ -144,17 +144,18 @@ process trimming {
     set file(name), file(file_name) from trimming_input
   output:
     file "*.trimmed.fastq.gz" into trimming_output
-    file "*_urqt.txt" into trimming_log
+    file "*_report.txt" into trimming_log
   when:
     file_name.name =~ /^.*\.fastq$/ || file_name.name =~ /^.*\.fastq\.gz$/
   script:
   if (params.trimmer == "cutadapt") {
   """
-    ${params.cutadapt} -q ${params.quality_threshold},${params.quality_threshold} ${file_name} -o ${file_name.baseName}.trimmed.fastq.gz
+    ${params.cutadapt} -q ${params.quality_threshold},${params.quality_threshold} ${file_name} -o ${file_name.baseName}.trimmed.fastq.gz > ${file_name.baseName}_report.txt
+    ${src_path}/func/file_handle.py -f *.trimmed.fastq.gz -r
   """
   }else{
   """
-    ${params.urqt} --t ${params.quality_threshold} --gz --in ${file_name} --out ${file_name.baseName}.trimmed.fastq.gz > ${file_name.baseName}_urqt.txt
+    ${params.urqt} --t ${params.quality_threshold} --gz --in ${file_name} --out ${file_name.baseName}.trimmed.fastq.gz > ${file_name.baseName}_report.txt
     ${src_path}/func/file_handle.py -f *.trimmed.fastq.gz -r
   """
   }
