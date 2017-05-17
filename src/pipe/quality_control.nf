@@ -35,13 +35,14 @@
 * knowledge of the CeCILL license and that you accept its terms.
 */
 
-results_path = baseDir + '/../../results'
+rootDir = (baseDir =~ /(.*)src\/pipe/)[0][1]
+results_path = rootDir + '/results'
 quality_control_path = results_path + '/quality_control'
 fastqc_res_path = quality_control_path + '/fastqc'
 multiqc_res_path = quality_control_path + '/multiqc'
 adaptor_removal_res_path = quality_control_path + '/adaptor_removed'
 trimming_res_path = quality_control_path + '/trimming'
-src_path = baseDir + '/../../src'
+src_path = rootDir + '/src'
 params.name = "quality control analysis"
 params.fastqc = "/usr/bin/fastqc"
 if( !file(params.fastqc).exists() ) exit 1, "fastqc binary not found at: ${params.fastqc}"
@@ -58,14 +59,19 @@ params.quality_threshold = 20
 params.urqt = "/usr/bin/UrQt"
 params.trimmomatic = "/usr/bin/trimmomatic"
 params.cutadapt = "/usr/bin/cutadapt"
+params.paired = true
 
 log.info params.name
 log.info "============================================"
+log.info "fastq files : ${params.fastq_files}"
+log.info "paired files : ${params.paired}"
+if (params.paired) {
+  log.info "file names are expected to end in the format *_{1,2}.fastq*."
+  log.info "otherwise the pairs will not be paired for the analysis"
+}
 log.info "fastqc : ${params.fastqc}"
 log.info "multiqc : ${params.multiqc}"
-log.info "query : ${params.fastq_files}"
 log.info "results folder : ${results_path}"
-log.info "fastq_files : ${params.fastq_files}"
 log.info "trimmer : ${params.trimmer}"
 if (params.trimmer == 'cutadapt') {
   log.info "cutadapt path : ${params.cutadapt}"
@@ -75,63 +81,68 @@ if (params.trimmer == 'cutadapt') {
 log.info "\n"
 
 Channel
-  .from( params.fastq_files )
+  .fromFilePairs( params.fastq_files, size:-1)
+  .ifEmpty { exit 1, "Cannot find any fastq files matching: ${params.fastq_files}" }
   .set{ file_names }
-Channel
-  .create()
-  .set{ dated_file_names }
-Channel
-  .create()
-  .set{ dated_fastqc_files }
-Channel
-  .create()
-  .set{ multiqc_report }
 
 process get_file_name {
+  tag "${name}"
   input:
-    val file_name from file_names
+    set val(name), val(file_name) from file_names
   output:
-    stdout dated_file_name into dated_file_names
+    file "${file(file_name[0]).name}" into dated_file_names
+  when:
+    file_name[0] =~ /^.*\.fastq$/ || file_name[0] =~ /^.*\.fastq\.gz$/
   script:
+  output_path = (file_name[0] =~ /(.*)\//)[0][1]
   """
-  echo -e \$(${src_path}/func/file_handle.py -f $baseDir/../../${file_name} -c -e)
+  echo -e \$(${src_path}/func/file_handle.py -f ${file_name[0]} -c -e)
+  ln -s ${output_path}/${file(file_name[0]).name} .
   """
 }
 
-dated_file_names.splitCsv().map{ n -> tuple(n, n) }.into{ fastqc_input; adaptor_rm_input }
+dated_file_names.into{ fastqc_input; adaptor_rm_input ; test_input}
+
+test_input.println()
 
 process fastqc {
-  tag "${file(name[0]).name}"
+  tag "${tagname}"
   publishDir "${fastqc_res_path}", mode: 'copy'
   input:
-    set val(name), val(file_name) from fastqc_input
+    file file_name from fastqc_input
   output:
     file "*_fastqc.{zip,html}" into fastqc_output
-  when:
-    file(file_name[0]).name =~ /^.*\.fastq$/ || file(file_name[0]).name =~ /^.*\.fastq\.gz$/
   script:
+  tagname = file_name.baseName
   """
-    ${params.fastqc} --quiet --outdir ./ ${file_name[0]}
+    ${params.fastqc} --quiet --outdir ./ ${file_name}
     ${src_path}/func/file_handle.py -f *.html -r
     ${src_path}/func/file_handle.py -f *.zip -r
   """
 }
 
 process adaptor_removal {
-  tag "${file(name[0]).name}"
+  tag "${tagname}"
   publishDir "${adaptor_removal_res_path}", mode: 'copy'
   input:
-    set val(name), val(file_name) from adaptor_rm_input
+    file file_name from adaptor_rm_input
   output:
     file "*.fastq.gz" into adaptor_rm_output
-  when:
-    file(file_name[0]).name =~ /^.*\.fastq$/ || file(file_name[0]).name =~ /^.*\.fastq\.gz$/
+    file "*_report.txt" into adaptor_rm_log
   script:
+  tagname = file_name.baseName
   if (params.adaptor_removal == "cutadapt") {
-  """
-    ${params.cutadapt} ${params.adaptor_sequence} ${file_name[0]} -o ${file(file_name[0]).baseName}.fastq.gz
-    ${src_path}/func/file_handle.py -f *.fastq.gz -r
-  """
+    if (params.paired) {
+      """
+      ${params.cutadapt} ${params.adaptor_sequence} -o ${file_name.baseName}.fastq.gz ${file_name} > ${file_name.baseName}_report.txt
+      ${src_path}/func/file_handle.py -f *.fastq.gz -r
+      """
+    } else {
+      """
+      ${params.cutadapt} ${params.adaptor_sequence} -o ${file_name.baseName}.fastq.gz ${file_name} > ${file_name.baseName}_report.txt
+      ${src_path}/func/file_handle.py -f *.fastq.gz -r
+      """
+    }
   }
 }
 
