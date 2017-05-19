@@ -67,6 +67,7 @@ log.info "fastq files : ${params.fastq_files}"
 log.info "paired files : ${params.paired}"
 if (params.paired) {
   log.info "file names are expected to end in the format *_{1,2}.fastq*."
+  log.infos "or *_R{1,2}.fastq*."
   log.info "otherwise the pairs will not be paired for the analysis"
 }
 log.info "fastqc : ${params.fastqc}"
@@ -80,25 +81,29 @@ if (params.trimmer == 'cutadapt') {
 }
 log.info "\n"
 
-Channel
-  .fromFilePairs( params.fastq_files, size:-1)
-  .ifEmpty { exit 1, "Cannot find any fastq files matching: ${params.fastq_files}" }
-  .set{ file_names }
+if (params.paired){
+    file_names = Channel.fromFilePairs( params.fastq_files, size:-1)
+    .ifEmpty { exit 1, "Cannot find any fastq files matching: ${params.fastq_files}" }
+} else {
+    file_names = Channel.fromPath( params.fastq_files )
+    .ifEmpty { exit 1, "Cannot find any fastq files matching: ${params.fastq_files}" }
+}
 
 process get_file_name {
-  tag "${name}"
-  echo true
+  tag "${tagname}"
   input:
-    set val(name), val(file_name) from file_names
+    val file_name from file_names
   output:
-    file "*${file(file_name[0]).name}" into dated_file_names
+    file "*${file_name.name}" into dated_file_names
   when:
-    file_name[0] =~ /^.*\.fastq$/ || file_name[0] =~ /^.*\.fastq\.gz$/
+    file_name =~ /^.*\.fastq$/ || file_name =~ /^.*\.fastq\.gz$/
   script:
-  output_path = (file_name[0] =~ /(.*)\//)[0][1]
+  println file_name
+  tagname = file(file_name).baseName
+  output_path = (file_name =~ /(.*)\//)[0][1]
   """
-  echo -e \$(${src_path}/func/file_handle.py -f ${file_name[0]} -c -e) | \
-  awk '{system("ln -s "\$0" .")}'
+  echo -e \$(${src_path}/func/file_handle.py -f ${file_name} -c -e) | \
+  awk '{system("ln -s "\$0" ."); print(\$0)}'
   """
 }
 
