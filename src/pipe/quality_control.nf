@@ -36,7 +36,7 @@
 */
 
 rootDir = (baseDir =~ /(.*)src\/pipe/)[0][1]
-results_path = rootDir + '/results'
+results_path = rootDir + 'results'
 quality_control_path = results_path + '/quality_control'
 fastqc_res_path = quality_control_path + '/fastqc'
 multiqc_res_path = quality_control_path + '/multiqc'
@@ -67,7 +67,7 @@ log.info "fastq files : ${params.fastq_files}"
 log.info "paired files : ${params.paired}"
 if (params.paired) {
   log.info "file names are expected to end in the format *_{1,2}.fastq*."
-  log.infos "or *_R{1,2}.fastq*."
+  log.info "or *_R{1,2}.fastq*."
   log.info "otherwise the pairs will not be paired for the analysis"
 }
 log.info "fastqc : ${params.fastqc}"
@@ -82,7 +82,7 @@ if (params.trimmer == 'cutadapt') {
 log.info "\n"
 
 if (params.paired){
-    file_names = Channel.fromFilePairs( params.fastq_files, size:-1)
+    file_names = Channel.fromFilePairs( params.fastq_files, size:2)
     .ifEmpty { exit 1, "Cannot find any fastq files matching: ${params.fastq_files}" }
 } else {
     file_names = Channel.fromPath( params.fastq_files )
@@ -94,17 +94,29 @@ process get_file_name {
   input:
     val file_name from file_names
   output:
-    file "*${file_name.name}" into dated_file_names
+    file "*${file_name_root}" into dated_file_names
   when:
-    file_name =~ /^.*\.fastq$/ || file_name =~ /^.*\.fastq\.gz$/
+    if (params.paired) {
+      (file_name[1][0] =~ /^.*\.fastq$/ || file_name[1][0] =~ /^.*\.fastq\.gz$/) && (file_name[1][1] =~ /^.*\.fastq$/ || file_name[1][1] =~ /^.*\.fastq\.gz$/)
+    } else {
+      file_name =~ /^.*\.fastq$/ || file_name =~ /^.*\.fastq\.gz$/
+    }
   script:
-  println file_name
-  tagname = file(file_name).baseName
-  output_path = (file_name =~ /(.*)\//)[0][1]
-  """
-  echo -e \$(${src_path}/func/file_handle.py -f ${file_name} -c -e) | \
-  awk '{system("ln -s "\$0" ."); print(\$0)}'
-  """
+  if (params.paired) {
+    tagname = file_name[0]
+    file_name_root = file_name[0] + "*"
+    """
+    echo -e \$(${src_path}/func/file_handle.py -f ${file_name[1][0]} ${file_name[1][1]} -c -e) | \
+    awk '{system("ln -s "\$0" ."); print(\$0)}'
+    """
+  } else {
+    tagname = file(file_name).baseName
+    file_name_root = file_name.name
+    """
+    echo -e \$(${src_path}/func/file_handle.py -f ${file_name} -c -e) | \
+    awk '{system("ln -s "\$0" ."); print(\$0)}'
+    """
+  }
 }
 
 dated_file_names.into{ fastqc_input; adaptor_rm_input; test_input}
