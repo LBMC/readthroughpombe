@@ -40,7 +40,7 @@ results_path = rootDir + 'results'
 quality_control_path = results_path + '/quality_control'
 fastqc_res_path = quality_control_path + '/fastqc'
 multiqc_res_path = quality_control_path + '/multiqc'
-adaptor_removal_res_path = quality_control_path + '/adaptor_removed'
+adaptor_removal_res_path = quality_control_path + '/adaptor'
 trimming_res_path = quality_control_path + '/trimming'
 src_path = rootDir + '/src'
 params.name = "quality control analysis"
@@ -134,7 +134,7 @@ process fastqc {
     file "*_fastqc.{zip,html}" into fastqc_output
   script:
   if (params.paired) {
-    name = (file_name[0] =~ /(.*)_[R]{0,1}[12]\.fastq(.gz){0,1}/)[0][1]
+    name = (file_name[0] =~ /(.*)_[R]{0,1}[12](\.fastq){0,1}(.gz){0,1}/)[0][1]
     tagname = name
     """
       ${params.fastqc} --quiet --outdir ./ ${file_name[0]}
@@ -158,23 +158,24 @@ process adaptor_removal {
   input:
     file file_name from adaptor_rm_input
   output:
-    file "*.fastq.gz" into adaptor_rm_output
+    file "*.cutadapt.fastq.gz" into adaptor_rm_output
     file "*_report.txt" into adaptor_rm_log
   script:
   if (params.adaptor_removal == "cutadapt") {
     if (params.paired) {
-      name = (file_name[0] =~ /(.*)_[R]{0,1}[12]\.fastq(.gz){0,1}/)[0][1]
+      name = (file_name[0] =~ /(.*)_[R]{0,1}[12](\.fastq){0,1}(.gz){0,1}/)[0][1]
       tagname = name
-      basename_1 = (file_name[0].baseName =~ /(.*)\.fastq(\.gz){0,1}/)[0][1]
-      basename_2 = (file_name[1].baseName =~ /(.*)\.fastq(\.gz){0,1}/)[0][1]
+      basename_1 = (file_name[0] =~ /(.*_[R]{0,1}[12])(\.fastq){0,1}(.gz){0,1}/)[0][1]
+      basename_2 = (file_name[1] =~ /(.*_[R]{0,1}[12])(\.fastq){0,1}(.gz){0,1}/)[0][1]
       """
       ${params.cutadapt} ${params.adaptor_sequence} -o ${basename_1}.cutadapt.fastq.gz -p ${basename_2}.cutadapt.fastq.gz ${file_name[0]} ${file_name[1]} > ${name}_report.txt
       ${src_path}/func/file_handle.py -f *.fastq.gz -r
       """
     } else {
-      tagname = file_name.baseName
+      basename = (file_name =~ /(.*)(\.fastq){0,1}(\.gz){0,1}/)[0][1]
+      tagname = basename
       """
-      ${params.cutadapt} ${params.adaptor_sequence} -o ${file_name.baseName}.fastq.gz ${file_name} > ${file_name.baseName}_report.txt
+      ${params.cutadapt} ${params.adaptor_sequence} -o ${basename}.cutadapt.fastq.gz ${file_name} > ${basename}_report.txt
       ${src_path}/func/file_handle.py -f *.fastq.gz -r
       """
     }
@@ -196,8 +197,8 @@ process trimming {
   if (params.paired) {
     name = (file_name[0] =~ /(.*)_[R]{0,1}[12](\.cutadapt){0,1}\.fastq(.gz){0,1}/)[0][1]
     tagname = name
-    basename_1 = (file_name[0].baseName =~ /(.*)(\.cutadapt){0,1}\.fastq(\.gz){0,1}/)[0][1]
-    basename_2 = (file_name[1].baseName =~ /(.*)(\.cutadapt){0,1}\.fastq(\.gz){0,1}/)[0][1]
+    basename_1 = (file_name[0] =~ /(.*_[R]{0,1}[12])(\.cutadapt){0,1}\.fastq(.gz){0,1}/)[0][1]
+    basename_2 = (file_name[1] =~ /(.*_[R]{0,1}[12])(\.cutadapt){0,1}\.fastq(.gz){0,1}/)[0][1]
     if (params.trimmer == "cutadapt") {
     """
       ${params.cutadapt} -q ${params.quality_threshold},${params.quality_threshold} -o ${basename_1}.trimmed.fastq.gz -p ${basename_2}.trimmed.fastq.gz ${file_name[0]} ${file_name[1]} > ${name}_report.txt
@@ -210,44 +211,54 @@ process trimming {
     """
     }
   } else {
-    tagname = file_name.baseName
+    basename = (file_name =~ /(.*)(\.cutadapt){0,1}\.fastq(\.gz){0,1}/)[0][1]
+    tagname = basename
     if (params.trimmer == "cutadapt") {
     """
-      ${params.cutadapt} -q ${params.quality_threshold},${params.quality_threshold} -o ${file_name.baseName}.trimmed.fastq.gz ${file_name} > ${file_name.baseName}_report.txt
+      ${params.cutadapt} -q ${params.quality_threshold},${params.quality_threshold} -o ${basename}.trimmed.fastq.gz ${file_name} > ${basename}_report.txt
       ${src_path}/func/file_handle.py -f *.trimmed.fastq.gz -r
     """
     }else{
     """
-      ${params.urqt} --m ${task.cpus} --t ${params.quality_threshold} --gz --in ${file_name} --out ${file_name.baseName}.trimmed.fastq.gz > ${file_name.baseName}_report.txt
+      ${params.urqt} --m ${task.cpus} --t ${params.quality_threshold} --gz --in ${file_name} --out ${basename}.trimmed.fastq.gz > ${basename}_report.txt
       ${src_path}/func/file_handle.py -f *.trimmed.fastq.gz -r
     """
     }
   }
 }
 
-trimming_output.map{ n -> tuple(n, n) }.into{ fastqc_trimmed_input }
+trimming_output.into{ fastqc_trimmed_input; test_trimming }
 
 process fastqc_trimmed {
-  tag "${name.name}"
+  tag "${tagname}"
   publishDir "${fastqc_res_path}", mode: 'copy'
   input:
-    set file(name), file(file_name) from fastqc_trimmed_input
+    file file_name from fastqc_trimmed_input
   output:
     file "*_fastqc.{zip,html}" into fastqc_trimmed_output
-  when:
-    file_name.name =~ /^.*\.fastq$/ || file_name.name =~ /^.*\.fastq\.gz$/
   script:
-  """
-    ${params.fastqc} --quiet --outdir ./ ${file_name}
-    ${src_path}/func/file_handle.py -f *.html -r
-    ${src_path}/func/file_handle.py -f *.zip -r
-  """
+  if (params.paired) {
+    tagname = (file_name[0] =~ /(.*)_(R){0,1}[12](\.trimmed){0,1}\.fastq(.gz){0,1}/)[0][1]
+    """
+      ${params.fastqc} --quiet --outdir ./ ${file_name[0]}
+      ${params.fastqc} --quiet --outdir ./ ${file_name[1]}
+      ${src_path}/func/file_handle.py -f *.html -r
+      ${src_path}/func/file_handle.py -f *.zip -r
+    """
+  } else {
+    tagname = file_name.baseName
+    """
+      ${params.fastqc} --quiet --outdir ./ ${file_name}
+      ${src_path}/func/file_handle.py -f *.html -r
+      ${src_path}/func/file_handle.py -f *.zip -r
+    """
+  }
 }
 
 process multiqc {
     publishDir "${multiqc_res_path}", mode: 'copy'
     input:
-      file fastqc_results from fastqc_output.collect()
+      file fast_qc_results from fastqc_output.collect()
       file fastqc_trimmed_results from fastqc_trimmed_output.collect()
     output:
       file "*multiqc_{report,data}*" into multiqc_report
