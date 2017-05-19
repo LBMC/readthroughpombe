@@ -87,21 +87,22 @@ Channel
 
 process get_file_name {
   tag "${name}"
+  echo true
   input:
     set val(name), val(file_name) from file_names
   output:
-    file "${file(file_name[0]).name}" into dated_file_names
+    file "*${file(file_name[0]).name}" into dated_file_names
   when:
     file_name[0] =~ /^.*\.fastq$/ || file_name[0] =~ /^.*\.fastq\.gz$/
   script:
   output_path = (file_name[0] =~ /(.*)\//)[0][1]
   """
-  echo -e \$(${src_path}/func/file_handle.py -f ${file_name[0]} -c -e)
-  ln -s ${output_path}/${file(file_name[0]).name} .
+  echo -e \$(${src_path}/func/file_handle.py -f ${file_name[0]} -c -e) | \
+  awk '{system("ln -s "\$0" .")}'
   """
 }
 
-dated_file_names.into{ fastqc_input; adaptor_rm_input ; test_input}
+dated_file_names.into{ fastqc_input; adaptor_rm_input; test_input}
 
 test_input.println()
 
