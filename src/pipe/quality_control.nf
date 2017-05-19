@@ -61,6 +61,10 @@ params.trimmomatic = "/usr/bin/trimmomatic"
 params.cutadapt = "/usr/bin/cutadapt"
 params.paired = true
 
+if(params.paired != true && params.paired != false){
+   exit 1, "Invalid paired option: ${params.aligner}. Valid options: 'true' or 'false'"
+}
+
 log.info params.name
 log.info "============================================"
 log.info "fastq files : ${params.fastq_files}"
