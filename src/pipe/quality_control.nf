@@ -154,7 +154,6 @@ process fastqc {
 
 process adaptor_removal {
   tag "${tagname}"
-  echo true
   publishDir "${adaptor_removal_res_path}", mode: 'copy'
   input:
     file file_name from adaptor_rm_input
@@ -162,14 +161,18 @@ process adaptor_removal {
     file "*.fastq.gz" into adaptor_rm_output
     file "*_report.txt" into adaptor_rm_log
   script:
-  tagname = file_name.baseName
   if (params.adaptor_removal == "cutadapt") {
     if (params.paired) {
+      name = (file_name[0] =~ /(.*)_[R]{0,1}[12]\.fastq(.gz){0,1}/)[0][1]
+      tagname = name
+      basename_1 = (file_name[0].baseName =~ /(.*)\.fastq(\.gz){0,1}/)[0][1]
+      basename_2 = (file_name[1].baseName =~ /(.*)\.fastq(\.gz){0,1}/)[0][1]
       """
-      ${params.cutadapt} ${params.adaptor_sequence} -o ${file_name.baseName}.fastq.gz ${file_name} > ${file_name.baseName}_report.txt
+      ${params.cutadapt} ${params.adaptor_sequence} -o ${basename_1}.cutadapt.fastq.gz -p ${basename_2}.cutadapt.fastq.gz ${file_name[0]} ${file_name[1]} > ${name}_report.txt
       ${src_path}/func/file_handle.py -f *.fastq.gz -r
       """
     } else {
+      tagname = file_name.baseName
       """
       ${params.cutadapt} ${params.adaptor_sequence} -o ${file_name.baseName}.fastq.gz ${file_name} > ${file_name.baseName}_report.txt
       ${src_path}/func/file_handle.py -f *.fastq.gz -r
