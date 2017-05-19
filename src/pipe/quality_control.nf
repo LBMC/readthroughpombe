@@ -181,29 +181,47 @@ process adaptor_removal {
   }
 }
 
-adaptor_rm_output.map{ n -> tuple(n, n) }.into{ trimming_input }
-
 process trimming {
-  tag "${name.name}"
+  tag "${tagname}"
+  if (params.trimmer == "UrQt"){
+    cpus = 4
+  }
   publishDir "${trimming_res_path}", mode: 'copy'
   input:
-    set file(name), file(file_name) from trimming_input
+    file file_name from adaptor_rm_output
   output:
     file "*.trimmed.fastq.gz" into trimming_output
     file "*_report.txt" into trimming_log
-  when:
-    file_name.name =~ /^.*\.fastq$/ || file_name.name =~ /^.*\.fastq\.gz$/
   script:
-  if (params.trimmer == "cutadapt") {
-  """
-    ${params.cutadapt} -q ${params.quality_threshold},${params.quality_threshold} ${file_name} -o ${file_name.baseName}.trimmed.fastq.gz > ${file_name.baseName}_report.txt
-    ${src_path}/func/file_handle.py -f *.trimmed.fastq.gz -r
-  """
-  }else{
-  """
-    ${params.urqt} --t ${params.quality_threshold} --gz --in ${file_name} --out ${file_name.baseName}.trimmed.fastq.gz > ${file_name.baseName}_report.txt
-    ${src_path}/func/file_handle.py -f *.trimmed.fastq.gz -r
-  """
+  if (params.paired) {
+    name = (file_name[0] =~ /(.*)_[R]{0,1}[12](\.cutadapt){0,1}\.fastq(.gz){0,1}/)[0][1]
+    tagname = name
+    basename_1 = (file_name[0].baseName =~ /(.*)(\.cutadapt){0,1}\.fastq(\.gz){0,1}/)[0][1]
+    basename_2 = (file_name[1].baseName =~ /(.*)(\.cutadapt){0,1}\.fastq(\.gz){0,1}/)[0][1]
+    if (params.trimmer == "cutadapt") {
+    """
+      ${params.cutadapt} -q ${params.quality_threshold},${params.quality_threshold} -o ${basename_1}.trimmed.fastq.gz -p ${basename_2}.trimmed.fastq.gz ${file_name[0]} ${file_name[1]} > ${name}_report.txt
+      ${src_path}/func/file_handle.py -f *.trimmed.fastq.gz -r
+    """
+    }else{
+    """
+      ${params.urqt} --m ${task.cpus} --t ${params.quality_threshold} --gz --in ${file_name[0]} --inpair ${file_name[1]} --out ${basename_1}.trimmed.fastq.gz --outpair ${basename_2}.trimmed.fastq.gz > ${name}_report.txt
+      ${src_path}/func/file_handle.py -f *.trimmed.fastq.gz -r
+    """
+    }
+  } else {
+    tagname = file_name.baseName
+    if (params.trimmer == "cutadapt") {
+    """
+      ${params.cutadapt} -q ${params.quality_threshold},${params.quality_threshold} -o ${file_name.baseName}.trimmed.fastq.gz ${file_name} > ${file_name.baseName}_report.txt
+      ${src_path}/func/file_handle.py -f *.trimmed.fastq.gz -r
+    """
+    }else{
+    """
+      ${params.urqt} --m ${task.cpus} --t ${params.quality_threshold} --gz --in ${file_name} --out ${file_name.baseName}.trimmed.fastq.gz > ${file_name.baseName}_report.txt
+      ${src_path}/func/file_handle.py -f *.trimmed.fastq.gz -r
+    """
+    }
   }
 }
 
