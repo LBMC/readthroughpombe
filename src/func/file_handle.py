@@ -321,7 +321,7 @@ class Dated_file_list:
         for i in range(self.__list_len()):
             if i > 0:
                 if self.escape:
-                    output += "\\n"
+                    output += "\n"
                 else:
                     output += " "
             output += str(self[i])
