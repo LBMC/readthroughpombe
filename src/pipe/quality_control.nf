@@ -110,22 +110,20 @@ process get_file_name {
     tagname = file_name[0]
     file_name_root = file_name[0] + "*"
     """
-    echo -e \$(${src_path}/func/file_handle.py -f ${file_name[1][0]} ${file_name[1][1]} -c -e) | \
+    ${src_path}/func/file_handle.py -f ${file_name[1][0]} ${file_name[1][1]} -c -e | \
     awk '{system("ln -s "\$0" ."); print(\$0)}'
     """
   } else {
     tagname = file(file_name).baseName
     file_name_root = file_name.name
     """
-    echo -e \$(${src_path}/func/file_handle.py -f ${file_name} -c -e) | \
+    ${src_path}/func/file_handle.py -f ${file_name} -c -e | \
     awk '{system("ln -s "\$0" ."); print(\$0)}'
     """
   }
 }
 
-dated_file_names.into{ fastqc_input; adaptor_rm_input; test_input}
-
-test_input.println()
+dated_file_names.into{ fastqc_input; adaptor_rm_input}
 
 process fastqc {
   tag "${tagname}"
@@ -135,16 +133,28 @@ process fastqc {
   output:
     file "*_fastqc.{zip,html}" into fastqc_output
   script:
-  tagname = file_name.baseName
-  """
-    ${params.fastqc} --quiet --outdir ./ ${file_name}
-    ${src_path}/func/file_handle.py -f *.html -r
-    ${src_path}/func/file_handle.py -f *.zip -r
-  """
+  if (params.paired) {
+    name = (file_name[0] =~ /(.*)_[R]{0,1}[12]\.fastq(.gz){0,1}/)[0][1]
+    tagname = name
+    """
+      ${params.fastqc} --quiet --outdir ./ ${file_name[0]}
+      ${params.fastqc} --quiet --outdir ./ ${file_name[1]}
+      ${src_path}/func/file_handle.py -f *.html -r
+      ${src_path}/func/file_handle.py -f *.zip -r
+    """
+  } else {
+    tagname = file_name.baseName
+    """
+      ${params.fastqc} --quiet --outdir ./ ${file_name}
+      ${src_path}/func/file_handle.py -f *.html -r
+      ${src_path}/func/file_handle.py -f *.zip -r
+    """
+  }
 }
 
 process adaptor_removal {
   tag "${tagname}"
+  echo true
   publishDir "${adaptor_removal_res_path}", mode: 'copy'
   input:
     file file_name from adaptor_rm_input
