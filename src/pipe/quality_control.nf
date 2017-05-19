@@ -134,7 +134,7 @@ process fastqc {
     file "*_fastqc.{zip,html}" into fastqc_output
   script:
   if (params.paired) {
-    name = (file_name[0] =~ /(.*)_[R]{0,1}[12](\.fastq){0,1}(.gz){0,1}/)[0][1]
+    name = (file_name[0] =~ /(.*)_[R]{0,1}[12]\.fastq(.gz){0,1}/)[0][1]
     tagname = name
     """
       ${params.fastqc} --quiet --outdir ./ ${file_name[0]}
@@ -143,7 +143,7 @@ process fastqc {
       ${src_path}/func/file_handle.py -f *.zip -r
     """
   } else {
-    tagname = file_name.baseName
+    tagname = (file_name[0] =~ /(.*)\.fastq(.gz){0,1}/)[0][1]
     """
       ${params.fastqc} --quiet --outdir ./ ${file_name}
       ${src_path}/func/file_handle.py -f *.html -r
@@ -163,16 +163,16 @@ process adaptor_removal {
   script:
   if (params.adaptor_removal == "cutadapt") {
     if (params.paired) {
-      name = (file_name[0] =~ /(.*)_[R]{0,1}[12](\.fastq){0,1}(.gz){0,1}/)[0][1]
+      name = (file_name[0] =~ /(.*)\_(R){0,1}[12]\.fastq\.gz/)[0][1]
       tagname = name
-      basename_1 = (file_name[0] =~ /(.*_[R]{0,1}[12])(\.fastq){0,1}(.gz){0,1}/)[0][1]
-      basename_2 = (file_name[1] =~ /(.*_[R]{0,1}[12])(\.fastq){0,1}(.gz){0,1}/)[0][1]
+      basename_1 = (file_name[0] =~ /(.*)\.fastq\.gz/)[0][1]
+      basename_2 = (file_name[1] =~ /(.*)\.fastq\.gz/)[0][1]
       """
       ${params.cutadapt} ${params.adaptor_sequence} -o ${basename_1}.cutadapt.fastq.gz -p ${basename_2}.cutadapt.fastq.gz ${file_name[0]} ${file_name[1]} > ${name}_report.txt
       ${src_path}/func/file_handle.py -f *.fastq.gz -r
       """
     } else {
-      basename = (file_name =~ /(.*)(\.fastq){0,1}(\.gz){0,1}/)[0][1]
+      basename = (file_name =~ /(.*)\.fastq(\.gz){0,1}/)[0][1]
       tagname = basename
       """
       ${params.cutadapt} ${params.adaptor_sequence} -o ${basename}.cutadapt.fastq.gz ${file_name} > ${basename}_report.txt
@@ -195,10 +195,10 @@ process trimming {
     file "*_report.txt" into trimming_log
   script:
   if (params.paired) {
-    name = (file_name[0] =~ /(.*)_[R]{0,1}[12](\.cutadapt){0,1}\.fastq(.gz){0,1}/)[0][1]
+    name = (file_name[0] =~ /(.*)\_(R){0,1}[12]\.cutadapt\.fastq\.gz/)[0][1]
     tagname = name
-    basename_1 = (file_name[0] =~ /(.*_[R]{0,1}[12])(\.cutadapt){0,1}\.fastq(.gz){0,1}/)[0][1]
-    basename_2 = (file_name[1] =~ /(.*_[R]{0,1}[12])(\.cutadapt){0,1}\.fastq(.gz){0,1}/)[0][1]
+    basename_1 = (file_name[0] =~ /(.*)\.cutadapt\.fastq\.gz/)[0][1]
+    basename_2 = (file_name[1] =~ /(.*)\.cutadapt\.fastq\.gz/)[0][1]
     if (params.trimmer == "cutadapt") {
     """
       ${params.cutadapt} -q ${params.quality_threshold},${params.quality_threshold} -o ${basename_1}.trimmed.fastq.gz -p ${basename_2}.trimmed.fastq.gz ${file_name[0]} ${file_name[1]} > ${name}_report.txt
@@ -211,7 +211,7 @@ process trimming {
     """
     }
   } else {
-    basename = (file_name =~ /(.*)(\.cutadapt){0,1}\.fastq(\.gz){0,1}/)[0][1]
+    basename = (file_name =~ /(.*)\.cutadapt\.fastq\.gz/)[0][1]
     tagname = basename
     if (params.trimmer == "cutadapt") {
     """
@@ -238,7 +238,7 @@ process fastqc_trimmed {
     file "*_fastqc.{zip,html}" into fastqc_trimmed_output
   script:
   if (params.paired) {
-    tagname = (file_name[0] =~ /(.*)_(R){0,1}[12](\.trimmed){0,1}\.fastq(.gz){0,1}/)[0][1]
+    tagname = (file_name[0] =~ /(.*)_(R){0,1}[12]\.trimmed\.fastq.gz/)[0][1]
     """
       ${params.fastqc} --quiet --outdir ./ ${file_name[0]}
       ${params.fastqc} --quiet --outdir ./ ${file_name[1]}
@@ -246,7 +246,8 @@ process fastqc_trimmed {
       ${src_path}/func/file_handle.py -f *.zip -r
     """
   } else {
-    tagname = file_name.baseName
+    basename = (file_name =~ /(.*)\.trimmed\.fastq\.gz/)[0][1]
+    tagname = basename
     """
       ${params.fastqc} --quiet --outdir ./ ${file_name}
       ${src_path}/func/file_handle.py -f *.html -r
