@@ -201,14 +201,12 @@ process trimming {
     if (params.trimmer == "cutadapt") {
     """
       ${params.cutadapt} -q ${params.quality_threshold},${params.quality_threshold} -o ${basename_1}.trimmed.fastq.gz -p ${basename_2}.trimmed.fastq.gz ${file_name[0]} ${file_name[1]} > ${name}_report.txt
-      ${src_path}/func/file_handle.py -f *.trimmed.fastq.gz -r
-      ${src_path}/func/file_handle.py -f *_report.txt -r
+      ${src_path}/func/file_handle.py -f * -r
     """
     }else{
     """
       ${params.urqt} --m ${task.cpus} --t ${params.quality_threshold} --gz --in ${file_name[0]} --inpair ${file_name[1]} --out ${basename_1}.trimmed.fastq.gz --outpair ${basename_2}.trimmed.fastq.gz > ${name}_report.txt
-      ${src_path}/func/file_handle.py -f *.trimmed.fastq.gz -r
-      ${src_path}/func/file_handle.py -f *_report.txt -r
+      ${src_path}/func/file_handle.py -f * -r
     """
     }
   } else {
@@ -217,14 +215,12 @@ process trimming {
     if (params.trimmer == "cutadapt") {
     """
       ${params.cutadapt} -q ${params.quality_threshold},${params.quality_threshold} -o ${basename}.trimmed.fastq.gz ${file_name} > ${basename}_report.txt
-      ${src_path}/func/file_handle.py -f *.trimmed.fastq.gz -r
-      ${src_path}/func/file_handle.py -f *_report.txt -r
+      ${src_path}/func/file_handle.py -f * -r
     """
     }else{
     """
       ${params.urqt} --m ${task.cpus} --t ${params.quality_threshold} --gz --in ${file_name} --out ${basename}.trimmed.fastq.gz > ${basename}_report.txt
-      ${src_path}/func/file_handle.py -f *.trimmed.fastq.gz -r
-      ${src_path}/func/file_handle.py -f *_report.txt -r
+      ${src_path}/func/file_handle.py -f * -r
     """
     }
   }
