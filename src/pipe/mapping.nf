@@ -59,11 +59,7 @@ if(params.mapper != "salmon" && params.mapper != "kallisto"){
 params.mean = 200
 params.sd = 20
 params.salmon_parameters = "--useVBOpt --numBootstraps 100 --seqBias --gcBias --posBias --libType MU"
-params.kallisto_parameters = "--bias -b 100"
-if(!params.paired){
-  params.kallisto_parameters = params.kallisto_parameters + " -single -l ${params.mean} -s ${params.sd}"
-  params.salmon_parameters = params.kallisto_parameters + " --fldMean ${params.mean} --fldSD ${params.sd}"
-}
+params.kallisto_parameters = "--bias --bootstrap-samples 100"
 
 log.info params.name
 log.info "============================================"
@@ -74,8 +70,8 @@ if (params.paired) {
   log.info "or *_R{1,2}.fastq*."
   log.info "otherwise the pairs will not be paired for the analysis"
 }else{
-  log.infos "mean fragment length : ${params.mean}"
-  log.infos "standar deviation fragment length : ${params.sd}"
+  log.info "mean fragment length : ${params.mean}"
+  log.info "standar deviation fragment length : ${params.sd}"
 }
 log.info "reference files : ${params.reference}"
 log.info "salmon : ${params.salmon}"
@@ -187,7 +183,7 @@ process mapping {
     file "*_report.txt" into mapping_log
   script:
   if (params.paired) {
-    name = (file_name[0] =~ /(.*)\_(R){0,1}[12]\.fastq\.gz/)[0][1]
+    name = (file_name[0] =~ /(.*)\_(R){0,1}[12]\.fastq(\.gz){0,1}/)[0][1]
     tagname = name
     basename_1 = (file_name[0] =~ /(.*)\.fastq(\.gz){0,1}/)[0][1]
     basename_2 = (file_name[1] =~ /(.*)\.fastq(\.gz){0,1}/)[0][1]
@@ -206,11 +202,13 @@ process mapping {
       """
     }
   } else {
-    basename = (file_name =~ /(.*)\.cutadapt\.fastq\.gz/)[0][1]
-    tagname = basename
+    name = (file_name =~ /(.*)\.fastq(\.gz){0,1}/)[0][1]
+    tagname = name
+    kallisto_parameters = params.kallisto_parameters + " -l ${params.mean} -s ${params.sd}"
+    salmon_parameters = params.salmon_parameters + " --fldMean ${params.mean} --fldSD ${params.sd}"
     if (params.mapper == "kallisto") {
       """
-      ${params.kallisto} quant -i ${index_name} -t ${task.cpu} -${params.kallisto_parameters} -o ./ ${file_name[0]} ${file_name[1]} > ${name}_report.txt
+      ${params.kallisto} quant -i ${index_name} -t ${task.cpu} --single ${kallisto_parameters} -o ./ ${file_name} > ${name}_report.txt
       mv abundance.tsv ${name}.counts
       mv run_info.json ${name}_info.json
       mv abundance.h5 ${name}.h5
@@ -218,7 +216,7 @@ process mapping {
       """
     }else{
       """
-      ${params.salmon} quant -i ${index_name} -p ${task.cpu} ${params.salmon_parameters} -r ${file_name} -o ${basename}.counts > ${name}_report.txt
+      ${params.salmon} quant -i ${index_name} -p ${task.cpu} ${salmon_parameters} -r ${file_name} -o ${name}.counts > ${name}_report.txt
       ${src_path}/func/file_handle.py -f * -r
       """
     }
