@@ -61,15 +61,65 @@ if (params.paired) {
   log.info "or *_R{1,2}.fastq*."
   log.info "otherwise the pairs will not be paired for the analysis"
 }
+log.info "reference files : ${params.reference}"
 log.info "salmon : ${params.salmon}"
 log.info "kallisto : ${params.kallisto}"
 log.info "results folder : ${results_path}"
 log.info "\n"
 
 if (params.paired){
-    file_names = Channel.fromFilePairs( params.fastq_files, size:2)
+    fastq_names = Channel.fromFilePairs( params.fastq_files, size:2)
     .ifEmpty { exit 1, "Cannot find any fastq files matching: ${params.fastq_files}" }
 } else {
-    file_names = Channel.fromPath( params.fastq_files )
+    fastq_names = Channel.fromPath( params.fastq_files )
     .ifEmpty { exit 1, "Cannot find any fastq files matching: ${params.fastq_files}" }
+}
+
+process get_file_name_fastq {
+  tag "${tagname}"
+  input:
+    val file_name from fastq_names
+  output:
+    file "*${file_name_root}" into dated_fastq_names
+  when:
+    if (params.paired) {
+      (file_name[1][0] =~ /^.*\.fastq$/ || file_name[1][0] =~ /^.*\.fastq\.gz$/) && (file_name[1][1] =~ /^.*\.fastq$/ || file_name[1][1] =~ /^.*\.fastq\.gz$/)
+    } else {
+      file_name =~ /^.*\.fastq$/ || file_name =~ /^.*\.fastq\.gz$/
+    }
+  script:
+  if (params.paired) {
+    tagname = file_name[0]
+    file_name_root = file_name[0] + "*"
+    """
+    ${src_path}/func/file_handle.py -f ${file_name[1][0]} ${file_name[1][1]} -c -e | \
+    awk '{system("ln -s "\$0" ."); print(\$0)}'
+    """
+  } else {
+    tagname = file(file_name).baseName
+    file_name_root = file_name.name
+    """
+    ${src_path}/func/file_handle.py -f ${file_name} -c -e | \
+    awk '{system("ln -s "\$0" ."); print(\$0)}'
+    """
+  }
+}
+
+reference_names = Channel.fromPath( params.reference_files)
+.ifEmpty { exit 1, "Cannot find any reference file matching: ${params.reference_files}" }
+process get_file_name_fasta {
+  tag "${tagname}"
+  input:
+    val file_name from reference_names
+  output:
+    file "*${file_name_root}" into dated_reference_names
+  when:
+    file_name =~ /^.*\.fasta$/ || file_name =~ /^.*\.fasta\.index$/
+  script:
+    tagname = file(file_name).baseName
+    file_name_root = file_name.name
+    """
+    ${src_path}/func/file_handle.py -f ${file_name} -c -e | \
+    awk '{system("ln -s "\$0" ."); print(\$0)}'
+    """
 }
