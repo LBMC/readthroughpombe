@@ -29,3 +29,10 @@ cmake ..
 make
 sudo make install
 rm -Rf /tmp/kallisto
+
+cd /tmp
+wget https://sourceforge.net/projects/bowtie-bio/files/bowtie2/2.3.2/bowtie2-2.3.2-linux-x86_64.zip/download
+unzip download
+cd bowtie2-2.3.2
+sudo cp bowtie2* /usr/bin/
+rm -Rf /tmp/bowtie2* /tmp/download
