@@ -195,6 +195,7 @@ process mapping {
     }else{
     """
     ${params.salmon} quant -i ${index_name} -p ${task.cpu} ${params.salmon_parameters} -1 ${file_name[0]} -2 ${file_name[1]} -o ${name}.counts > ${name}_report.txt
+    ${src_path}/func/file_handle.py -f * -r
     """
     }
   } else {
@@ -211,11 +212,9 @@ process mapping {
     }else{
     """
     ${params.salmon} quant -i ${index_name} -p ${task.cpu} ${params.salmon_parameters} -r ${file_name} -o ${basename}.counts > ${name}_report.txt
+    ${src_path}/func/file_handle.py -f * -r
     """
     }
   }
-  """
-  ${src_path}/func/file_handle.py -f *.counts -r
-  ${src_path}/func/file_handle.py -f *_report.txt -r
   """
 }
