@@ -28,3 +28,4 @@ cd build
 cmake ..
 make
 sudo make install
+rm -Rf /tmp/kallisto
