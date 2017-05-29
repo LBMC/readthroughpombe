@@ -57,6 +57,11 @@ if(params.mapper != "salmon" && params.mapper != "kallisto"){
 }
 
 params.salmon_parameters = "--useVBOpt --numBootstraps 100 --seqBias --gcBias --posBias"
+params.kallisto_parameters = "--bias"
+if(!params.paired){
+  params.kallisto_parameters = params.kallisto_parameters + " -single -l 200 -s 20"
+  params.salmon_parameters = params.kallisto_parameters + " --fldMean 200 --fldSD 20"
+}
 
 log.info params.name
 log.info "============================================"
@@ -145,11 +150,11 @@ process indexing {
   }else{
     if (params.mapper == "kallisto") {
       """
-
+      ${params.kallisto} index -k 31 -i ${file_name}.index ${file_name}
       """
     }else{
       """
-      ${params.salmon} index -t ${file_name} -i ${file_name}.index --type quasi -k 31
+      ${params.salmon} index -p {task.cpu} -t ${file_name} -i ${file_name}.index --type quasi -k 31
       ${src_path}/func/file_handle.py -f *.index -r
       """
     }
@@ -158,12 +163,20 @@ process indexing {
 
 process mapping {
   tag "${tagname}"
-  publishDir "${bams_res_path}", mode: 'copy'
+  if(params.mapper == "salmon" || params.mapper == "kallisto"){
+    publishDir "${counts_res_path}", mode: 'copy'
+  }else{
+    publishDir "${bams_res_path}", mode: 'copy'
+  }
   input:
     file index_name from indexing_output
     file file_name from dated_fastq_names
   output:
-    file "*.counts" into mapping_output
+    if(params.mapper == "salmon" || params.mapper == "kallisto"){
+      file "*.counts" into counting_output
+    }else{
+      file "*.bam" into mapping_output
+    }
     file "*_report.txt" into mapping_log
   script:
   if (params.paired) {
@@ -171,19 +184,29 @@ process mapping {
     tagname = name
     basename_1 = (file_name[0] =~ /(.*)\.fastq(\.gz){0,1}/)[0][1]
     basename_2 = (file_name[1] =~ /(.*)\.fastq(\.gz){0,1}/)[0][1]
-    if (params.trimmer == "kallisto") {
+    if (params.mapper == "kallisto") {
     """
+    ${params.kallisto} quant -i ${index_name} -t ${task.cpu} ${params.kallisto_parameters} -o ./ ${file_name[0]} ${file_name[1]} > ${name}_report.txt
+    mv abundances.tsv ${name}.counts
+    mv run_info.json ${name}_info.json
+    mv abundances.h5 ${name}.h5
+    ${src_path}/func/file_handle.py -f * -r
     """
     }else{
     """
-      ${params.salmon} quant -i ${index_name} -p ${task.cpu} ${params.salmon_parameters} -1 ${file_name[0]} -2 ${file_name[1]} -o ${name}.counts > ${name}_report.txt
+    ${params.salmon} quant -i ${index_name} -p ${task.cpu} ${params.salmon_parameters} -1 ${file_name[0]} -2 ${file_name[1]} -o ${name}.counts > ${name}_report.txt
     """
     }
   } else {
     basename = (file_name =~ /(.*)\.cutadapt\.fastq\.gz/)[0][1]
     tagname = basename
-    if (params.trimmer == "kallisto") {
+    if (params.mapper == "kallisto") {
     """
+    ${params.kallisto} quant -i ${index_name} -t ${task.cpu} -${params.kallisto_parameters} -o ./ ${file_name[0]} ${file_name[1]} > ${name}_report.txt
+    mv abundances.tsv ${name}.counts
+    mv run_info.json ${name}_info.json
+    mv abundances.h5 ${name}.h5
+    ${src_path}/func/file_handle.py -f * -r
     """
     }else{
     """
