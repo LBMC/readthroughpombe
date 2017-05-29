@@ -38,8 +38,9 @@
 rootDir = (baseDir =~ /(.*)src\/pipe/)[0][1]
 results_path = rootDir + 'results'
 quality_control_path = results_path + '/mapping'
-fastqc_res_path = quality_control_path + '/bams'
-multiqc_res_path = quality_control_path + '/counts'
+bams_res_path = quality_control_path + '/bams'
+index_res_path = quality_control_path + '/bams'
+counts_res_path = quality_control_path + '/counts'
 src_path = rootDir + '/src'
 params.name = "mapping and quantification analysis"
 params.salmon = "/usr/bin/salmon"
@@ -47,10 +48,15 @@ if( !file(params.salmon).exists() ) exit 1, "salmon binary not found at: ${param
 params.kallisto = "/usr/local/bin/kallisto"
 if( !file(params.kallisto).exists() ) exit 1, "kallisto binary not found at: ${params.kallisto}"
 params.paired = true
-
 if(params.paired != true && params.paired != false){
    exit 1, "Invalid paired option: ${params.paired}. Valid options: 'true' or 'false'"
 }
+params.mapper = "salmon"
+if(params.mapper != "salmon" && params.mapper != "kallisto"){
+   exit 1, "Invalid paired option: ${params.mapper}. Valid options: 'salmon' or 'kallisto'"
+}
+
+params.salmon_parameters = "--useVBOpt --numBootstraps 100 --seqBias --gcBias --posBias"
 
 log.info params.name
 log.info "============================================"
@@ -122,4 +128,71 @@ process get_file_name_fasta {
     ${src_path}/func/file_handle.py -f ${file_name} -c -e | \
     awk '{system("ln -s "\$0" ."); print(\$0)}'
     """
+}
+
+process indexing {
+  tag "${tagname}"
+  publishDir "${index_res_path}", mode: 'copy'
+  input:
+    file file_name from dated_reference_names
+  output:
+    file "*.fasta.index" into indexing_output
+  script:
+  basename = (file_name =~ /(.*\.fasta)(\.index){0,1}/)[0][1]
+  tagname = basename
+  if ( file_name ==~ /.*\.index/){
+    log.info "index file found. Skipping indexing step"
+  }else{
+    if (params.mapper == "kallisto") {
+      """
+
+      """
+    }else{
+      """
+      ${params.salmon} index -t ${file_name} -i ${file_name}.index --type quasi -k 31
+      ${src_path}/func/file_handle.py -f *.index -r
+      """
+    }
+  }
+}
+
+process mapping {
+  tag "${tagname}"
+  publishDir "${bams_res_path}", mode: 'copy'
+  input:
+    file index_name from indexing_output
+    file file_name from dated_fastq_names
+  output:
+    file "*.counts" into mapping_output
+    file "*_report.txt" into mapping_log
+  script:
+  if (params.paired) {
+    name = (file_name[0] =~ /(.*)\_(R){0,1}[12]\.fastq\.gz/)[0][1]
+    tagname = name
+    basename_1 = (file_name[0] =~ /(.*)\.fastq(\.gz){0,1}/)[0][1]
+    basename_2 = (file_name[1] =~ /(.*)\.fastq(\.gz){0,1}/)[0][1]
+    if (params.trimmer == "kallisto") {
+    """
+    """
+    }else{
+    """
+      ${params.salmon} quant -i ${index_name} -p ${task.cpu} ${params.salmon_parameters} -1 ${file_name[0]} -2 ${file_name[1]} -o ${name}.counts > ${name}_report.txt
+    """
+    }
+  } else {
+    basename = (file_name =~ /(.*)\.cutadapt\.fastq\.gz/)[0][1]
+    tagname = basename
+    if (params.trimmer == "kallisto") {
+    """
+    """
+    }else{
+    """
+    ${params.salmon} quant -i ${index_name} -p ${task.cpu} ${params.salmon_parameters} -r ${file_name} -o ${basename}.counts > ${name}_report.txt
+    """
+    }
+  }
+  """
+  ${src_path}/func/file_handle.py -f *.counts -r
+  ${src_path}/func/file_handle.py -f *_report.txt -r
+  """
 }
