@@ -56,11 +56,13 @@ if(params.mapper != "salmon" && params.mapper != "kallisto"){
    exit 1, "Invalid paired option: ${params.mapper}. Valid options: 'salmon' or 'kallisto'"
 }
 
+params.mean = 200
+params.sd = 20
 params.salmon_parameters = "--useVBOpt --numBootstraps 100 --seqBias --gcBias --posBias"
-params.kallisto_parameters = "--bias"
+params.kallisto_parameters = "--bias -b 100"
 if(!params.paired){
-  params.kallisto_parameters = params.kallisto_parameters + " -single -l 200 -s 20"
-  params.salmon_parameters = params.kallisto_parameters + " --fldMean 200 --fldSD 20"
+  params.kallisto_parameters = params.kallisto_parameters + " -single -l ${params.mean} -s ${params.sd}"
+  params.salmon_parameters = params.kallisto_parameters + " --fldMean ${params.mean} --fldSD ${params.sd}"
 }
 
 log.info params.name
@@ -71,6 +73,9 @@ if (params.paired) {
   log.info "file names are expected to end in the format *_{1,2}.fastq*."
   log.info "or *_R{1,2}.fastq*."
   log.info "otherwise the pairs will not be paired for the analysis"
+}else{
+  log.infos "mean fragment length : ${params.mean}"
+  log.infos "standar deviation fragment length : ${params.sd}"
 }
 log.info "reference files : ${params.reference}"
 log.info "salmon : ${params.salmon}"
