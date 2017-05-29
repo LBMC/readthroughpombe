@@ -5,8 +5,8 @@
 *
 * laurent.modolo@ens-lyon.fr
 *
-* This software is a computer program whose purpose is to test the
-* src/func/file_handle.py program of this project
+* This software is a computer program whose purpose is to run the
+* quality control steps of an NGS analysis of this project
 *
 * This software is governed by the CeCILL  license under French law and
 * abiding by the rules of distribution of free software.  You can  use,
