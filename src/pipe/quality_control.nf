@@ -48,10 +48,10 @@ params.fastqc = "/usr/bin/fastqc"
 if( !file(params.fastqc).exists() ) exit 1, "fastqc binary not found at: ${params.fastqc}"
 params.multiqc = "/usr/bin/multiqc"
 if( !file(params.multiqc).exists() ) exit 1, "multiqc binary not found at: ${params.multiqc}"
-paired = false
 params.adaptor_removal = "cutadapt"
 params.adaptor_sequence = "-a AGATCGGAAGAG -g CTCTTCCGATCT"
-if(paired){
+params.paired = true
+if(params.paired){
   params.adaptor_sequence = "-a AGATCGGAAGAG -g CTCTTCCGATCT -A AGATCGGAAGAG -G CTCTTCCGATCT"
 }
 params.trimmer = "UrQt"
@@ -59,10 +59,9 @@ params.quality_threshold = 20
 params.urqt = "/usr/bin/UrQt"
 params.trimmomatic = "/usr/bin/trimmomatic"
 params.cutadapt = "/usr/bin/cutadapt"
-params.paired = true
 
 if(params.paired != true && params.paired != false){
-   exit 1, "Invalid paired option: ${params.aligner}. Valid options: 'true' or 'false'"
+   exit 1, "Invalid paired option: ${params.paired}. Valid options: 'true' or 'false'"
 }
 
 log.info params.name
