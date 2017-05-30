@@ -42,60 +42,69 @@ bams_res_path = quality_control_path + '/bams'
 index_res_path = quality_control_path + '/bams'
 counts_res_path = quality_control_path + '/counts'
 src_path = rootDir + '/src'
-params.name = "mapping and quantification analysis"
-params.salmon = "/usr/bin/salmon"
-if( !file(params.salmon).exists() ) exit 1, "salmon binary not found at: ${params.salmon}"
-params.kallisto = "/usr/local/bin/kallisto"
-if( !file(params.kallisto).exists() ) exit 1, "kallisto binary not found at: ${params.kallisto}"
-params.paired = true
-if(params.paired != true && params.paired != false){
-   exit 1, "Invalid paired option: ${params.paired}. Valid options: 'true' or 'false'"
-}
-params.mapper = "salmon"
-if(params.mapper != "salmon" && params.mapper != "kallisto"){
-   exit 1, "Invalid paired option: ${params.mapper}. Valid options: 'salmon' or 'kallisto'"
-}
-params.bedtools = "/usr/bin/bedtools"
-if( !file(params.bedtools).exists() ) exit 1, "bedtools binary not found at: ${params.bedtools}"
 
+params.name = "mapping and quantification analysis"
+params.mapper = "salmon"
+params.paired = true
+params.salmon = "/usr/bin/salmon"
+params.salmon_parameters = "--useVBOpt --numBootstraps 100 --seqBias --gcBias --posBias --libType MU"
+params.kallisto = "/usr/local/bin/kallisto"
+params.kallisto_parameters = "--bias --bootstrap-samples 100"
+params.bowtie2 = "/usr/bin/bowtie2"
+params.bowtie2_parameters = "--very-sensitive"
+params.bedtools = "/usr/bin/bedtools"
 params.mean = 200
 params.sd = 20
-params.salmon_parameters = "--useVBOpt --numBootstraps 100 --seqBias --gcBias --posBias --libType MU"
-params.kallisto_parameters = "--bias --bootstrap-samples 100"
+params.annotation = ""
 
 log.info params.name
 log.info "============================================"
 log.info "fastq files : ${params.fastq_files}"
 log.info "paired files : ${params.paired}"
+if(params.paired != true && params.paired != false){
+   exit 1, "Invalid paired option: ${params.paired}. Valid options: 'true' or 'false'"
+}
 if (params.paired) {
   log.info "file names are expected to end in the format *_{1,2}.fastq*."
   log.info "or *_R{1,2}.fastq*."
   log.info "otherwise the pairs will not be paired for the analysis"
+  fastq_names = Channel.fromFilePairs( params.fastq_files, size:2)
+    .ifEmpty { exit 1, "Cannot find any fastq files matching: ${params.fastq_files}" }
 }else{
   log.info "mean fragment length : ${params.mean}"
   log.info "standar deviation fragment length : ${params.sd}"
+  fastq_names = Channel.fromPath( params.fastq_files )
+    .ifEmpty { exit 1, "Cannot find any fastq files matching: ${params.fastq_files}" }
 }
 log.info "reference files : ${params.reference}"
-log.info "annotation files : ${params.annotation}"
-log.info "salmon : ${params.salmon}"
-log.info "kallisto : ${params.kallisto}"
+reference_names = Channel.fromPath( params.reference)
+  .ifEmpty { exit 1, "Cannot find any reference file matching: ${params.reference}" }
+if(params.annotation != ""){
+  log.info "annotation files : ${params.annotation}"
+  annotation_name = Channel.fromPath(params.annotation)
+    .ifEmpty { exit 1, "Cannot find any annotation file matching: ${params.annotation}" }
+}
+switch(params.mapper) {
+  case "salmon":
+    log.info "salmon path : ${params.salmon}"
+    if( !file(params.salmon).exists() ) exit 1, "salmon binary not found at: ${params.salmon}"
+  break
+  case "kallisto":
+    log.info "kallisto path : ${params.kallisto}"
+    if( !file(params.kallisto).exists() ) exit 1, "kallisto binary not found at: ${params.kallisto}"
+  break
+  case "bowtie2":
+    log.info "bowtie2 path : ${params.bowtie2}"
+    if( !file(params.bowtie2).exists() ) exit 1, "bowtie2 binary not found at: ${params.bowtie2}"
+  break
+  default:
+  exit 1, "Invalid paired option: ${params.mapper}. Valid options: 'salmon' or 'kallisto'"
+  break
+}
+log.infos "bedtools path : ${params.bedtools}"
+if( !file(params.bedtools).exists() ) exit 1, "bedtools binary not found at: ${params.bedtools}"
 log.info "results folder : ${results_path}"
 log.info "\n"
-
-if (params.paired){
-  fastq_names = Channel.fromFilePairs( params.fastq_files, size:2)
-  .ifEmpty { exit 1, "Cannot find any fastq files matching: ${params.fastq_files}" }
-} else {
-  fastq_names = Channel.fromPath( params.fastq_files )
-  .ifEmpty { exit 1, "Cannot find any fastq files matching: ${params.fastq_files}" }
-}
-
-reference_names = Channel.fromPath( params.reference)
-.ifEmpty { exit 1, "Cannot find any reference file matching: ${params.reference}" }
-
-annotation_name = Channel.fromPath( params.annotation)
-.ifEmpty { exit 1, "Cannot find any annotation file matching: ${params.annotation}" }
-
 
 process get_file_name_fastq {
   tag "${tagname}"
@@ -151,7 +160,7 @@ process get_file_name_annotation {
   output:
     file "*${file_name_root}" into dated_annotation_names
   when:
-    file_name =~ /^.*\.gtf$/ || file_name =~ /^.*\.bed$/ || file_name =~ /^.*\.gff$/ || file_name =~ /^.*\.vcf$/
+    params.annotation != "" & (file_name =~ /^.*\.gtf$/ || file_name =~ /^.*\.bed$/ || file_name =~ /^.*\.gff$/ || file_name =~ /^.*\.vcf$/)
   script:
     tagname = file(file_name).baseName
     file_name_root = file_name.name
@@ -174,7 +183,8 @@ process split_ref {
     params.mapper == "salmon" || params.mapper == "kallisto"
   script:
   if ( file_name ==~ /.*\.index/){
-    exit 1, "Cannot split an index file with a annotation file. Provide a fasta file instead of  ${params.reference}"  }
+    exit 1, "Cannot split an index file with a annotation file. Provide a fasta file instead of  ${params.reference}"
+  }
   basename = (file_name =~ /(.*(\.gff){0,1}(\.bed){0,1}(\.vcf){0,1}(\.gtf){0,1}/)[0][1]
   basename_fasta = (file_name =~ /(.*\.fasta)/)[0][1]
   tagname = basename
