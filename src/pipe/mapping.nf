@@ -209,18 +209,25 @@ process indexing {
   script:
   basename = (file_name =~ /(.*\.fasta)(\.index){0,1}/)[0][1]
   tagname = basename
-  if ( file_name ==~ /.*\.index/){
+  if ( file_name ==~ /.*\.index/) {
     log.info "index file found. Skipping indexing step"
-  }else{
-    if (params.mapper == "kallisto") {
-      """
-      ${params.kallisto} index -k 31 -i ${file_name}.index ${file_name}
-      """
-    }else{
-      """
-      ${params.salmon} index -p ${task.cpu} -t ${file_name} -i ${file_name}.index --type quasi -k 31
-      ${src_path}/func/file_handle.py -f *.index -r
-      """
+  } else {
+    switch(params.mapper) {
+      case "kallisto":
+        """
+        ${params.kallisto} index -k 31 -i ${file_name}.index ${file_name}
+        """
+      break
+      case "bowtie2":
+        """
+        ${params.bowtie2} index -k 31 -i ${file_name}.index ${file_name}
+        """
+      default:
+        """
+        ${params.salmon} index -p ${task.cpu} -t ${file_name} -i ${file_name}.index --type quasi -k 31
+        ${src_path}/func/file_handle.py -f *.index -r
+        """
+      break
     }
   }
 }
