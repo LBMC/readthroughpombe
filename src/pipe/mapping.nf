@@ -55,6 +55,8 @@ params.mapper = "salmon"
 if(params.mapper != "salmon" && params.mapper != "kallisto"){
    exit 1, "Invalid paired option: ${params.mapper}. Valid options: 'salmon' or 'kallisto'"
 }
+params.bedtools = "/usr/bin/bedtools"
+if( !file(params.bedtools).exists() ) exit 1, "bedtools binary not found at: ${params.bedtools}"
 
 params.mean = 200
 params.sd = 20
@@ -74,6 +76,7 @@ if (params.paired) {
   log.info "standar deviation fragment length : ${params.sd}"
 }
 log.info "reference files : ${params.reference}"
+log.info "annotation files : ${params.annotation}"
 log.info "salmon : ${params.salmon}"
 log.info "kallisto : ${params.kallisto}"
 log.info "results folder : ${results_path}"
@@ -89,6 +92,10 @@ if (params.paired){
 
 reference_names = Channel.fromPath( params.reference)
 .ifEmpty { exit 1, "Cannot find any reference file matching: ${params.reference}" }
+
+annotation_name = Channel.fromPath( params.annotation)
+.ifEmpty { exit 1, "Cannot find any annotation file matching: ${params.annotation}" }
+
 
 process get_file_name_fastq {
   tag "${tagname}"
@@ -137,12 +144,56 @@ process get_file_name_reference {
     """
 }
 
-process indexing {
+process get_file_name_annotation {
+  tag "${tagname}"
+  input:
+    val file_name from annotation_names
+  output:
+    file "*${file_name_root}" into dated_annotation_names
+  when:
+    file_name =~ /^.*\.gtf$/ || file_name =~ /^.*\.bed$/ || file_name =~ /^.*\.gff$/ || file_name =~ /^.*\.vcf$/
+  script:
+    tagname = file(file_name).baseName
+    file_name_root = file_name.name
+    """
+    ${src_path}/func/file_handle.py -f ${file_name} -c -e | \
+    awk '{system("ln -s "\$0" ."); print(\$0)}'
+    """
+}
+
+process split_ref {
   tag "${tagname}"
   publishDir "${index_res_path}", mode: 'copy'
   cpu = 12
   input:
     file file_name from dated_reference_names
+    file annotation_name from dated_annotation_names
+  output:
+    file "*.fasta" into split_dated_reference_names
+  when:
+    params.mapper == "salmon" || params.mapper == "kallisto"
+  script:
+  if ( file_name ==~ /.*\.index/){
+    exit 1, "Cannot split an index file with a annotation file. Provide a fasta file instead of  ${params.reference}"  }
+  basename = (file_name =~ /(.*(\.gff){0,1}(\.bed){0,1}(\.vcf){0,1}(\.gtf){0,1}/)[0][1]
+  basename_fasta = (file_name =~ /(.*\.fasta)/)[0][1]
+  tagname = basename
+  """
+  ${params.bedtools} getfasta -fi ${file_name} -bed ${annotation_name} -fo ${basename_fasta}_split.fasta
+  ${src_path}/func/file_handle.py -f *.fasta -r
+  """
+}
+
+process indexing {
+  tag "${tagname}"
+  publishDir "${index_res_path}", mode: 'copy'
+  cpu = 12
+  input:
+    if(params.mapper == "salmon" || params.mapper == "kallisto"){
+      file file_name from split_dated_reference_names
+    }else{
+      file file_name from dated_reference_names
+    }
   output:
     file "*.index" into indexing_output
   script:
