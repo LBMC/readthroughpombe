@@ -53,6 +53,7 @@ params.kallisto_parameters = "--bias --bootstrap-samples 100"
 params.bowtie2 = "/usr/bin/bowtie2"
 params.bowtie2_parameters = "--very-sensitive"
 params.bedtools = "/usr/bin/bedtools"
+params.bedtools = "/usr/bin/samtools"
 params.mean = 200
 params.sd = 20
 params.annotation = ""
@@ -96,12 +97,14 @@ switch(params.mapper) {
   case "bowtie2":
     log.info "bowtie2 path : ${params.bowtie2}"
     if( !file(params.bowtie2).exists() ) exit 1, "bowtie2 binary not found at: ${params.bowtie2}"
+    if( !file(params.bowtie2+"-build").exists() ) exit 1, "bowtie2-build binary not found at: ${params.bowtie2}-build"
   break
   default:
   exit 1, "Invalid paired option: ${params.mapper}. Valid options: 'salmon' or 'kallisto'"
   break
 }
 log.infos "bedtools path : ${params.bedtools}"
+log.infos "samtools path : ${params.samtools}"
 if( !file(params.bedtools).exists() ) exit 1, "bedtools binary not found at: ${params.bedtools}"
 log.info "results folder : ${results_path}"
 log.info "\n"
@@ -158,7 +161,7 @@ process get_file_name_annotation {
   input:
     val file_name from annotation_names
   output:
-    file "*${file_name_root}" into dated_annotation_names
+    file "*${file_name_root}" into dated_ann ${params.bowtie2_parameters}otation_names
   when:
     params.annotation != "" & (file_name =~ /^.*\.gtf$/ || file_name =~ /^.*\.bed$/ || file_name =~ /^.*\.gff$/ || file_name =~ /^.*\.vcf$/)
   script:
@@ -205,7 +208,11 @@ process indexing {
       file file_name from dated_reference_names
     }
   output:
-    file "*.index" into indexing_output
+    if(params.mapper == "salmon" || params.mapper == "kallisto"){
+      file "*.index" into indexing_output
+    }else{
+      file "*${base_name}.index*" into indexing_output
+    }
   script:
   basename = (file_name =~ /(.*\.fasta)(\.index){0,1}/)[0][1]
   tagname = basename
@@ -216,11 +223,13 @@ process indexing {
       case "kallisto":
         """
         ${params.kallisto} index -k 31 -i ${file_name}.index ${file_name}
+        ${src_path}/func/file_handle.py -f *.index -r
         """
       break
       case "bowtie2":
         """
-        ${params.bowtie2} index -k 31 -i ${file_name}.index ${file_name}
+        ${params.bowtie2}-build --threads ${task.cpu} ${file_name} ${base_name}.index
+        ${src_path}/func/file_handle.py -f ${base_name}.index* -r
         """
       default:
         """
@@ -267,7 +276,7 @@ process mapping {
       break
       case "bowtie2":
         """
-        ${params.bowtie2}
+        ${params.bowtie2} ${params.bowtie2_parameters} -p ${task.cpu} -x *.index* -1 ${file_name[0]} -2 ${file_name[1]} | samtools view -Sb - > ${name}.bam
         """
       break
       default:
@@ -293,7 +302,7 @@ process mapping {
       break
       case "bowtie2":
         """
-        ${params.bowtie2}
+        ${params.bowtie2} ${params.bowtie2_parameters} -p ${task.cpu} -x ${index_name} -U ${file_name} | samtools view -Sb - > ${name}.bam
         """
       break
       default:
