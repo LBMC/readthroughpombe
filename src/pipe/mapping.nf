@@ -255,38 +255,54 @@ process mapping {
     tagname = name
     basename_1 = (file_name[0] =~ /(.*)\.fastq(\.gz){0,1}/)[0][1]
     basename_2 = (file_name[1] =~ /(.*)\.fastq(\.gz){0,1}/)[0][1]
-    if (params.mapper == "kallisto") {
-      """
-      ${params.kallisto} quant -i ${index_name} -t ${task.cpu} ${params.kallisto_parameters} -o ./ ${file_name[0]} ${file_name[1]} > ${name}_report.txt
-      mv abundance.tsv ${name}.counts
-      mv run_info.json ${name}_info.json
-      mv abundance.h5 ${name}.h5
-      ${src_path}/func/file_handle.py -f * -r
-      """
-    }else{
-      """
-      ${params.salmon} quant -i ${index_name} -p ${task.cpu} ${params.salmon_parameters} -1 ${file_name[0]} -2 ${file_name[1]} -o ${name}.counts > ${name}_report.txt
-      ${src_path}/func/file_handle.py -f * -r
-      """
+    switch(params.mapper) {
+      case "kallisto":
+        """
+        ${params.kallisto} quant -i ${index_name} -t ${task.cpu} ${params.kallisto_parameters} -o ./ ${file_name[0]} ${file_name[1]} > ${name}_report.txt
+        mv abundance.tsv ${name}.counts
+        mv run_info.json ${name}_info.json
+        mv abundance.h5 ${name}.h5
+        ${src_path}/func/file_handle.py -f * -r
+        """
+      break
+      case "bowtie2":
+        """
+        ${params.bowtie2}
+        """
+      break
+      default:
+        """
+        ${params.salmon} quant -i ${index_name} -p ${task.cpu} ${params.salmon_parameters} -1 ${file_name[0]} -2 ${file_name[1]} -o ${name}.counts > ${name}_report.txt
+        ${src_path}/func/file_handle.py -f * -r
+        """
+      break
     }
   } else {
     name = (file_name =~ /(.*)\.fastq(\.gz){0,1}/)[0][1]
     tagname = name
-    kallisto_parameters = params.kallisto_parameters + " -l ${params.mean} -s ${params.sd}"
-    salmon_parameters = params.salmon_parameters + " --fldMean ${params.mean} --fldSD ${params.sd}"
-    if (params.mapper == "kallisto") {
-      """
-      ${params.kallisto} quant -i ${index_name} -t ${task.cpu} --single ${kallisto_parameters} -o ./ ${file_name} > ${name}_report.txt
-      mv abundance.tsv ${name}.counts
-      mv run_info.json ${name}_info.json
-      mv abundance.h5 ${name}.h5
-      ${src_path}/func/file_handle.py -f * -r
-      """
-    }else{
-      """
-      ${params.salmon} quant -i ${index_name} -p ${task.cpu} ${salmon_parameters} -r ${file_name} -o ${name}.counts > ${name}_report.txt
-      ${src_path}/func/file_handle.py -f * -r
-      """
+    switch(params.mapper) {
+      case "kallisto":
+        kallisto_parameters = params.kallisto_parameters + " -l ${params.mean} -s ${params.sd}"
+        """
+        ${params.kallisto} quant -i ${index_name} -t ${task.cpu} --single ${kallisto_parameters} -o ./ ${file_name} > ${name}_report.txt
+        mv abundance.tsv ${name}.counts
+        mv run_info.json ${name}_info.json
+        mv abundance.h5 ${name}.h5
+        ${src_path}/func/file_handle.py -f * -r
+        """
+      break
+      case "bowtie2":
+        """
+        ${params.bowtie2}
+        """
+      break
+      default:
+        salmon_parameters = params.salmon_parameters + " --fldMean ${params.mean} --fldSD ${params.sd}"
+        """
+        ${params.salmon} quant -i ${index_name} -p ${task.cpu} ${salmon_parameters} -r ${file_name} -o ${name}.counts > ${name}_report.txt
+        ${src_path}/func/file_handle.py -f * -r
+        """
+      break
     }
   }
 }
