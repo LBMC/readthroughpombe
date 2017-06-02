@@ -160,8 +160,7 @@ process get_file_name_reference {
 }
 
 dated_reference_names
-  .into{ dated_reference_names_split; dated_reference_names_mapping; test }
-test.println()
+  .into{ dated_reference_names_split; dated_reference_names_mapping }
 
 process get_file_name_annotation {
   tag "${tagname}"
@@ -183,28 +182,32 @@ process get_file_name_annotation {
 dated_annotation_names
   .into{ dated_annotation_names_split; dated_annotation_names_quantification }
 
-process split_ref {
-  tag "${tagname}"
-  publishDir "${index_res_path}", mode: 'copy'
-  cpu = 12
-  input:
-    file reference_name from dated_reference_names_split
-    file annotation_name from dated_annotation_names_split
-  output:
-    file "*.fasta" into dated_reference_names_split_mapping
-  when:
-    params.mapper in ["salmon", "kallisto"]
-  script:
-  if ( reference_name ==~ /.*\.index/){
-    exit 1, "Cannot split an index file with a annotation file. Provide a fasta file instead of  ${params.reference}"
+if(params.mapper in ["salmon", "kallisto"]){
+  process split_ref {
+    tag "${tagname}"
+    publishDir "${index_res_path}", mode: 'copy'
+    cpu = 12
+    input:
+      file reference_name from dated_reference_names_split
+      file annotation_name from dated_annotation_names_split
+    output:
+      file "*.fasta" into indexing_input
+    when:
+      params.mapper in ["salmon", "kallisto"]
+    script:
+    if ( reference_name ==~ /.*\.index/){
+      exit 1, "Cannot split an index file with a annotation file. Provide a fasta file instead of  ${params.reference}"
+    }
+    basename = (reference_name =~ /(.*(\.gff){0,1}(\.bed){0,1}(\.vcf){0,1}(\.gtf){0,1}/)[0][1]
+    basename_fasta = (reference_name =~ /(.*\.fasta)/)[0][1]
+    tagname = basename
+    """
+    ${params.bedtools} getfasta -fi ${reference_name} -bed ${annotation_name} -fo ${basename_fasta}_split.fasta
+    ${src_path}/func/file_handle.py -f *.fasta -r
+    """
   }
-  basename = (reference_name =~ /(.*(\.gff){0,1}(\.bed){0,1}(\.vcf){0,1}(\.gtf){0,1}/)[0][1]
-  basename_fasta = (reference_name =~ /(.*\.fasta)/)[0][1]
-  tagname = basename
-  """
-  ${params.bedtools} getfasta -fi ${reference_name} -bed ${annotation_name} -fo ${basename_fasta}_split.fasta
-  ${src_path}/func/file_handle.py -f *.fasta -r
-  """
+}else{
+  dated_reference_names_split.into{ indexing_input }
 }
 
 process indexing {
@@ -212,13 +215,10 @@ process indexing {
   publishDir "${index_res_path}", mode: 'copy'
   cpu = 12
   input:
-    if(params.mapper in ["salmon", "kallisto"]){
-      file index_name from dated_reference_names_split_mapping
-    }else{
-      file index_name from dated_reference_names_mapping
-    }
+    file index_name from indexing_input
   output:
     file "*.index*" into indexing_output
+  script:
   basename = (index_name =~ /(.*\.fasta)(\.index){0,1}/)[0][1]
   tagname = basename
   if ( index_name ==~ /.*\.index/) {
@@ -227,18 +227,18 @@ process indexing {
     switch(params.mapper) {
       case "kallisto":
         """
-        ${params.kallisto} index -k 31 -i ${index_name}.index ${index_name}
+        ${params.kallisto} index -k 31 -i ${basename}.index ${index_name}
         ${src_path}/func/file_handle.py -f *.index -r
         """
       break
       case "bowtie2":
         """
-        ${params.bowtie2}-build --threads ${task.cpu} ${index_name} ${base_name}.index
-        ${src_path}/func/file_handle.py -f ${base_name}.index* -r
+        ${params.bowtie2}-build --threads ${task.cpu} ${index_name} ${basename}.index
+        ${src_path}/func/file_handle.py -f ${basename}.index* -r
         """
       default:
         """
-        ${params.salmon} index -p ${task.cpu} -t ${index_name} -i ${index_name}.index --type quasi -k 31
+        ${params.salmon} index -p ${task.cpu} -t ${index_name} -i ${basename}.index --type quasi -k 31
         ${src_path}/func/file_handle.py -f *.index -r
         """
       break
@@ -258,10 +258,7 @@ process mapping {
     file index_name from indexing_output
     file fastq_name from dated_fastq_names
   output:
-    if(params.mapper in ["salmon", "kallisto"]){
-    }else{
-      file "*.bam" into mapping_output
-    }
+    file "*.bam" into mapping_output
     file "*_report.txt" into mapping_log
   script:
   if (params.paired) {
@@ -281,7 +278,8 @@ process mapping {
       break
       case "bowtie2":
         """
-        ${params.bowtie2} ${params.bowtie2_parameters} -p ${task.cpu} -x *.index* -1 ${fastq_name[0]} -2 ${fastq_name[1]} | samtools view -Sb - > ${name}.bam
+        ${params.bowtie2} ${params.bowtie2_parameters} -p ${task.cpu} -x *.index* -1 ${fastq_name[0]} -2 ${fastq_name[1]} 2> ${name}_report.txt | samtools view -Sb - > ${name}.bam
+        ${src_path}/func/file_handle.py -f * -r
         """
       break
       default:
@@ -307,7 +305,8 @@ process mapping {
       break
       case "bowtie2":
         """
-        ${params.bowtie2} ${params.bowtie2_parameters} -p ${task.cpu} -x ${index_name} -U ${fastq_name} | samtools view -Sb - > ${name}.bam
+        ${params.bowtie2} ${params.bowtie2_parameters} -p ${task.cpu} -x ${index_name} -U ${fastq_name} 2> ${name}_report.txt | samtools view -Sb - > ${name}.bam
+        ${src_path}/func/file_handle.py -f * -r
         """
       break
       default:
@@ -320,3 +319,5 @@ process mapping {
     }
   }
 }
+
+mapping_output.println()
