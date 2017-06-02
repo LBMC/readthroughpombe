@@ -53,7 +53,7 @@ params.kallisto_parameters = "--bias --bootstrap-samples 100"
 params.bowtie2 = "/usr/bin/bowtie2"
 params.bowtie2_parameters = "--very-sensitive"
 params.bedtools = "/usr/bin/bedtools"
-params.bedtools = "/usr/bin/samtools"
+params.samtools = "/usr/bin/samtools"
 params.mean = 200
 params.sd = 20
 params.annotation = ""
@@ -103,9 +103,10 @@ switch(params.mapper) {
   exit 1, "Invalid paired option: ${params.mapper}. Valid options: 'salmon' or 'kallisto'"
   break
 }
-log.infos "bedtools path : ${params.bedtools}"
-log.infos "samtools path : ${params.samtools}"
+log.info "bedtools path : ${params.bedtools}"
 if( !file(params.bedtools).exists() ) exit 1, "bedtools binary not found at: ${params.bedtools}"
+log.info "samtools path : ${params.samtools}"
+if( !file(params.samtools).exists() ) exit 1, "samtools binary not found at: ${params.samtools}"
 log.info "results folder : ${results_path}"
 log.info "\n"
 
