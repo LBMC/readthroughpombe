@@ -57,9 +57,12 @@ params.samtools = "/usr/bin/samtools"
 params.mean = 200
 params.sd = 20
 params.annotation = ""
+params.reference = ""
+params.fastq_files = ""
 
 log.info params.name
 log.info "============================================"
+if(params.fastq_files == ""){exit 1, "missing params \"--fastq_files\""}
 log.info "fastq files : ${params.fastq_files}"
 log.info "paired files : ${params.paired}"
 if(params.paired != true && params.paired != false){
@@ -77,16 +80,14 @@ if (params.paired) {
   fastq_names = Channel.fromPath( params.fastq_files )
     .ifEmpty { exit 1, "Cannot find any fastq files matching: ${params.fastq_files}" }
 }
+if(params.reference == ""){exit 1, "missing params \"--reference\""}
 log.info "reference files : ${params.reference}"
 reference_names = Channel.fromPath( params.reference)
   .ifEmpty { exit 1, "Cannot find any reference file matching: ${params.reference}" }
-if(params.annotation != ""){
-  log.info "annotation files : ${params.annotation}"
-  annotation_names = Channel.fromPath(params.annotation)
-    .ifEmpty { exit 1, "Cannot find any annotation file matching: ${params.annotation}" }
-}else{
-  log.info "no annotation used."
-}
+if(params.annotation == ""){exit 1, "missing params \"--annotation\""}
+log.info "annotation files : ${params.annotation}"
+annotation_names = Channel.fromPath(params.annotation)
+  .ifEmpty { exit 1, "Cannot find any annotation file matching: ${params.annotation}" }
 switch(params.mapper) {
   case "salmon":
     log.info "salmon path : ${params.salmon}"
