@@ -45,3 +45,12 @@ tar xvf HTSeq*
 cd HTSeq-0.7.2
 python setup.py build
 sudo python setup.py install
+rm -Rf /tmp/HTseq
+
+mkdir /tmp/rsem
+cd /tmp/rsem
+git clone https://github.com/deweylab/RSEM.git
+cd RSEM
+make -j 8
+sudo make install
+rm -Rf /tmp/rsem
