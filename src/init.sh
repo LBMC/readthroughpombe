@@ -14,7 +14,6 @@ cd /tmp
 git clone https://github.com/COMBINE-lab/salmon.git
 cd /tmp/salmon
 mkdir build
-cd build
 cmake -DFETCH_BOOST=TRUE -DCMAKE_INSTALL_PREFIX=/usr/
 make
 sudo make install
