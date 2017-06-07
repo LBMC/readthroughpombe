@@ -92,15 +92,43 @@ switch(params.mapper) {
   case "salmon":
     log.info "salmon path : ${params.salmon}"
     if( !file(params.salmon).exists() ) exit 1, "salmon binary not found at: ${params.salmon}"
+    process get_salmon_version {
+      echo true
+      input:
+        val params.salmon
+      script:
+      """
+      ${params.salmon} --version &> salmon_version.txt
+      echo "salmon \$(cat salmon_version.txt)"
+      """
+    }
   break
   case "kallisto":
     log.info "kallisto path : ${params.kallisto}"
     if( !file(params.kallisto).exists() ) exit 1, "kallisto binary not found at: ${params.kallisto}"
+    process get_kallisto_version {
+      echo true
+      input:
+        val params.kallisto
+      script:
+      """
+      echo "\$(${params.kallisto} version)"
+      """
+    }
   break
   case "bowtie2":
     log.info "bowtie2 path : ${params.bowtie2}"
     if( !file(params.bowtie2).exists() ) exit 1, "bowtie2 binary not found at: ${params.bowtie2}"
     if( !file(params.bowtie2+"-build").exists() ) exit 1, "bowtie2-build binary not found at: ${params.bowtie2}-build"
+    process get_bowtie2_version {
+      echo true
+      input:
+        val params.bowtie2
+      script:
+      """
+      echo "\$(${params.bowtie2} --version)"
+      """
+    }
   break
   default:
   exit 1, "Invalid paired option: ${params.mapper}. Valid options: 'salmon', 'kallisto' or 'bowtie2'"
@@ -109,8 +137,26 @@ switch(params.mapper) {
 log.info "bedtools path : ${params.bedtools}"
 if( !file(params.bedtools).exists() ) exit 1, "bedtools binary not found at: ${params.bedtools}"
 log.info "samtools path : ${params.samtools}"
+process get_bedtools_version {
+  echo true
+  input:
+    val params.bedtools
+  script:
+  """
+  echo "\$(${params.bedtools} --version)"
+  """
+}
 if( !file(params.samtools).exists() ) exit 1, "samtools binary not found at: ${params.samtools}"
 log.info "results folder : ${results_path}"
+process get_samtools_version {
+  echo true
+  input:
+    val params.samtools
+  script:
+  """
+  echo "\$(${params.samtools} --version)"
+  """
+}
 log.info "\n"
 
 process get_file_name_fastq {
@@ -187,24 +233,27 @@ if(params.mapper in ["salmon", "kallisto"]){
   process split_ref {
     tag "${tagname}"
     publishDir "${index_res_path}", mode: 'copy'
+    echo true
     cpu = 12
     input:
       file reference_name from dated_reference_names_split
       file annotation_name from dated_annotation_names_split
     output:
-      file "*.fasta" into indexing_input
+      file "*_split.fasta" into indexing_input
     when:
       params.mapper in ["salmon", "kallisto"]
     script:
     if ( reference_name ==~ /.*\.index/){
       exit 1, "Cannot split an index file with a annotation file. Provide a fasta file instead of  ${params.reference}"
     }
-    basename = (reference_name =~ /(.*(\.gff){0,1}(\.bed){0,1}(\.vcf){0,1}(\.gtf){0,1}/)[0][1]
+    basename = (reference_name =~ /(.*)(\.gff){0,1}(\.bed){0,1}(\.vcf){0,1}(\.gtf){0,1}/)[0][1]
     basename_fasta = (reference_name =~ /(.*\.fasta)/)[0][1]
     tagname = basename
     """
-    ${params.bedtools} getfasta -fi ${reference_name} -bed ${annotation_name} -fo ${basename_fasta}_split.fasta
-    ${src_path}/func/file_handle.py -f *.fasta -r
+    cat ${basename} | gunzip > ${basename_fasta}
+    ${params.bedtools} getfasta -fi ${basename_fasta} -bed ${annotation_name} -fo ${basename_fasta}_split.fasta
+    ${src_path}/func/file_handle.py -f *_split.fasta -r
+    ls -lh
     """
   }
 }else{
@@ -235,12 +284,12 @@ process indexing {
       case "bowtie2":
         """
         ${params.bowtie2}-build --threads ${task.cpu} ${index_name} ${basename}.index
-        ${src_path}/func/file_handle.py -f ${basename}.index* -r
+        ${src_path}/func/file_handle.py -f *.index* -r
         """
       default:
         """
         ${params.salmon} index -p ${task.cpu} -t ${index_name} -i ${basename}.index --type quasi -k 31
-        ${src_path}/func/file_handle.py -f *.index -r
+        ${src_path}/func/file_handle.py -f *.index* -r
         """
       break
     }
