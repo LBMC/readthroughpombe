@@ -308,7 +308,9 @@ process mapping {
     file index_name from indexing_output
     file fastq_name from dated_fastq_names
   output:
-    file "*.bam" into mapping_output
+    if(!params.mapper in ["salmon", "kallisto"]){
+      file "*.bam" into mapping_output
+    }
     file "*_report.txt" into mapping_log
   script:
   if (params.paired) {
@@ -319,11 +321,11 @@ process mapping {
     switch(params.mapper) {
       case "kallisto":
         """
-        ${params.kallisto} quant -i ${index_name} -t ${task.cpu} ${params.kallisto_parameters} -o ./ ${fastq_name[0]} ${fastq_name[1]} > ${name}_kallisto_report.txt
+        ${params.kallisto} quant -i ${index_name} -t ${task.cpu} ${params.kallisto_parameters} -o ./ ${fastq_name[0]} ${fastq_name[1]} &> ${name}_kallisto_report.txt
         mv abundance.tsv ${name}.counts
         mv run_info.json ${name}_info.json
         mv abundance.h5 ${name}.h5
-        ${src_path}/func/file_handle.py -f * -r
+        ${src_path}/func/file_handle.py -f *_report.txt *.counts *.json *.h5 -r
         """
       break
       case "bowtie2":
@@ -370,4 +372,4 @@ process mapping {
   }
 }
 
-mapping_output.println()
+mapping_log.println()
