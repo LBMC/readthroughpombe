@@ -233,7 +233,6 @@ if(params.mapper in ["salmon", "kallisto"]){
   process split_ref {
     tag "${tagname}"
     publishDir "${index_res_path}", mode: 'copy'
-    echo true
     cpu = 12
     input:
       file reference_name from dated_reference_names_split
@@ -247,11 +246,11 @@ if(params.mapper in ["salmon", "kallisto"]){
       exit 1, "Cannot split an index file with a annotation file. Provide a fasta file instead of  ${params.reference}"
     }
     basename = (reference_name =~ /(.*)(\.gff){0,1}(\.bed){0,1}(\.vcf){0,1}(\.gtf){0,1}/)[0][1]
-    basename_fasta = (reference_name =~ /(.*\.fasta)/)[0][1]
+    basename_fasta = (reference_name =~ /(.*)\.fasta/)[0][1]
     tagname = basename
     """
-    cat ${basename} | gunzip > ${basename_fasta}
-    ${params.bedtools} getfasta -fi ${basename_fasta} -bed ${annotation_name} -fo ${basename_fasta}_split.fasta
+    cat ${basename} | gunzip > ${basename_fasta}.fasta
+    ${params.bedtools} getfasta -fi ${basename_fasta}.fasta -bed ${annotation_name} -fo ${basename_fasta}_split.fasta
     ${src_path}/func/file_handle.py -f *_split.fasta -r
     ls -lh
     """
@@ -268,6 +267,7 @@ process indexing {
     file index_name from indexing_input
   output:
     file "*.index*" into indexing_output
+    file "*_report.txt*" into indexing_log
   script:
   basename = (index_name =~ /(.*\.fasta)(\.index){0,1}/)[0][1]
   tagname = basename
@@ -277,18 +277,18 @@ process indexing {
     switch(params.mapper) {
       case "kallisto":
         """
-        ${params.kallisto} index -k 31 -i ${basename}.index ${index_name}
+        ${params.kallisto} index -k 31 --make-unique -i ${basename}.index ${index_name} > ${basename}.index_report.txt
         ${src_path}/func/file_handle.py -f *.index -r
         """
       break
       case "bowtie2":
         """
-        ${params.bowtie2}-build --threads ${task.cpu} ${index_name} ${basename}.index
+        ${params.bowtie2}-build --threads ${task.cpu} ${index_name} ${basename}.index > ${basename}.index_report.txt
         ${src_path}/func/file_handle.py -f *.index* -r
         """
       default:
         """
-        ${params.salmon} index -p ${task.cpu} -t ${index_name} -i ${basename}.index --type quasi -k 31
+        ${params.salmon} index -p ${task.cpu} -t ${index_name} -i ${basename}.index --type quasi -k 31 &> ${basename}.index_report.txt
         ${src_path}/func/file_handle.py -f *.index* -r
         """
       break
