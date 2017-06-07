@@ -173,7 +173,7 @@ process get_file_name_fastq {
     }
   script:
   if (params.paired) {
-    tagname = fastq_name[0]
+    tagname = (fastq_name[1][0].baseName =~ /^(.*)_(R){0,1}[0,1]\.fastq(\.gz){0,1}/)[0][1]
     fastq_name_root = fastq_name[0] + "*"
     """
     ${src_path}/func/file_handle.py -f ${fastq_name[1][0]} ${fastq_name[1][1]} -c -e | \
@@ -277,18 +277,18 @@ process indexing {
     switch(params.mapper) {
       case "kallisto":
         """
-        ${params.kallisto} index -k 31 --make-unique -i ${basename}.index ${index_name} > ${basename}.index_report.txt
+        ${params.kallisto} index -k 31 --make-unique -i ${basename}.index ${index_name} > ${basename}_kallisto_report.txt
         ${src_path}/func/file_handle.py -f *.index -r
         """
       break
       case "bowtie2":
         """
-        ${params.bowtie2}-build --threads ${task.cpu} ${index_name} ${basename}.index > ${basename}.index_report.txt
+        ${params.bowtie2}-build --threads ${task.cpu} ${index_name} ${basename}.index > ${basename}_bowtie2_report.txt
         ${src_path}/func/file_handle.py -f *.index* -r
         """
       default:
         """
-        ${params.salmon} index -p ${task.cpu} -t ${index_name} -i ${basename}.index --type quasi -k 31 &> ${basename}.index_report.txt
+        ${params.salmon} index -p ${task.cpu} -t ${index_name} -i ${basename}.index --type quasi -k 31 &> ${basename}_salmon_report.txt
         ${src_path}/func/file_handle.py -f *.index* -r
         """
       break
@@ -319,7 +319,7 @@ process mapping {
     switch(params.mapper) {
       case "kallisto":
         """
-        ${params.kallisto} quant -i ${index_name} -t ${task.cpu} ${params.kallisto_parameters} -o ./ ${fastq_name[0]} ${fastq_name[1]} > ${name}_report.txt
+        ${params.kallisto} quant -i ${index_name} -t ${task.cpu} ${params.kallisto_parameters} -o ./ ${fastq_name[0]} ${fastq_name[1]} > ${name}_kallisto_report.txt
         mv abundance.tsv ${name}.counts
         mv run_info.json ${name}_info.json
         mv abundance.h5 ${name}.h5
@@ -328,13 +328,13 @@ process mapping {
       break
       case "bowtie2":
         """
-        ${params.bowtie2} ${params.bowtie2_parameters} -p ${task.cpu} -x *.index* -1 ${fastq_name[0]} -2 ${fastq_name[1]} 2> ${name}_report.txt | samtools view -Sb - > ${name}.bam
+        ${params.bowtie2} ${params.bowtie2_parameters} -p ${task.cpu} -x *.index* -1 ${fastq_name[0]} -2 ${fastq_name[1]} 2> ${name}_bowtie2_report.txt | samtools view -Sb - > ${name}.bam
         ${src_path}/func/file_handle.py -f * -r
         """
       break
       default:
         """
-        ${params.salmon} quant -i ${index_name} -p ${task.cpu} ${params.salmon_parameters} -1 ${fastq_name[0]} -2 ${fastq_name[1]} -o ${name}.counts > ${name}_report.txt
+        ${params.salmon} quant -i ${index_name} -p ${task.cpu} ${params.salmon_parameters} -1 ${fastq_name[0]} -2 ${fastq_name[1]} -o ${name}.counts > ${name}_salmon_report.txt
         ${src_path}/func/file_handle.py -f * -r
         """
       break
