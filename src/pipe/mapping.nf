@@ -55,7 +55,7 @@ params.bowtie2_parameters = "--very-sensitive"
 params.bedtools = "/usr/bin/bedtools"
 params.samtools = "/usr/bin/samtools"
 params.htseq = "/usr/bin/htseq-count"
-params.htseq_parameters = "--mode=intersection-nonempty --minqual=10"
+params.htseq_parameters = "--mode=intersection-nonempty -a 10"
 params.mean = 200
 params.sd = 20
 params.annotation = ""
@@ -402,6 +402,35 @@ if(params.mapper in ["salmon", "kallisto"]){
           """
         break
       }
+    }
+  }
+
+  process quantification {
+    tag "${tagname}"
+    echo true
+    publishDir "${counts_res_path}", mode: 'copy'
+    input:
+      file annotation_name from dated_annotation_names_quantification
+      file bams_name from mapping_output
+    output:
+      file "*.counts*" into counts_output
+    script:
+    basename = bams_name.baseName
+    tagname = basename
+    switch(params.quantifier) {
+      case "rsem":
+        """
+        echo "test"
+        """
+      break
+      default:
+        """
+        ls -l
+        ${params.htseq} ${params.htseq_parameters} --format=bam ${bams_name} ${annotation_name} &> ${basename}.count
+        ${src_path}/func/file_handle.py -f *.counts -r
+        ls -l
+        """
+      break
     }
   }
 }
