@@ -442,6 +442,23 @@ if(params.mapper in ["salmon", "kallisto"]){
     }
   }
 
+  process sorting {
+    tag "${tagname}"
+    cpu = 12
+    publishDir "${bams_res_path}", mode: 'copy'
+    input:
+      file bams_name from mapping_output
+    output:
+      file "*_sorted.bam*" into sorted_mapping_output
+    script:
+    basename = bams_name.baseName
+    tagname = basename
+    """
+    ${params.samtools} sort -@ ${task.cpu} -O bam -o ${basename}_sorted.bam ${bams_name}
+    ${src_path}/func/file_handle.py -f *_sorted.bam* -r
+    """
+  }
+
   process quantification {
     tag "${tagname}"
     echo true
