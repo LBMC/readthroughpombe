@@ -56,7 +56,7 @@ params.bedtools = "/usr/bin/bedtools"
 params.samtools = "/usr/bin/samtools"
 params.quantifier = "htseq"
 params.htseq = "/usr/bin/htseq-count"
-params.htseq_parameters = "--mode=intersection-nonempty -a 10"
+params.htseq_parameters = "--mode=intersection-nonempty -a 10 -t CDS"
 params.rsem = "/usr/local/bin/rsem"
 params.rsem_parameters = ""
 if(params.mapper == "bowtie2"){
@@ -67,6 +67,7 @@ params.sd = 20
 params.annotation = ""
 params.reference = ""
 params.fastq_files = ""
+params.cpu = 12
 
 log.info params.name
 log.info "============================================"
@@ -196,6 +197,7 @@ process get_samtools_version {
   echo "\$(${params.samtools} --version)"
   """
 }
+log.info "number of cpu : ${params.cpu}"
 log.info "\n"
 
 process get_file_name_fastq {
@@ -301,7 +303,7 @@ if(params.mapper in ["salmon", "kallisto"]){
 process indexing {
   tag "${tagname}"
   publishDir "${index_res_path}", mode: 'copy'
-  cpu = 12
+  cpu = params.cpu
   input:
     file index_name from indexing_input
   output:
@@ -339,7 +341,7 @@ if(params.mapper in ["salmon", "kallisto"]){
   process mapping_quantification {
     tag "${tagname}"
     publishDir "${counts_res_path}", mode: 'copy'
-    cpu = 12
+    cpu = params.cpu
     input:
       file index_name from indexing_output
       file fastq_name from dated_fastq_names
@@ -397,7 +399,7 @@ if(params.mapper in ["salmon", "kallisto"]){
   process mapping {
     tag "${tagname}"
     publishDir "${bams_res_path}", mode: 'copy'
-    cpu = 12
+    cpu = params.cpu
     input:
       file index_name from indexing_output
       file fastq_name from dated_fastq_names
@@ -444,47 +446,67 @@ if(params.mapper in ["salmon", "kallisto"]){
 
   process sorting {
     tag "${tagname}"
-    cpu = 12
+    cpu = params.cpu
     publishDir "${bams_res_path}", mode: 'copy'
     input:
       file bams_name from mapping_output
     output:
-      file "*_sorted.bam*" into sorted_mapping_output
+      file "*_sorted.bam" into sorted_mapping_output
     script:
     basename = bams_name.baseName
     tagname = basename
     """
     ${params.samtools} sort -@ ${task.cpu} -O bam -o ${basename}_sorted.bam ${bams_name}
-    ${src_path}/func/file_handle.py -f *_sorted.bam* -r
+    ${src_path}/func/file_handle.py -f *_sorted.bam -r
     """
   }
 
   process quantification {
     tag "${tagname}"
+    cpu = params.cpu
     echo true
     publishDir "${counts_res_path}", mode: 'copy'
     input:
       file annotation_name from dated_annotation_names_quantification
-      file bams_name from mapping_output
+      file bams_name from sorted_mapping_output
     output:
       file "*.counts*" into counts_output
     script:
     basename = bams_name.baseName
     tagname = basename
-    switch(params.quantifier) {
-      case "rsem":
-        """
-        echo "test"
-        """
-      break
-      default:
-        """
-        ls -l
-        ${params.htseq} ${params.htseq_parameters} --format=bam ${bams_name} ${annotation_name} &> ${basename}.count
-        ${src_path}/func/file_handle.py -f *.counts -r
-        ls -l
-        """
-      break
+    if(params.paired){
+      switch(params.quantifier) {
+        case "rsem":
+          """
+          echo "test"
+          """
+        break
+        default:
+          """
+          ls -l
+          ${params.htseq} ${params.htseq_parameters} --format=bam ${bams_name} ${annotation_name} &> ${basename}.count
+          ${src_path}/func/file_handle.py -f *.counts -r
+          ls -l
+          """
+        break
+      }
+    }else{
+      switch(params.quantifier) {
+        case "rsem":
+          params.rsem_parameters = params.rsem_parameters + " --fragment-length-mean ${params.mean} --fragment-length-sd ${params.sd}"
+          """
+          echo "test"
+          """
+        break
+        default:
+          """
+          ls -l
+          ${params.htseq} ${params.htseq_parameters} --format=bam ${bams_name} ${annotation_name} &> ${basename}.count
+          ${src_path}/func/file_handle.py -f *.counts -r
+          ls -l
+          """
+        break
+      }
     }
   }
 }
