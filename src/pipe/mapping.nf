@@ -516,6 +516,7 @@ if(params.mapper in ["salmon", "kallisto"]){
           """
           ${params.htseq} -r pos ${params.htseq_parameters} --format=bam ${bams_name} ${annotation_name} &> ${basename}.count
           ${src_path}/func/file_handle.py -f *.counts -r
+          
           """
         break
       }
