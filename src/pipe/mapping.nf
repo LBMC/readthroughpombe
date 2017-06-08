@@ -327,12 +327,18 @@ process indexing {
         gunzip -c ${index_name} > ${basename}.fasta
         ${params.bowtie2}-build --threads ${task.cpu} ${basename}.fasta ${basename}.index &> ${basename}_bowtie2_indexing_report.txt
         ${src_path}/func/file_handle.py -f * -r
+        if grep -q "Error" ${basename}_salmon_indexing_report.txt; then
+          exit 1
+        fi
         """
       break
       default:
         """
         ${params.salmon} index -p ${task.cpu} -t ${index_name} -i ${basename}.index --type quasi -k 31 &> ${basename}_salmon_indexing_report.txt
         ${src_path}/func/file_handle.py -f * -r
+        if grep -q "Error" ${basename}_salmon_indexing_report.txt; then
+          exit 1
+        fi
         """
       break
     }
@@ -364,6 +370,9 @@ if(params.mapper in ["salmon", "kallisto"]){
           mv run_info.json ${name}_info.json
           mv abundance.h5 ${name}.h5
           ${src_path}/func/file_handle.py -f *_report.txt *.counts *.json *.h5 -r
+          if grep -q "Error" ${name}_kallisto_report.txt; then
+            exit 1
+          fi
           """
         break
         default:
@@ -385,12 +394,15 @@ if(params.mapper in ["salmon", "kallisto"]){
           mv run_info.json ${name}_info.json
           mv abundance.h5 ${name}.h5
           ${src_path}/func/file_handle.py -f * -r
+          if grep -q "Error" ${name}_kallisto_report.txt; then
+            exit 1
+          fi
           """
         break
         default:
           salmon_parameters = params.salmon_parameters + " --fldMean ${params.mean} --fldSD ${params.sd}"
           """
-          ${params.salmon} quant -i ${index_name} -p ${task.cpu} ${salmon_parameters} -r ${fastq_name} -o ${name}.counts &> ${name}_report.txt
+          ${params.salmon} quant -i ${index_name} -p ${task.cpu} ${salmon_parameters} -r ${fastq_name} -o ${name}.counts > ${name}_report.txt
           ${src_path}/func/file_handle.py -f * -r
           """
         break
@@ -409,9 +421,9 @@ if(params.mapper in ["salmon", "kallisto"]){
       file "*.bam" into mapping_output
       file "*_report.txt" into mapping_log
     script:
+    tagname = (index_name[0] =~ /(.*)\.index.*/)[0][1]
     if (params.paired) {
       name = (fastq_name[0] =~ /(.*)\_(R){0,1}[12]\.fastq(\.gz){0,1}/)[0][1]
-      tagname = (index_name[0] =~ /(.*)\.index.*/)[0][1]
       basename_1 = (fastq_name[0] =~ /(.*)\.fastq(\.gz){0,1}/)[0][1]
       basename_2 = (fastq_name[1] =~ /(.*)\.fastq(\.gz){0,1}/)[0][1]
       switch(params.mapper) {
@@ -419,6 +431,9 @@ if(params.mapper in ["salmon", "kallisto"]){
           """
           ${params.bowtie2} ${params.bowtie2_parameters} -p ${task.cpu} -x ${tagname}.index -1 ${fastq_name[0]} -2 ${fastq_name[1]} 2> ${name}_bowtie2_report.txt | samtools view -Sb - > ${name}.bam
           ${src_path}/func/file_handle.py -f * -r
+          if grep -q "Error" ${name}_bowtie2_report.txt; then
+            exit 1
+          fi
           """
         break
         default:
@@ -428,12 +443,11 @@ if(params.mapper in ["salmon", "kallisto"]){
         break
       }
     } else {
-      name = (fastq_name =~ /(.*)\.fastq(\.gz){0,1}/)[0][1]
-      tagname = name
+      name = tagname
       switch(params.mapper) {
         case "bowtie2":
           """
-          ${params.bowtie2} ${params.bowtie2_parameters} -p ${task.cpu} -x ${index_name} -U ${fastq_name} &> ${name}_report.txt | samtools view -Sb - > ${name}.bam
+          ${params.bowtie2} ${params.bowtie2_parameters} -p ${task.cpu} -x ${tagname}.index -U ${fastq_name} 2> ${name}_bowtie2_report.txt | samtools view -Sb - > ${name}.bam
           ${src_path}/func/file_handle.py -f * -r
           """
         break
