@@ -54,8 +54,14 @@ params.bowtie2 = "/usr/bin/bowtie2"
 params.bowtie2_parameters = "--very-sensitive"
 params.bedtools = "/usr/bin/bedtools"
 params.samtools = "/usr/bin/samtools"
+params.quantifier = "htseq"
 params.htseq = "/usr/bin/htseq-count"
 params.htseq_parameters = "--mode=intersection-nonempty -a 10"
+params.rsem = "/usr/local/bin/rsem"
+params.rsem_parameters = ""
+if(params.mapper == "bowtie2"){
+  params.rsem_parameters = params.rsem_parameters + " --bowtie2"
+}
 params.mean = 200
 params.sd = 20
 params.annotation = ""
@@ -133,7 +139,38 @@ switch(params.mapper) {
     }
   break
   default:
-  exit 1, "Invalid paired option: ${params.mapper}. Valid options: 'salmon', 'kallisto' or 'bowtie2'"
+  exit 1, "Invalid mapper option: ${params.mapper}. Valid options: 'salmon', 'kallisto' or 'bowtie2'"
+  break
+}
+switch(params.quantifier) {
+  case "rsem":
+    log.info "rsem path : ${params.rsem}"
+    if( !file(params.rsem+"-calculate-expression").exists() ) exit 1, "rsem binaries not found at: ${params.rsem}"
+    process get_rsem_version {
+      echo true
+      input:
+        val params.rsem
+      script:
+      """
+      echo "\$(${params.bowtie2}-calculate-expression --version)"
+      """
+    }
+  break
+  case "htseq":
+    log.info "htseq path : ${params.htseq}"
+    if( !file(params.htseq).exists() ) exit 1, "htseq binaries not found at: ${params.htseq}"
+    process get_htseq_version {
+      echo true
+      input:
+        val params.htseq
+      script:
+      """
+      echo "\$(${params.htseq} -h | grep "version")"
+      """
+    }
+  break
+  default:
+  exit 1, "Invalid quantifier option: ${params.quantifier}. Valid options: 'rsem' or 'htseq'"
   break
 }
 log.info "bedtools path : ${params.bedtools}"
