@@ -9,6 +9,7 @@ pip2 install multiqc
 pip2 install click
 pip2 install jinja2
 sudo pip install cutadapt
+sudo pip2 install htseq
 
 cd /tmp
 git clone https://github.com/COMBINE-lab/salmon.git
@@ -35,3 +36,11 @@ unzip download
 cd bowtie2-2.3.2
 sudo cp bowtie2* /usr/bin/
 rm -Rf /tmp/bowtie2* /tmp/download
+
+mkdir /tmp/rsem
+cd /tmp/rsem
+git clone https://github.com/deweylab/RSEM.git
+cd RSEM
+make -j 8
+sudo make install
+rm -Rf /tmp/rsem
