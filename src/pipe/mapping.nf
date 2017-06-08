@@ -472,7 +472,7 @@ if(params.mapper in ["salmon", "kallisto"]){
       file annotation_name from dated_annotation_names_quantification
       file bams_name from sorted_mapping_output
     output:
-      file "*.counts*" into counts_output
+      file "*.count*" into counts_output
     script:
     basename = bams_name.baseName
     tagname = basename
@@ -500,10 +500,8 @@ if(params.mapper in ["salmon", "kallisto"]){
         break
         default:
           """
-          ls -l
           ${params.htseq} -r pos ${params.htseq_parameters} --format=bam ${bams_name} ${annotation_name} &> ${basename}.count
           ${src_path}/func/file_handle.py -f *.counts -r
-          ls -l
           """
         break
       }
