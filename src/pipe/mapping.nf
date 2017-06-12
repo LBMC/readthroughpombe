@@ -340,7 +340,7 @@ process indexing {
           }
           """
           gunzip -c ${index_name} > ${basename}.fasta
-          ${params.rsem}-prepare-reference -p ${task.cpu}--bowtie2 --bowtie2-path ${bowtie2_path} ${annotation} ${basename}.fasta ${basename}.index &> ${basename}_rsem_bowtie2_indexing_report.txt
+          ${params.rsem}-prepare-reference -p ${task.cpu} --bowtie2 --bowtie2-path ${bowtie2_path} ${annotation} ${basename}.fasta ${basename}.index &> ${basename}_rsem_bowtie2_indexing_report.txt
           ${src_path}/func/file_handle.py -f * -r
           if grep -q "Error" ${basename}_rsem_bowtie2_indexing_report.txt; then
             exit 1
