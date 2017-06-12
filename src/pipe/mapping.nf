@@ -58,7 +58,7 @@ params.quantifier = "htseq"
 params.htseq = "/usr/bin/htseq-count"
 params.htseq_parameters = "--mode=intersection-nonempty -a 10 -s no -t exon -i gene_id"
 params.rsem = "/usr/local/bin/rsem"
-params.rsem_parameters = ""
+params.rsem_parameters = "--paired-end  --calc-pme --calc-ci"
 if(params.mapper == "bowtie2"){
   params.rsem_parameters = params.rsem_parameters + " --bowtie2"
 }
@@ -154,7 +154,7 @@ switch(params.quantifier) {
         val params.rsem
       script:
       """
-      echo "\$(${params.bowtie2}-calculate-expression --version)"
+      echo "\$(${params.rsem}-calculate-expression --version)"
       """
     }
   break
@@ -269,7 +269,7 @@ process get_file_name_annotation {
 }
 
 dated_annotation_names
-  .into{ dated_annotation_names_split; dated_annotation_names_quantification }
+  .into{ dated_annotation_names_split; dated_annotation_names_quantification ; dated_annotation_names_rsem}
 
 if(params.mapper in ["salmon", "kallisto"]){
   process split_ref {
@@ -306,6 +306,7 @@ process indexing {
   cpu = params.cpu
   input:
     file index_name from indexing_input
+    file annotation_name from dated_annotation_names_rsem
   output:
     file "*.index*" into indexing_output
     file "*_report.txt*" into indexing_log
@@ -323,14 +324,38 @@ process indexing {
         """
       break
       case "bowtie2":
-        """
-        gunzip -c ${index_name} > ${basename}.fasta
-        ${params.bowtie2}-build --threads ${task.cpu} ${basename}.fasta ${basename}.index &> ${basename}_bowtie2_indexing_report.txt
-        ${src_path}/func/file_handle.py -f * -r
-        if grep -q "Error" ${basename}_salmon_indexing_report.txt; then
-          exit 1
-        fi
-        """
+        if(params.quantifier == "rsem"){
+          bowtie2_path = (params.bowtie2 =~ /(.*)bowtie2/)[0][1]
+          annotation_ext = (annotation_name =~ /.*(\.gff)/)[0][1]
+          switch(annotation_ext) {
+            case ".gff":
+              annotation = "--gff3 ${annotation_name}"
+            break
+            case ".gtf":
+              annotation = "--gtf ${annotation_name}"
+            break
+            default:
+              exit 1, "error: RSEM only support .gff or .gtf for annotation file ${annotation_name}"
+            break
+          }
+          """
+          gunzip -c ${index_name} > ${basename}.fasta
+          ${params.rsem}-prepare-reference -p ${task.cpu}--bowtie2 --bowtie2-path ${bowtie2_path} ${annotation} ${basename}.fasta ${basename}.index &> ${basename}_rsem_bowtie2_indexing_report.txt
+          ${src_path}/func/file_handle.py -f * -r
+          if grep -q "Error" ${basename}_rsem_bowtie2_indexing_report.txt; then
+            exit 1
+          fi
+          """
+        }else{
+          """
+          gunzip -c ${index_name} > ${basename}.fasta
+          ${params.bowtie2}-build --threads ${task.cpu} ${basename}.fasta ${basename}.index &> ${basename}_bowtie2_indexing_report.txt
+          ${src_path}/func/file_handle.py -f * -r
+          if grep -q "Error" ${basename}_bowtie2_indexing_report.txt; then
+            exit 1
+          fi
+          """
+        }
       break
       default:
         """
@@ -516,7 +541,7 @@ if(params.mapper in ["salmon", "kallisto"]){
           """
           ${params.htseq} -r pos ${params.htseq_parameters} --format=bam ${bams_name} ${annotation_name} &> ${basename}.count
           ${src_path}/func/file_handle.py -f *.counts -r
-          
+
           """
         break
       }
