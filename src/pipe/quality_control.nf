@@ -56,7 +56,7 @@ if(params.paired){
 }
 params.trimmer = "UrQt"
 params.quality_threshold = 20
-params.urqt = "/usr/bin/UrQt"
+params.urqt = "/usr/local/bin/UrQt"
 params.trimmomatic = "/usr/bin/trimmomatic"
 params.cutadapt = "/usr/bin/cutadapt"
 
