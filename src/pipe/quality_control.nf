@@ -43,6 +43,10 @@ multiqc_res_path = quality_control_path + '/multiqc'
 adaptor_removal_res_path = quality_control_path + '/adaptor'
 trimming_res_path = quality_control_path + '/trimming'
 src_path = rootDir + '/src'
+file_handle_path = "${src_path}/func/file_handle.py"
+if(config.hasProperty("docker") && config.docker.enabled){
+  file_handle_path = "/usr/bin/local/file_handle.py"
+}
 params.name = "quality control analysis"
 params.fastqc = "/usr/bin/fastqc"
 if( !file(params.fastqc).exists() ) exit 1, "fastqc binary not found at: ${params.fastqc}"
@@ -109,14 +113,14 @@ process get_file_name {
     tagname = file_name[0]
     file_name_root = file_name[0] + "*"
     """
-    ${src_path}/func/file_handle.py -f ${file_name[1][0]} ${file_name[1][1]} -c -e | \
+    ${file_handle_path} -f ${file_name[1][0]} ${file_name[1][1]} -c -e | \
     awk '{system("ln -s "\$0" ."); print(\$0)}'
     """
   } else {
     tagname = file(file_name).baseName
     file_name_root = file_name.name
     """
-    ${src_path}/func/file_handle.py -f ${file_name} -c -e | \
+    ${file_handle_path} -f ${file_name} -c -e | \
     awk '{system("ln -s "\$0" ."); print(\$0)}'
     """
   }
@@ -138,15 +142,15 @@ process fastqc {
     """
       ${params.fastqc} --quiet --outdir ./ ${file_name[0]}
       ${params.fastqc} --quiet --outdir ./ ${file_name[1]}
-      ${src_path}/func/file_handle.py -f *.html -r
-      ${src_path}/func/file_handle.py -f *.zip -r
+      ${file_handle_path} -f *.html -r
+      ${file_handle_path} -f *.zip -r
     """
   } else {
     tagname = (file_name[0] =~ /(.*)\.fastq(.gz){0,1}/)[0][1]
     """
       ${params.fastqc} --quiet --outdir ./ ${file_name}
-      ${src_path}/func/file_handle.py -f *.html -r
-      ${src_path}/func/file_handle.py -f *.zip -r
+      ${file_handle_path} -f *.html -r
+      ${file_handle_path} -f *.zip -r
     """
   }
 }
@@ -168,14 +172,14 @@ process adaptor_removal {
       basename_2 = (file_name[1] =~ /(.*)\.fastq\.gz/)[0][1]
       """
       ${params.cutadapt} ${params.adaptor_sequence} -o ${basename_1}.cutadapt.fastq.gz -p ${basename_2}.cutadapt.fastq.gz ${file_name[0]} ${file_name[1]} > ${name}_report.txt
-      ${src_path}/func/file_handle.py -f *.fastq.gz -r
+      ${file_handle_path} -f *.fastq.gz -r
       """
     } else {
       basename = (file_name =~ /(.*)\.fastq(\.gz){0,1}/)[0][1]
       tagname = basename
       """
       ${params.cutadapt} ${params.adaptor_sequence} -o ${basename}.cutadapt.fastq.gz ${file_name} > ${basename}_report.txt
-      ${src_path}/func/file_handle.py -f *.fastq.gz -r
+      ${file_handle_path} -f *.fastq.gz -r
       """
     }
   }
@@ -201,12 +205,12 @@ process trimming {
     if (params.trimmer == "cutadapt") {
     """
       ${params.cutadapt} -q ${params.quality_threshold},${params.quality_threshold} -o ${basename_1}.trimmed.fastq.gz -p ${basename_2}.trimmed.fastq.gz ${file_name[0]} ${file_name[1]} > ${name}_report.txt
-      ${src_path}/func/file_handle.py -f * -r
+      ${file_handle_path} -f * -r
     """
     }else{
     """
       ${params.urqt} --m ${task.cpus} --t ${params.quality_threshold} --gz --in ${file_name[0]} --inpair ${file_name[1]} --out ${basename_1}.trimmed.fastq.gz --outpair ${basename_2}.trimmed.fastq.gz > ${name}_report.txt
-      ${src_path}/func/file_handle.py -f * -r
+      ${file_handle_path} -f * -r
     """
     }
   } else {
@@ -215,12 +219,12 @@ process trimming {
     if (params.trimmer == "cutadapt") {
     """
       ${params.cutadapt} -q ${params.quality_threshold},${params.quality_threshold} -o ${basename}.trimmed.fastq.gz ${file_name} > ${basename}_report.txt
-      ${src_path}/func/file_handle.py -f * -r
+      ${file_handle_path} -f * -r
     """
     }else{
     """
       ${params.urqt} --m ${task.cpus} --t ${params.quality_threshold} --gz --in ${file_name} --out ${basename}.trimmed.fastq.gz > ${basename}_report.txt
-      ${src_path}/func/file_handle.py -f * -r
+      ${file_handle_path} -f * -r
     """
     }
   }
@@ -241,16 +245,16 @@ process fastqc_trimmed {
     """
       ${params.fastqc} --quiet --outdir ./ ${file_name[0]}
       ${params.fastqc} --quiet --outdir ./ ${file_name[1]}
-      ${src_path}/func/file_handle.py -f *.html -r
-      ${src_path}/func/file_handle.py -f *.zip -r
+      ${file_handle_path} -f *.html -r
+      ${file_handle_path} -f *.zip -r
     """
   } else {
     basename = (file_name =~ /(.*)\.trimmed\.fastq\.gz/)[0][1]
     tagname = basename
     """
       ${params.fastqc} --quiet --outdir ./ ${file_name}
-      ${src_path}/func/file_handle.py -f *.html -r
-      ${src_path}/func/file_handle.py -f *.zip -r
+      ${file_handle_path} -f *.html -r
+      ${file_handle_path} -f *.zip -r
     """
   }
 }
@@ -265,8 +269,8 @@ process multiqc {
     script:
     """
     ${params.multiqc} -f .
-    ${src_path}/func/file_handle.py -f multiqc_report.html -r
-    ${src_path}/func/file_handle.py -f multiqc_data -r
+    ${file_handle_path} -f multiqc_report.html -r
+    ${file_handle_path} -f multiqc_data -r
     """
 }
 
