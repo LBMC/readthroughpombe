@@ -206,7 +206,7 @@ process get_file_name_fastq {
   input:
     val fastq_name from fastq_names
   output:
-    file "*${fastq_name_root}" into dated_fastq_names
+    file "*.fastq.gz" into dated_fastq_names
   when:
     if (params.paired) {
       (fastq_name[1][0] =~ /^.*\.fastq$/ || fastq_name[1][0] =~ /^.*\.fastq\.gz$/) && (fastq_name[1][1] =~ /^.*\.fastq$/ || fastq_name[1][1] =~ /^.*\.fastq\.gz$/)
@@ -215,19 +215,35 @@ process get_file_name_fastq {
     }
   script:
   if (params.paired) {
-    tagname = (fastq_name[1][0].baseName =~ /^(.*)_(R){0,1}[0,1]\.fastq(\.gz){0,1}/)[0][1]
-    fastq_name_root = fastq_name[0] + "*"
-    """
-    ${src_path}/func/file_handle.py -f ${fastq_name[1][0]} ${fastq_name[1][1]} -c -e | \
-    awk '{system("ln -s "\$0" ."); print(\$0)}'
-    """
+    tagname = (fastq_name[1][0] =~ /.*\/(.*)_(R){0,1}[0,1]\.fastq(\.gz){0,1}/)[0][1]
+    reads_1 = (fastq_name[1][0] =~ /.*\/(.*)/)[0][1]
+    reads_2 = (fastq_name[1][1] =~ /.*\/(.*)/)[0][1]
+    if(fastq_name[1][0] =~ /.*\.gz/ || fastq_name[1][1] =~ /.*\.gz/){
+      """
+      ${src_path}/func/file_handle.py -f ${fastq_name[1][0]} ${fastq_name[1][1]} -c -e | \
+      awk '{system("ln -s "\$0" ."); print(\$0)}'
+      """
+    }else{
+      """
+      gzip -c ${fastq_name[1][0]} > ${reads_1}
+      gzip -c ${fastq_name[1][1]} > ${reads_2}
+      ${src_path}/func/file_handle.py -f ${reads_1} ${reads_2} -c -e
+      """
+    }
   } else {
-    tagname = file(fastq_name).baseName
-    fastq_name_root = fastq_name.name
-    """
-    ${src_path}/func/file_handle.py -f ${fastq_name} -c -e | \
-    awk '{system("ln -s "\$0" ."); print(\$0)}'
-    """
+    tagname = (fastq_name =~ /.*\/(.*)_(R){0,1}[0,1]\.fastq(\.gz){0,1}/)[0][1]
+    reads = (fastq_name =~ /.*\/(.*)/)[0][1]
+    if(fastq_name =~ /.*\.gz/){
+      """
+      ${src_path}/func/file_handle.py -f ${fastq_name} -c -e | \
+      awk '{system("ln -s "\$0" ."); print(\$0)}'
+      """
+    }else{
+      """
+      gzip -c ${fastq_name} > ${reads}
+      ${src_path}/func/file_handle.py -f ${reads} -c -e
+      """
+    }
   }
 }
 
@@ -516,7 +532,7 @@ if(params.mapper in ["salmon", "kallisto"]){
           """
           ${params.htseq} -r pos ${params.htseq_parameters} --format=bam ${bams_name} ${annotation_name} &> ${basename}.count
           ${src_path}/func/file_handle.py -f *.counts -r
-          
+
           """
         break
       }
