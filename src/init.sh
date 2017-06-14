@@ -10,6 +10,7 @@ pip2 install click
 pip2 install jinja2
 sudo pip install cutadapt
 sudo pip2 install htseq
+apt-get install pigz
 
 cd /tmp
 git clone https://github.com/COMBINE-lab/salmon.git
