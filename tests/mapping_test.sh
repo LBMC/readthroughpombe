@@ -1,7 +1,7 @@
 #!/bin/sh
-bin/nextflow src/pipe/mapping.nf --fastq_files 'data/examples/*tiny_R{1,2}.fastq.gz' --mapper 'salmon' --paired true --reference 'data/examples/*tiny.fasta.gz' --annotation 'data/examples/*tiny.gff'
-bin/nextflow src/pipe/mapping.nf --fastq_files 'data/examples/*tiny_S.fastq.gz' --mapper 'salmon' --paired false --reference 'data/examples/*tiny.fasta.gz' --annotation 'data/examples/*tiny.gff'
-bin/nextflow src/pipe/mapping.nf --fastq_files 'data/examples/*tiny_R{1,2}.fastq.gz' --mapper 'kallisto' --paired true --reference 'data/examples/*tiny.fasta.gz' --annotation 'data/examples/*tiny.gff'
-bin/nextflow src/pipe/mapping.nf --fastq_files 'data/examples/*tiny_S.fastq.gz' --mapper 'kallisto' --paired false --reference 'data/examples/*tiny.fasta.gz' --annotation 'data/examples/*tiny.gff'
-bin/nextflow src/pipe/mapping.nf --fastq_files 'data/examples/*tiny_R{1,2}.fastq.gz' --mapper 'bowtie2' --paired true --reference 'data/examples/*tiny.fasta.gz' --annotation 'data/examples/*tiny.gff'
-bin/nextflow src/pipe/mapping.nf --fastq_files 'data/examples/*tiny_S.fastq.gz' --mapper 'bowtie2' --paired false --reference 'data/examples/*tiny.fasta.gz' --annotation 'data/examples/*tiny.gff'
+bin/nextflow src/pipe/mapping.nf --fastq_files 'data/examples/tiny_dataset/fastq/*tiny_R{1,2}.fastq' --mapper 'salmon' --paired true --reference 'data/examples/tiny_dataset/fasta/*tiny_v2.fasta' --annotation 'data/examples/tiny_dataset/annot/*tiny.gff'
+bin/nextflow src/pipe/mapping.nf --fastq_files 'data/examples/tiny_dataset/fastq/*tiny_S.fastq' --mapper 'salmon' --paired false --reference 'data/examples/tiny_dataset/fasta/*tiny_v2.fasta' --annotation 'data/examples/tiny_dataset/annot/*tiny.gff'
+bin/nextflow src/pipe/mapping.nf --fastq_files 'data/examples/tiny_dataset/fastq/*tiny_R{1,2}.fastq' --mapper 'kallisto' --paired true --reference 'data/examples/tiny_dataset/fasta/*tiny_v2.fasta' --annotation 'data/examples/tiny_dataset/annot/*tiny.gff'
+bin/nextflow src/pipe/mapping.nf --fastq_files 'data/examples/tiny_dataset/fastq/*tiny_S.fastq' --mapper 'kallisto' --paired false --reference 'data/examples/tiny_dataset/fasta/*tiny_v2.fasta' --annotation 'data/examples/tiny_dataset/annot/*tiny.gff'
+bin/nextflow src/pipe/mapping.nf --fastq_files 'data/examples/tiny_dataset/fastq/*tiny_R{1,2}.fastq' --mapper 'bowtie2' --paired true --reference 'data/examples/tiny_dataset/fasta/*tiny_v2.fasta' --annotation 'data/examples/tiny_dataset/annot/*tiny.gff'
+bin/nextflow src/pipe/mapping.nf --fastq_files 'data/examples/tiny_dataset/fastq/*tiny_S.fastq' --mapper 'bowtie2' --paired false --reference 'data/examples/tiny_dataset/fasta/*tiny_v2.fasta' --annotation 'data/examples/tiny_dataset/annot/*tiny.gff'
