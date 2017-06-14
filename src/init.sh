@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# provide Docker with file_handle
+cp src/func/file_handle.py src/pipe/quality_control/
+
 # install nextflow
 cd bin
 wget -qO- get.nextflow.io | bash
