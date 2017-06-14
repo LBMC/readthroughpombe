@@ -215,9 +215,9 @@ process get_file_name_fastq {
     }
   script:
   if (params.paired) {
-    tagname = (fastq_name[1][0] =~ /.*\/(.*)_(R){0,1}[0,1]\.fastq(\.gz){0,1}/)[0][1]
-    reads_1 = (fastq_name[1][0] =~ /.*\/(.*)/)[0][1]
-    reads_2 = (fastq_name[1][1] =~ /.*\/(.*)/)[0][1]
+    tagname = (fastq_name[1][0] =~ /(.*\/){0,1}(.*)_(R){0,1}[0,1]\.fastq(\.gz){0,1}/)[0][2]
+    reads_1 = (fastq_name[1][0] =~ /(.*\/){0,1}(.*)/)[0][2]
+    reads_2 = (fastq_name[1][1] =~ /(.*\/){0,1}(.*)/)[0][2]
     if(fastq_name[1][0] =~ /.*\.gz/ || fastq_name[1][1] =~ /.*\.gz/){
       """
       ${src_path}/func/file_handle.py -f ${fastq_name[1][0]} ${fastq_name[1][1]} -c -e | \
@@ -231,8 +231,8 @@ process get_file_name_fastq {
       """
     }
   } else {
-    tagname = (fastq_name =~ /.*\/(.*)_(R){0,1}[0,1]\.fastq(\.gz){0,1}/)[0][1]
-    reads = (fastq_name =~ /.*\/(.*)/)[0][1]
+    tagname = (fastq_name =~ /(.*\/){0,1}(.*)_(R){0,1}[0,1]\.fastq(\.gz){0,1}/)[0][2]
+    reads = (fastq_name =~ /(.*\/){0,1}(.*)/)[0][2]
     if(fastq_name =~ /.*\.gz/){
       """
       ${src_path}/func/file_handle.py -f ${fastq_name} -c -e | \
@@ -252,16 +252,23 @@ process get_file_name_reference {
   input:
     val reference_name from reference_names
   output:
-    file "*${reference_name_root}" into dated_reference_names
+    file "*.fasta.gz" into dated_reference_names
   when:
-    reference_name =~ /^.*\.fasta$/ || reference_name =~ /^.*\.fasta\.gz$/ || reference_name =~ /^.*\.fasta\.index$/ || reference_name =~ /^.*\.fasta\.gz\.index$/
+    reference_name =~ /^.*\.fasta$/ || reference_name =~ /^.*\.fasta\.gz$/
   script:
-    tagname = file(reference_name).baseName
-    reference_name_root = reference_name.name
-    """
-    ${src_path}/func/file_handle.py -f ${reference_name} -c -e | \
-    awk '{system("ln -s "\$0" ."); print(\$0)}'
-    """
+    tagname = (reference_name =~ /(.*\/){0,1}(.*)\.fasta(\.gz){0,1}/)[0][2]
+    reference = (reference_name =~ /(.*\/){0,1}(.*)/)[0][2]
+    if(reference_name =~ /.*\.gz/){
+      """
+      ${src_path}/func/file_handle.py -f ${reference_name} -c -e | \
+      awk '{system("ln -s "\$0" ."); print(\$0)}'
+      """
+    }else{
+      """
+      gzip -c ${reference_name} > ${reference}
+      ${src_path}/func/file_handle.py -f ${reference} -c -e
+      """
+    }
 }
 
 dated_reference_names
