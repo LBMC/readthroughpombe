@@ -5,3 +5,5 @@ results/*
 __pycache__
 work
 .nextflow*
+trace.txt*
+src/pipe/quality_control/file_handle.py
