@@ -234,7 +234,7 @@ process get_file_name_fastq {
       """
     }
   } else {
-    tagname = (fastq_name =~ /(.*\/){0,1}(.*)_(R){0,1}[0,1]\.fastq(\.gz){0,1}/)[0][2]
+    tagname = (fastq_name =~ /(.*\/){0,1}(.*)\.fastq(\.gz){0,1}/)[0][2]
     reads = (fastq_name =~ /(.*\/){0,1}(.*)/)[0][2]
     if(fastq_name =~ /.*\.gz/){
       """
