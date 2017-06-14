@@ -1,5 +1,5 @@
 FROM ubuntu:16.04
-MAINTAINER Laurent Modolo
+LABEL maintainer "laurent.modolo@ens-lyon.fr"
 
 RUN apt-get update && apt-get install -y \
     wget=1.17.1-1ubuntu1.2 \
@@ -27,3 +27,5 @@ RUN git clone https://github.com/l-modolo/UrQt.git && \
   cd UrQt && \
   make && \
   cp UrQt /usr/local/bin/
+
+COPY file_handle.py /usr/bin/local/file_handle.py
