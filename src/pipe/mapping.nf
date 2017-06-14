@@ -220,10 +220,13 @@ process get_file_name_fastq {
     reads_2 = (fastq_name[1][1] =~ /(.*\/){0,1}(.*)/)[0][2]
     if(fastq_name[1][0] =~ /.*\.gz/ || fastq_name[1][1] =~ /.*\.gz/){
       """
-      ${src_path}/func/file_handle.py -f ${fastq_name[1][0]} ${fastq_name[1][1]} -c -e | \
-      awk '{system("ln -s "\$0" ."); print(\$0)}'
+      cp ${fastq_name[1][0]} ${reads_1}
+      cp ${fastq_name[1][1]} ${reads_2}
+      ${src_path}/func/file_handle.py -f ${reads_1} ${reads_2} -c -e
       """
     }else{
+      reads_1 = reads_1 + ".gz"
+      reads_2 = reads_2 + ".gz"
       """
       gzip -c ${fastq_name[1][0]} > ${reads_1}
       gzip -c ${fastq_name[1][1]} > ${reads_2}
@@ -235,10 +238,11 @@ process get_file_name_fastq {
     reads = (fastq_name =~ /(.*\/){0,1}(.*)/)[0][2]
     if(fastq_name =~ /.*\.gz/){
       """
-      ${src_path}/func/file_handle.py -f ${fastq_name} -c -e | \
-      awk '{system("ln -s "\$0" ."); print(\$0)}'
+      cp ${fastq_name} ${reads}
+      ${src_path}/func/file_handle.py -f ${reads} -c -e
       """
     }else{
+      reads = reads + ".gz"
       """
       gzip -c ${fastq_name} > ${reads}
       ${src_path}/func/file_handle.py -f ${reads} -c -e
@@ -260,10 +264,11 @@ process get_file_name_reference {
     reference = (reference_name =~ /(.*\/){0,1}(.*)/)[0][2]
     if(reference_name =~ /.*\.gz/){
       """
-      ${src_path}/func/file_handle.py -f ${reference_name} -c -e | \
-      awk '{system("ln -s "\$0" ."); print(\$0)}'
+      cp ${reference_name} ${reference}
+      ${src_path}/func/file_handle.py -f ${reference} -c -e
       """
     }else{
+      reference = reference + ".gz"
       """
       gzip -c ${reference_name} > ${reference}
       ${src_path}/func/file_handle.py -f ${reference} -c -e
@@ -279,15 +284,15 @@ process get_file_name_annotation {
   input:
     val annotation_name from annotation_names
   output:
-    file "*${file_name_root}" into dated_annotation_names
+    file "*${annotation}" into dated_annotation_names
   when:
     params.annotation != "" & (annotation_name =~ /^.*\.gtf$/ || annotation_name =~ /^.*\.bed$/ || annotation_name =~ /^.*\.gff$/ || annotation_name =~ /^.*\.vcf$/)
   script:
-    tagname = file(annotation_name).baseName
-    file_name_root = annotation_name.name
+    tagname = (annotation_name =~ /(.*\/){0,1}(.*)\.*/)[0][2]
+    annotation = (annotation_name =~ /(.*\/){0,1}(.*)/)[0][2]
     """
-    ${src_path}/func/file_handle.py -f ${annotation_name} -c -e | \
-    awk '{system("ln -s "\$0" ."); print(\$0)}'
+    cp ${annotation_name} ${annotation}
+    ${src_path}/func/file_handle.py -f ${annotation} -c -e
     """
 }
 
