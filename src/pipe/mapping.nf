@@ -303,7 +303,7 @@ if(params.mapper in ["salmon", "kallisto"]){
   process split_ref {
     tag "${tagname}"
     publishDir "${index_res_path}", mode: 'copy'
-    cpu = 12
+    cpu = params.cpu
     input:
       file reference_name from dated_reference_names_split
       file annotation_name from dated_annotation_names_split
