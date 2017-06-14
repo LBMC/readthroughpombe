@@ -44,7 +44,7 @@ adaptor_removal_res_path = quality_control_path + '/adaptor'
 trimming_res_path = quality_control_path + '/trimming'
 src_path = rootDir + '/src'
 file_handle_path = "${src_path}/func/file_handle.py"
-if(config.hasProperty("docker") && config.docker.enabled){
+if(config.docker.enabled){
   file_handle_path = "/usr/bin/local/file_handle.py"
 }
 params.name = "quality control analysis"
@@ -96,29 +96,42 @@ if (params.paired){
     .ifEmpty { exit 1, "Cannot find any fastq files matching: ${params.fastq_files}" }
 }
 
+file_names.into{
+  file_names_info;
+  file_names_file
+}
+
 process get_file_name {
   tag "${tagname}"
+  echo true
   input:
-    val file_name from file_names
+    val file_name from file_names_info
+    file reads from file_names_file
   output:
-    file "*${file_name_root}" into dated_file_names
+    file "*.fastq.gz" into dated_file_names
   when:
     if (params.paired) {
-      (file_name[1][0] =~ /^.*\.fastq$/ || file_name[1][0] =~ /^.*\.fastq\.gz$/) && (file_name[1][1] =~ /^.*\.fastq$/ || file_name[1][1] =~ /^.*\.fastq\.gz$/)
+      file_name[1][0] =~ /^.*\.fastq\.gz$/ && file_name[1][1] =~ /^.*\.fastq\.gz$/
     } else {
-      file_name =~ /^.*\.fastq$/ || file_name =~ /^.*\.fastq\.gz$/
+      file_name =~ /^.*\.fastq\.gz$/
     }
   script:
+  println file_name
+  println reads
   if (params.paired) {
     tagname = file_name[0]
-    file_name_root = file_name[0] + "*"
+    reads_1 = (file_name[1][0] =~ /.*\/(.*)/)[0][1]
+    reads_2 = (file_name[1][1] =~ /.*\/(.*)/)[0][1]
     """
-    ${file_handle_path} -f ${file_name[1][0]} ${file_name[1][1]} -c -e | \
-    awk '{system("ln -s "\$0" ."); print(\$0)}'
+    ls -lh
+    dd if=${reads[0]} of=./${reads_1}
+    dd if=${reads[1]} of=./${reads_2}
+    ${file_handle_path} -f *.fastq.gz -c -e
+    ls -lh
+    exit 1
     """
   } else {
     tagname = file(file_name).baseName
-    file_name_root = file_name.name
     """
     ${file_handle_path} -f ${file_name} -c -e | \
     awk '{system("ln -s "\$0" ."); print(\$0)}'
@@ -140,6 +153,8 @@ process fastqc {
     name = (file_name[0] =~ /(.*)_[R]{0,1}[12]\.fastq(.gz){0,1}/)[0][1]
     tagname = name
     """
+      head ${file_name[0]}
+      exit 1
       ${params.fastqc} --quiet --outdir ./ ${file_name[0]}
       ${params.fastqc} --quiet --outdir ./ ${file_name[1]}
       ${file_handle_path} -f *.html -r
