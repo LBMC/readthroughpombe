@@ -325,7 +325,10 @@ process get_file_name_reference {
 }
 
 dated_reference_names
-  .into{ dated_reference_names_split; dated_reference_names_mapping }
+  .into{
+    dated_reference_names_split;
+    dated_reference_names_mapping
+  }
 
 process get_file_name_annotation {
   tag "${tagname}"
@@ -349,7 +352,11 @@ process get_file_name_annotation {
 }
 
 dated_annotation_names
-  .into{ dated_annotation_names_split; dated_annotation_names_quantification }
+  .into{
+    dated_annotation_names_split;
+    dated_annotation_names_indexing;
+    dated_annotation_names_quantification
+  }
 
 if(params.mapper in ["salmon", "kallisto"]){
   process split_ref {
@@ -386,24 +393,36 @@ process indexing {
   cpu = params.cpu
   input:
     file index_name from indexing_input
+    file annotation_name from dated_annotation_names_indexing
   output:
     file "*.index*" into indexing_output
     file "*_report.txt*" into indexing_log
   script:
-    basename = (index_name =~ /(.*)\.fasta(\.index){0,1}/)[0][1]
+    basename = (index_name =~ /(.*)\.fasta(\.gz){0,1}/)[0][1]
     tagname = basename
     cmd_date = "${src_path}/func/file_handle.py -r -f *"
-    if ( index_name ==~ /.*\.index/) {
-      log.info "index file found. Skipping indexing step"
-    } else {
-      switch(params.mapper) {
-        case "kallisto":
+    switch(params.mapper) {
+      case "kallisto":
+        """
+        ${params.kallisto} index -k 31 --make-unique -i ${basename}.index ${index_name} > ${basename}_kallisto_indexing_report.txt
+        ${cmd_date}
+        """
+      break
+      case "bowtie2":
+        if (params.quantifier == "rsem") {
+          cmd_annotation = "--gff"
+          if(annotation_name =~ /.*\.gtf/){
+            cmd_annotation = "--gtf"
+          }
+          bowtie2_path = (params.bowtie2 =~ /(.*)bowtie2/)[0][1]
           """
-          ${params.kallisto} index -k 31 --make-unique -i ${basename}.index ${index_name} > ${basename}_kallisto_indexing_report.txt
-          ${cmd_date}
+            gunzip -c ${index_name} > ${basename}.fasta
+            ${params.rsem}-prepare-reference -p ${task.cpu} ${cmd_annotation} ${annotation_name} --bowtie2 --bowtie2-path ${bowtie2_path} ${basename}.fasta ${basename}.index &> ${basename}_bowtie2_rsem_indexing_report.txt
+            if grep -q "Error" ${basename}_bowtie2_indexing_report.txt; then
+              exit 1
+            fi
           """
-        break
-        case "bowtie2":
+        } else {
           """
           gunzip -c ${index_name} > ${basename}.fasta
           ${params.bowtie2}-build --threads ${task.cpu} ${basename}.fasta ${basename}.index &> ${basename}_bowtie2_indexing_report.txt
@@ -412,17 +431,17 @@ process indexing {
             exit 1
           fi
           """
-        break
-        default:
-          """
-          ${params.salmon} index -p ${task.cpu} -t ${index_name} -i ${basename}.index --type quasi -k 31 &> ${basename}_salmon_indexing_report.txt
-          ${cmd_date}
-          if grep -q "Error" ${basename}_salmon_indexing_report.txt; then
-            exit 1
-          fi
-          """
-        break
-      }
+        }
+      break
+      default:
+        """
+        ${params.salmon} index -p ${task.cpu} -t ${index_name} -i ${basename}.index --type quasi -k 31 &> ${basename}_salmon_indexing_report.txt
+        ${cmd_date}
+        if grep -q "Error" ${basename}_salmon_indexing_report.txt; then
+          exit 1
+        fi
+        """
+      break
     }
 }
 
