@@ -241,47 +241,53 @@ process get_file_name_fastq {
     file "*.fastq.gz" into dated_fastq_names
   when:
     if (params.paired) {
-      (fastq_name[1][0] =~ /^.*\.fastq$/ || fastq_name[1][0] =~ /^.*\.fastq\.gz$/) && (fastq_name[1][1] =~ /^.*\.fastq$/ || fastq_name[1][1] =~ /^.*\.fastq\.gz$/)
+      (fastq_name[1][0] =~ /^.*\.fastq$/ || \
+        fastq_name[1][0] =~ /^.*\.fastq\.gz$/) \
+      && (fastq_name[1][1] =~ /^.*\.fastq$/ || \
+        fastq_name[1][1] =~ /^.*\.fastq\.gz$/)
     } else {
-      fastq_name =~ /^.*\.fastq$/ || fastq_name =~ /^.*\.fastq\.gz$/
+      fastq_name =~ /^.*\.fastq$/ || \
+      fastq_name =~ /^.*\.fastq\.gz$/
     }
+
   script:
+  cmd_date = "${src_path}/func/file_handle.py -c -e -f"
+  gzip_arg = ""
+  if (gzip == params.pigz) { gzip_arg = "-p ${task.cpu}" }
+  cmd_gzip = "${gzip} ${gzip_arg} -c "
+
   if (params.paired) {
     tagname = (fastq_name[1][0] =~ /(.*\/){0,1}(.*)_(R){0,1}[0,1]\.fastq(\.gz){0,1}/)[0][2]
     reads_1 = (fastq_name[1][0] =~ /(.*\/){0,1}(.*)/)[0][2]
     reads_2 = (fastq_name[1][1] =~ /(.*\/){0,1}(.*)/)[0][2]
-    if(fastq_name[1][0] =~ /.*\.gz/ || fastq_name[1][1] =~ /.*\.gz/){
+    if (fastq_name[1][0] =~ /.*\.gz/ || fastq_name[1][1] =~ /.*\.gz/) {
       """
       cp ${fastq_name[1][0]} ${reads_1}
       cp ${fastq_name[1][1]} ${reads_2}
-      ${src_path}/func/file_handle.py -f ${reads_1} ${reads_2} -c -e
+      ${cmd_date} ${reads_1} ${reads_2}
       """
-    }else{
+    } else {
       reads_1 = reads_1 + ".gz"
       reads_2 = reads_2 + ".gz"
-      gzip_arg = ""
-      if(gzip == params.pigz){gzip_arg = "-p ${task.cpu}"}
       """
-      ${gzip} ${gzip_arg} -c ${fastq_name[1][0]} > ${reads_1}
-      ${gzip} ${gzip_arg} -c ${fastq_name[1][1]} > ${reads_2}
-      ${src_path}/func/file_handle.py -f ${reads_1} ${reads_2} -c -e
+      ${cmd_gzip} ${fastq_name[1][0]} > ${reads_1}
+      ${cmd_gzip} ${fastq_name[1][1]} > ${reads_2}
+      ${cmd_date} ${reads_1} ${reads_2}
       """
     }
   } else {
     tagname = (fastq_name =~ /(.*\/){0,1}(.*)\.fastq(\.gz){0,1}/)[0][2]
     reads = (fastq_name =~ /(.*\/){0,1}(.*)/)[0][2]
-    if(fastq_name =~ /.*\.gz/){
+    if (fastq_name =~ /.*\.gz/) {
       """
       cp ${fastq_name} ${reads}
-      ${src_path}/func/file_handle.py -f ${reads} -c -e
+      ${cmd_date} ${reads}
       """
-    }else{
+    } else {
       reads = reads + ".gz"
-      gzip_arg = ""
-      if(gzip == params.pigz){gzip_arg = "-p ${task.cpu}"}
       """
-      ${gzip} ${gzip_arg} -c ${fastq_name} > ${reads}
-      ${src_path}/func/file_handle.py -f ${reads} -c -e
+      ${cmd_gzip} ${fastq_name} > ${reads}
+      ${cmd_date} ${reads}
       """
     }
   }
