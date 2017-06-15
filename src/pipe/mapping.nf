@@ -62,6 +62,8 @@ params.rsem_parameters = ""
 if(params.mapper == "bowtie2"){
   params.rsem_parameters = params.rsem_parameters + " --bowtie2"
 }
+params.gzip = "/usr/bin/gzip"
+params.pigz = "/usr/bin/pigz"
 params.mean = 200
 params.sd = 20
 params.annotation = ""
@@ -198,11 +200,37 @@ process get_samtools_version {
   echo "\$(${params.samtools} --version | grep "samtools")"
   """
 }
+if( !file(params.pigz).exists() ){
+  log.info "pigz not found at ${params.pigz} using gzip"
+  if( !file(params.gzip).exists() ) exit 1, "gzip binary not found at: ${params.gzip}"
+  process get_gzip_version {
+    echo true
+    input:
+      val params.gzip
+    script:
+    """
+    echo "\$(${params.gzip} --version)"
+    """
+  }
+}else{
+  params.gzip = params.pigz
+  process get_pigz_version {
+    echo true
+    input:
+      val params.pigz
+    script:
+    """
+    echo "\$(${params.pigz} --version)"
+    """
+  }
+}
+
 log.info "number of cpu : ${params.cpu}"
 log.info "\n"
 
 process get_file_name_fastq {
   tag "${tagname}"
+  cpu = params.cpu
   input:
     val fastq_name from fastq_names
   output:
@@ -227,11 +255,19 @@ process get_file_name_fastq {
     }else{
       reads_1 = reads_1 + ".gz"
       reads_2 = reads_2 + ".gz"
-      """
-      gzip -c ${fastq_name[1][0]} > ${reads_1}
-      gzip -c ${fastq_name[1][1]} > ${reads_2}
-      ${src_path}/func/file_handle.py -f ${reads_1} ${reads_2} -c -e
-      """
+      if(params.pigz == params.gzip){
+        """
+        ${params.pigz} -p ${task.cpu} -c ${fastq_name[1][0]} > ${reads_1}
+        ${params.pigz} -p ${task.cpu} -c ${fastq_name[1][1]} > ${reads_2}
+        ${src_path}/func/file_handle.py -f ${reads_1} ${reads_2} -c -e
+        """
+      }else{
+        """
+        ${params.gzip} -c ${fastq_name[1][0]} > ${reads_1}
+        ${params.gzip} -c ${fastq_name[1][1]} > ${reads_2}
+        ${src_path}/func/file_handle.py -f ${reads_1} ${reads_2} -c -e
+        """
+      }
     }
   } else {
     tagname = (fastq_name =~ /(.*\/){0,1}(.*)\.fastq(\.gz){0,1}/)[0][2]
@@ -243,16 +279,24 @@ process get_file_name_fastq {
       """
     }else{
       reads = reads + ".gz"
-      """
-      gzip -c ${fastq_name} > ${reads}
-      ${src_path}/func/file_handle.py -f ${reads} -c -e
-      """
+      if(params.pigz == params.gzip){
+        """
+        ${params.pigz} -p ${task.cpu} -c ${fastq_name} > ${reads}
+        ${src_path}/func/file_handle.py -f ${reads} -c -e
+        """
+      }else{
+        """
+        ${params.gzip} -c ${fastq_name} > ${reads}
+        ${src_path}/func/file_handle.py -f ${reads} -c -e
+        """
+      }
     }
   }
 }
 
 process get_file_name_reference {
   tag "${tagname}"
+  cpu = params.cpu
   input:
     val reference_name from reference_names
   output:
@@ -269,10 +313,17 @@ process get_file_name_reference {
       """
     }else{
       reference = reference + ".gz"
-      """
-      gzip -c ${reference_name} > ${reference}
-      ${src_path}/func/file_handle.py -f ${reference} -c -e
-      """
+      if(params.pigz == params.gzip){
+        """
+        ${params.pigz} -p ${task.cpu} -c ${reference_name} > ${reference}
+        ${src_path}/func/file_handle.py -f ${reference} -c -e
+        """
+      }else{
+        """
+        ${params.gzip} -c ${reference_name} > ${reference}
+        ${src_path}/func/file_handle.py -f ${reference} -c -e
+        """
+      }
     }
 }
 
