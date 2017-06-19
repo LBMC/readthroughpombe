@@ -53,7 +53,7 @@ params.cutadapt = "/usr/local/bin/cutadapt"
 params.gzip = "/usr/bin/gzip"
 params.pigz = "/usr/bin/pigz"
 
-params.cpu = 12
+params.cpu = 4
 
 if (config.docker.enabled) {
   file_handle_path = "/usr/bin/local/file_handle.py"
@@ -191,13 +191,14 @@ dated_file_names.into{
 
 process fastqc {
   tag "${tagname}"
+  cpu = params.cpu
   publishDir "${fastqc_res_path}", mode: 'copy'
   input:
      file reads from fastqc_input
   output:
-    file "*.zip" into fastqc_output
+    file "*.{zip,html}" into fastqc_output
   script:
-    cmd_date = "${file_handle_path} -c -f *.zip"
+    cmd_date = "${file_handle_path} -c -f *.{zip,html}"
     single = reads instanceof Path
     if (single) {
       tagname = (reads =~ /(.*\/){0,1}(.*)\.fastq(\.gz){0,1}/)[0][2]
@@ -208,8 +209,7 @@ process fastqc {
     } else {
       tagname = (reads[0] =~ /(.*\/){0,1}(.*)_(R){0,1}[0,1]\.fastq(\.gz){0,1}/)[0][2]
       """
-        ${params.fastqc} --quiet --outdir ./ ${reads[0]}
-        ${params.fastqc} --quiet --outdir ./ ${reads[1]}
+        ${params.fastqc} --quiet --threads ${task.cpu} --outdir ./ ${reads[0]} ${reads[1]}
         ${cmd_date}
       """
     }
@@ -221,24 +221,24 @@ process adaptor_removal {
   input:
     file reads from adaptor_rm_input
   output:
-    file "*_cutadapt.fastq.gz" into adaptor_rm_output
+    file "*_cut*.fastq.gz" into adaptor_rm_output
     file "*_report.txt" into adaptor_rm_log
   script:
-    cmd_date = "${file_handle_path} -c -f *_cutadapt.fastq.gz"
+    cmd_date = "${file_handle_path} -c -f *_cut*.fastq.gz *_report.txt"
     single = reads instanceof Path
     if (single) {
       tagname = (reads =~ /(.*\/){0,1}(.*)\.fastq(\.gz){0,1}/)[0][2]
-      reads_0 = (reads =~ /(.*\/){0,1}(.*)\.fastq(\.gz){0,1}/)[0][2]
+      reads_0 = tagname
       """
-      ${params.cutadapt} ${params.adaptor_sequence} -o ${reads_0}_cutadapt.fastq.gz ${reads} > ${tagname}_report.txt
+      ${params.cutadapt} ${params.adaptor_sequence} -o ${reads_0}_cut.fastq.gz ${reads} > ${tagname}_report.txt
       ${cmd_date}
       """
     } else {
       tagname = (reads[0] =~ /(.*\/){0,1}(.*)_(R){0,1}[0,1]\.fastq(\.gz){0,1}/)[0][2]
-      reads_1 = (reads[0] =~ /(.*\/){0,1}(.*)\.fastq(\.gz){0,1}/)[0][2]
-      reads_2 = (reads[1] =~ /(.*\/){0,1}(.*)\.fastq(\.gz){0,1}/)[0][2]
+      reads_1 = "${tagname}_cut_R1.fastq.gz"
+      reads_2 = "${tagname}_cut_R2.fastq.gz"
       """
-      ${params.cutadapt} ${params.adaptor_sequence} -o ${reads_1}_cutadapt.fastq.gz -p ${reads_2}_cutadapt.fastq.gz ${reads[0]} ${reads[1]} > ${tagname}_report.txt
+      ${params.cutadapt} ${params.adaptor_sequence} -o ${reads_1} -p ${reads_2} ${reads[0]} ${reads[1]} > ${tagname}_report.txt
       ${cmd_date}
       """
     }
@@ -251,70 +251,68 @@ process trimming {
   input:
     file reads from adaptor_rm_output
   output:
-    file "*_trimmed.fastq.gz" into trimming_output
+    file "*_trim*.fastq.gz" into trimming_output
     file "*_report.txt" into trimming_log
   script:
+    cmd_date = "${file_handle_path} -r -f *_trim*.fastq.gz *_report.txt"
     single = reads instanceof Path
     if (single) {
-      basename = (reads =~ /(.*)_cutadapt\.fastq\.gz/)[0][1]
+      basename = (reads =~ /(.*)_cut\.fastq\.gz/)[0][1]
       tagname = basename
       if (params.trimmer == "cutadapt") {
       """
-        ${params.cutadapt} -q ${params.quality_threshold},${params.quality_threshold} -o ${basename}_trimmed.fastq.gz ${reads} > ${basename}_report.txt
-        ${file_handle_path} -f * -r
+        ${params.cutadapt} -q ${params.quality_threshold},${params.quality_threshold} -o ${basename}_trim.fastq.gz ${reads} > ${basename}_cutadapt_report.txt
+        ${cmd_date}
       """
       }else{
       """
-        ${params.urqt} --m ${task.cpus} --t ${params.quality_threshold} --gz --in ${reads} --out ${basename}_trimmed.fastq.gz > ${basename}_report.txt
-        ${file_handle_path} -f * -r
+        ${params.urqt} --m ${task.cpu} --t ${params.quality_threshold} --gz --in ${reads} --out ${basename}_trim.fastq.gz > ${basename}_UrQt_report.txt
+        ${cmd_date}
       """
       }
     } else {
-      name = (reads[0] =~ /(.*)\_(R){0,1}[12]_cutadapt\.fastq\.gz/)[0][1]
-      tagname = name
-      basename_1 = (reads[0] =~ /(.*)_cutadapt\.fastq\.gz/)[0][1]
-      basename_2 = (reads[1] =~ /(.*)_cutadapt\.fastq\.gz/)[0][1]
+      tagname = (reads[0] =~ /(.*)_cut_(R){0,1}[12]\.fastq\.gz/)[0][1]
+      basename_1 = "${tagname}_trim_R1.fastq.gz"
+      basename_2 = "${tagname}_trim_R2.fastq.gz"
       if (params.trimmer == "cutadapt") {
       """
-        ${params.cutadapt} -q ${params.quality_threshold},${params.quality_threshold} -o ${basename_1}_trimmed.fastq.gz -p ${basename_2}_trimmed.fastq.gz ${reads[0]} ${reads[1]} > ${name}_report.txt
-        ${file_handle_path} -f * -r
+        ${params.cutadapt} -q ${params.quality_threshold},${params.quality_threshold} -o ${basename_1} -p ${basename_2} ${reads[0]} ${reads[1]} > ${tagname}_cutadapt_report.txt
+        ${cmd_date}
       """
       }else{
       """
-        ${params.urqt} --m ${task.cpus} --t ${params.quality_threshold} --gz --in ${reads[0]} --inpair ${reads[1]} --out ${basename_1}_trimmed.fastq.gz --outpair ${basename_2}_trimmed.fastq.gz > ${name}_report.txt
-        ${file_handle_path} -f * -r
+        ${params.urqt} --m ${task.cpu} --t ${params.quality_threshold} --gz --in ${reads[0]} --inpair ${reads[1]} --out ${basename_1} --outpair ${basename_2} > ${tagname}_UrQt_report.txt
+        ${cmd_date}
       """
       }
     }
 }
 
-trimming_output.into{ fastqc_trimmed_input; test_trimming }
-
 process fastqc_trimmed {
   tag "${tagname}"
+  cpu = params.cpu
   publishDir "${fastqc_res_path}", mode: 'copy'
   input:
-    file file_name from fastqc_trimmed_input
+    file reads from trimming_output
   output:
     file "*_fastqc.{zip,html}" into fastqc_trimmed_output
   script:
-  if (params.paired) {
-    tagname = (file_name[0] =~ /(.*)_(R){0,1}[12]_trimmed\.fastq.gz/)[0][1]
-    """
-      ${params.fastqc} --quiet --outdir ./ ${file_name[0]}
-      ${params.fastqc} --quiet --outdir ./ ${file_name[1]}
-      ${file_handle_path} -f *.html -r
-      ${file_handle_path} -f *.zip -r
-    """
-  } else {
-    basename = (file_name =~ /(.*)_trimmed\.fastq\.gz/)[0][1]
-    tagname = basename
-    """
-      ${params.fastqc} --quiet --outdir ./ ${file_name}
-      ${file_handle_path} -f *.html -r
-      ${file_handle_path} -f *.zip -r
-    """
-  }
+    cmd_date = "${file_handle_path} -c -f *.{zip,html}"
+    single = reads instanceof Path
+    if (single) {
+      basename = (reads =~ /(.*)_trim\.fastq\.gz/)[0][1]
+      tagname = basename
+      """
+        ${params.fastqc} --quiet --outdir ./ ${reads}
+        ${cmd_date}
+      """
+    } else {
+      tagname = (reads[0] =~ /(.*)_trim_(R){0,1}[12]\.fastq.gz/)[0][1]
+      """
+        ${params.fastqc} --quiet --threads ${task.cpu} --outdir ./ ${reads[0]} ${reads[1]}
+        ${cmd_date}
+      """
+    }
 }
 
 process multiqc {
