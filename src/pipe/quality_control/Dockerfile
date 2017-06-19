@@ -3,6 +3,7 @@ LABEL maintainer "laurent.modolo@ens-lyon.fr"
 
 RUN apt-get update && apt-get install -y \
     wget=1.17.1-1ubuntu1.2 \
+    pigz=2.3.1-2 \
     git=1:2.7.4-0ubuntu1.1 \
     python-pip=8.1.1-2ubuntu0.4 \
     python3-pip=8.1.1-2ubuntu0.4 \
