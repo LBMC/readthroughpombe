@@ -44,14 +44,15 @@ adaptor_removal_res_path = quality_control_path + '/adaptor'
 trimming_res_path = quality_control_path + '/trimming'
 src_path = rootDir + '/src'
 file_handle_path = "${src_path}/func/file_handle.py"
-if(config.docker.enabled){
-  file_handle_path = "/usr/bin/local/file_handle.py"
-}
 params.name = "quality control analysis"
 params.fastqc = "/usr/bin/fastqc"
-if( !file(params.fastqc).exists() ) exit 1, "fastqc binary not found at: ${params.fastqc}"
-params.multiqc = "/usr/bin/multiqc"
-if( !file(params.multiqc).exists() ) exit 1, "multiqc binary not found at: ${params.multiqc}"
+  params.multiqc = "/usr/bin/multiqc"
+if(config.docker.enabled){
+  file_handle_path = "/usr/bin/local/file_handle.py"
+}else{
+  if( !file(params.fastqc).exists() ) exit 1, "fastqc binary not found at: ${params.fastqc}"
+  if( !file(params.multiqc).exists() ) exit 1, "multiqc binary not found at: ${params.multiqc}"
+}
 params.adaptor_removal = "cutadapt"
 params.adaptor_sequence = "-a AGATCGGAAGAG -g CTCTTCCGATCT"
 params.paired = true
@@ -124,18 +125,17 @@ process get_file_name {
     reads_2 = (file_name[1][1] =~ /.*\/(.*)/)[0][1]
     """
     ls -lh
-    dd if=${reads[0]} of=./${reads_1}
-    dd if=${reads[1]} of=./${reads_2}
+    cp ${reads[0]} ./${reads_1}
+    cp ${reads[1]} ./${reads_2}
     ${file_handle_path} -f *.fastq.gz -c -e
     ls -lh
-    exit 1
     """
   } else {
     tagname = file(file_name).baseName
     """
-    ${file_handle_path} -f ${file_name} -c -e | \
->>>>>>> 211ed4b9845ad8862ac26164176b08edaa5796ec
-    awk '{system("ln -s "\$0" ."); print(\$0)}'
+    cp ${read} ./${file_name}
+    ${file_handle_path} -f *.fastq.gz -c -e
+    ls -lh
     """
   }
 }
