@@ -46,12 +46,18 @@ src_path = rootDir + '/src'
 file_handle_path = "${src_path}/func/file_handle.py"
 params.name = "quality control analysis"
 params.fastqc = "/usr/bin/fastqc"
-  params.multiqc = "/usr/bin/multiqc"
+params.multiqc = "/usr/bin/multiqc"
+params.urqt = "/usr/local/bin/UrQt"
+params.trimmomatic = "/usr/bin/trimmomatic"
+params.cutadapt = "/usr/local/bin/cutadaptt"
 if(config.docker.enabled){
   file_handle_path = "/usr/bin/local/file_handle.py"
 }else{
   if( !file(params.fastqc).exists() ) exit 1, "fastqc binary not found at: ${params.fastqc}"
   if( !file(params.multiqc).exists() ) exit 1, "multiqc binary not found at: ${params.multiqc}"
+  if( !file(params.urqt).exists() ) exit 1, "UrQt binary not found at: ${params.urqt}"
+  if( !file(params.trimmomatic).exists() ) exit 1, "trimmomatic binary not found at: ${params.trimmomatic}"
+  if( !file(params.cutadapt).exists() ) exit 1, "cutadapt binary not found at: ${params.cutadapt}"
 }
 params.adaptor_removal = "cutadapt"
 params.adaptor_sequence = "-a AGATCGGAAGAG -g CTCTTCCGATCT"
@@ -61,9 +67,6 @@ if(params.paired){
 }
 params.trimmer = "UrQt"
 params.quality_threshold = 20
-params.urqt = "/usr/local/bin/UrQt"
-params.trimmomatic = "/usr/bin/trimmomatic"
-params.cutadapt = "/usr/bin/cutadapt"
 
 if(params.paired != true && params.paired != false){
    exit 1, "Invalid paired option: ${params.paired}. Valid options: 'true' or 'false'"
@@ -104,7 +107,6 @@ file_names.into{
 
 process get_file_name {
   tag "${tagname}"
-  echo true
   input:
     val file_name from file_names_info
     file reads from file_names_file
@@ -124,18 +126,15 @@ process get_file_name {
     reads_1 = (file_name[1][0] =~ /.*\/(.*)/)[0][1]
     reads_2 = (file_name[1][1] =~ /.*\/(.*)/)[0][1]
     """
-    ls -lh
     cp ${reads[0]} ./${reads_1}
     cp ${reads[1]} ./${reads_2}
     ${file_handle_path} -f *.fastq.gz -c -e
-    ls -lh
     """
   } else {
     tagname = file(file_name).baseName
     """
     cp ${read} ./${file_name}
     ${file_handle_path} -f *.fastq.gz -c -e
-    ls -lh
     """
   }
 }
@@ -154,8 +153,6 @@ process fastqc {
     name = (file_name[0] =~ /(.*)_[R]{0,1}[12]\.fastq(.gz){0,1}/)[0][1]
     tagname = name
     """
-      head ${file_name[0]}
-      exit 1
       ${params.fastqc} --quiet --outdir ./ ${file_name[0]}
       ${params.fastqc} --quiet --outdir ./ ${file_name[1]}
       ${file_handle_path} -f *.html -r
