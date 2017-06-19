@@ -44,14 +44,26 @@ adaptor_removal_res_path = quality_control_path + '/adaptor'
 trimming_res_path = quality_control_path + '/trimming'
 src_path = rootDir + '/src'
 file_handle_path = "${src_path}/func/file_handle.py"
-if(config.docker.enabled){
-  file_handle_path = "/usr/bin/local/file_handle.py"
-}
 params.name = "quality control analysis"
 params.fastqc = "/usr/bin/fastqc"
-if( !file(params.fastqc).exists() ) exit 1, "fastqc binary not found at: ${params.fastqc}"
 params.multiqc = "/usr/bin/multiqc"
-if( !file(params.multiqc).exists() ) exit 1, "multiqc binary not found at: ${params.multiqc}"
+params.urqt = "/usr/local/bin/UrQt"
+params.trimmomatic = "/usr/bin/trimmomatic"
+params.cutadapt = "/usr/local/bin/cutadapt"
+params.gzip = "/usr/bin/gzip"
+params.pigz = "/usr/bin/pigz"
+
+params.cpu = 12
+
+if(config.docker.enabled){
+  file_handle_path = "/usr/bin/local/file_handle.py"
+}else{
+  if( !file(params.fastqc).exists() ) exit 1, "fastqc binary not found at: ${params.fastqc}"
+  if( !file(params.multiqc).exists() ) exit 1, "multiqc binary not found at: ${params.multiqc}"
+  if( !file(params.urqt).exists() ) exit 1, "UrQt binary not found at: ${params.urqt}"
+  if( !file(params.trimmomatic).exists() ) exit 1, "trimmomatic binary not found at: ${params.trimmomatic}"
+  if( !file(params.cutadapt).exists() ) exit 1, "cutadapt binary not found at: ${params.cutadapt}"
+}
 params.adaptor_removal = "cutadapt"
 params.adaptor_sequence = "-a AGATCGGAAGAG -g CTCTTCCGATCT"
 params.paired = true
@@ -60,10 +72,6 @@ if(params.paired){
 }
 params.trimmer = "UrQt"
 params.quality_threshold = 20
-params.urqt = "/usr/local/bin/UrQt"
-params.trimmomatic = "/usr/bin/trimmomatic"
-params.cutadapt = "/usr/bin/cutadapt"
-
 if(params.paired != true && params.paired != false){
    exit 1, "Invalid paired option: ${params.paired}. Valid options: 'true' or 'false'"
 }
@@ -86,6 +94,35 @@ if (params.trimmer == 'cutadapt') {
 }else{
   log.info "UrQt path : ${params.urqt}"
 }
+gzip = ""
+if(config.docker.enabled || file(params.pigz).exists() ){
+  gzip = params.pigz
+  process get_pigz_version {
+    echo true
+    input:
+      val params.pigz
+    script:
+    """
+    echo "\$(${params.pigz} --version)" &> grep pigz
+    """
+  }
+  gzip = params.pigz
+}else{
+  log.info "pigz not found at ${params.pigz} using gzip"
+  if( !file(params.gzip).exists() ) exit 1, "gzip binary not found at: ${params.gzip}"
+  process get_gzip_version {
+    echo true
+    input:
+      val params.gzip
+    script:
+    """
+    echo "\$(${params.gzip} --version)"
+    """
+  }
+  gzip = params.gzip
+}
+log.info "gz software: ${gzip}"
+log.info "number of cpu : ${params.cpu}"
 log.info "\n"
 
 if (params.paired){
@@ -103,40 +140,63 @@ file_names.into{
 
 process get_file_name {
   tag "${tagname}"
-  echo true
+  cpu = params.cpu
   input:
-    val file_name from file_names_info
-    file reads from file_names_file
+    val fastq_name from file_names_info
+    file reads_file from file_names_file
   output:
     file "*.fastq.gz" into dated_file_names
   when:
     if (params.paired) {
-      file_name[1][0] =~ /^.*\.fastq\.gz$/ && file_name[1][1] =~ /^.*\.fastq\.gz$/
+      (fastq_name[1][0] =~ /^.*\.fastq$/ || \
+        fastq_name[1][0] =~ /^.*\.fastq\.gz$/) \
+      && (fastq_name[1][1] =~ /^.*\.fastq$/ || \
+        fastq_name[1][1] =~ /^.*\.fastq\.gz$/)
     } else {
-      file_name =~ /^.*\.fastq\.gz$/
+      fastq_name =~ /^.*\.fastq$/ || \
+      fastq_name =~ /^.*\.fastq\.gz$/
     }
   script:
-  println file_name
-  println reads
-  if (params.paired) {
-    tagname = file_name[0]
-    reads_1 = (file_name[1][0] =~ /.*\/(.*)/)[0][1]
-    reads_2 = (file_name[1][1] =~ /.*\/(.*)/)[0][1]
-    """
-    ls -lh
-    dd if=${reads[0]} of=./${reads_1}
-    dd if=${reads[1]} of=./${reads_2}
-    ${file_handle_path} -f *.fastq.gz -c -e
-    ls -lh
-    exit 1
-    """
-  } else {
-    tagname = file(file_name).baseName
-    """
-    ${file_handle_path} -f ${file_name} -c -e | \
-    awk '{system("ln -s "\$0" ."); print(\$0)}'
-    """
-  }
+    cmd_date = "${file_handle_path} -c -e -f"
+    gzip_arg = ""
+    if (gzip == params.pigz) { gzip_arg = "-p ${task.cpu}" }
+    cmd_gzip = "${gzip} ${gzip_arg} -c "
+
+    if (params.paired) {
+      tagname = (fastq_name[1][0] =~ /(.*\/){0,1}(.*)_(R){0,1}[0,1]\.fastq(\.gz){0,1}/)[0][2]
+      reads_1 = (fastq_name[1][0] =~ /(.*\/){0,1}(.*)/)[0][2]
+      reads_2 = (fastq_name[1][1] =~ /(.*\/){0,1}(.*)/)[0][2]
+      if (fastq_name[1][0] =~ /.*\.gz/ || fastq_name[1][1] =~ /.*\.gz/) {
+        """
+        cp ${reads_file[0]} ./${reads_1}
+        cp ${reads_file[1]} ./${reads_2}
+        ${cmd_date} *.fastq.gz
+        """
+      } else {
+        reads_1 = reads_1 + ".gz"
+        reads_2 = reads_2 + ".gz"
+        """
+        ${cmd_gzip} ${reads_file[0]} > ${reads_1}
+        ${cmd_gzip} ${reads_file[1]} > ${reads_2}
+        ${cmd_date} ${reads_1} ${reads_2}
+        """
+      }
+    } else {
+      tagname = (fastq_name =~ /(.*\/){0,1}(.*)\.fastq(\.gz){0,1}/)[0][2]
+      reads = (fastq_name =~ /(.*\/){0,1}(.*)/)[0][2]
+      if (fastq_name =~ /.*\.gz/) {
+        """
+        cp ${reads_file} ./${reads}
+        ${cmd_date} *.fastq.gz
+        """
+      } else {
+        reads = reads + ".gz"
+        """
+        ${cmd_gzip} ${reads} > ${reads}
+        ${cmd_date} ${reads}
+        """
+      }
+    }
 }
 
 dated_file_names.into{ fastqc_input; adaptor_rm_input}
@@ -153,8 +213,6 @@ process fastqc {
     name = (file_name[0] =~ /(.*)_[R]{0,1}[12]\.fastq(.gz){0,1}/)[0][1]
     tagname = name
     """
-      head ${file_name[0]}
-      exit 1
       ${params.fastqc} --quiet --outdir ./ ${file_name[0]}
       ${params.fastqc} --quiet --outdir ./ ${file_name[1]}
       ${file_handle_path} -f *.html -r
