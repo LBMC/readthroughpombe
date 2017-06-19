@@ -59,9 +59,8 @@ params.htseq = "/usr/bin/htseq-count"
 params.htseq_parameters = "--mode=intersection-nonempty -a 10 -s no -t exon -i gene_id"
 params.rsem = "/usr/local/bin/rsem"
 params.rsem_parameters = ""
-if(params.mapper == "bowtie2"){
-  params.rsem_parameters = params.rsem_parameters + " --bowtie2"
-}
+params.gzip = "/usr/bin/gzip"
+params.pigz = "/usr/bin/pigz"
 params.mean = 200
 params.sd = 20
 params.annotation = ""
@@ -147,14 +146,18 @@ switch(params.mapper) {
 switch(params.quantifier) {
   case "rsem":
     log.info "rsem path : ${params.rsem}"
-    if( !file(params.rsem+"-calculate-expression").exists() ) exit 1, "rsem binaries not found at: ${params.rsem}"
+    if( !file(params.rsem+"-prepare-reference").exists() ) exit 1, "rsem binaries not found at: ${params.rsem}-prepare-reference"
+    if( !file(params.rsem+"-calculate-expression").exists() ) exit 1, "rsem binaries not found at: ${params.rsem}-calculate-expression"
+    if (!params.mapper in ["bowtie2"]) {
+      exit 1, "RSEM can only work with bowtie2"
+    }
     process get_rsem_version {
       echo true
       input:
         val params.rsem
       script:
       """
-      echo "\$(${params.bowtie2}-calculate-expression --version)"
+      echo "\$(${params.rsem}-calculate-expression --version)"
       """
     }
   break
@@ -198,103 +201,196 @@ process get_samtools_version {
   echo "\$(${params.samtools} --version | grep "samtools")"
   """
 }
+gzip = ""
+if( file(params.pigz).exists() ){
+  gzip = params.pigz
+  process get_pigz_version {
+    echo true
+    input:
+      val params.pigz
+    script:
+    """
+    echo "\$(${params.pigz} --version)" &> grep pigz
+    """
+  }
+  gzip = params.pigz
+}else{
+  log.info "pigz not found at ${params.pigz} using gzip"
+  if( !file(params.gzip).exists() ) exit 1, "gzip binary not found at: ${params.gzip}"
+  process get_gzip_version {
+    echo true
+    input:
+      val params.gzip
+    script:
+    """
+    echo "\$(${params.gzip} --version)"
+    """
+  }
+  gzip = params.gzip
+}
+log.info "gz software: ${gzip}"
 log.info "number of cpu : ${params.cpu}"
 log.info "\n"
+mapper = params.mapper
+rsem_parameters = params.rsem_parameters
+if (params.mapper == "bowtie2" && params.quantifier == "rsem") {
+  mapper = "bowtie2+rsem"
+  bowtie2_path = (params.bowtie2 =~ /(.*)bowtie2/)[0][1]
+  rsem_parameters = rsem_parameters + " --bowtie2 --bowtie2-path ${bowtie2_path}"
+}
+log.info "test ${mapper}"
+log.info "test ${rsem_parameters}"
 
 process get_file_name_fastq {
   tag "${tagname}"
+  cpu = params.cpu
   input:
     val fastq_name from fastq_names
   output:
-    file "*${fastq_name_root}" into dated_fastq_names
+    file "*.fastq.gz" into dated_fastq_names
   when:
     if (params.paired) {
-      (fastq_name[1][0] =~ /^.*\.fastq$/ || fastq_name[1][0] =~ /^.*\.fastq\.gz$/) && (fastq_name[1][1] =~ /^.*\.fastq$/ || fastq_name[1][1] =~ /^.*\.fastq\.gz$/)
+      (fastq_name[1][0] =~ /^.*\.fastq$/ || \
+        fastq_name[1][0] =~ /^.*\.fastq\.gz$/) \
+      && (fastq_name[1][1] =~ /^.*\.fastq$/ || \
+        fastq_name[1][1] =~ /^.*\.fastq\.gz$/)
     } else {
-      fastq_name =~ /^.*\.fastq$/ || fastq_name =~ /^.*\.fastq\.gz$/
+      fastq_name =~ /^.*\.fastq$/ || \
+      fastq_name =~ /^.*\.fastq\.gz$/
     }
+
   script:
-  if (params.paired) {
-    tagname = (fastq_name[1][0].baseName =~ /^(.*)_(R){0,1}[0,1]\.fastq(\.gz){0,1}/)[0][1]
-    fastq_name_root = fastq_name[0] + "*"
-    """
-    ${src_path}/func/file_handle.py -f ${fastq_name[1][0]} ${fastq_name[1][1]} -c -e | \
-    awk '{system("ln -s "\$0" ."); print(\$0)}'
-    """
-  } else {
-    tagname = file(fastq_name).baseName
-    fastq_name_root = fastq_name.name
-    """
-    ${src_path}/func/file_handle.py -f ${fastq_name} -c -e | \
-    awk '{system("ln -s "\$0" ."); print(\$0)}'
-    """
-  }
+    cmd_date = "${src_path}/func/file_handle.py -c -e -f"
+    gzip_arg = ""
+    if (gzip == params.pigz) { gzip_arg = "-p ${task.cpu}" }
+    cmd_gzip = "${gzip} ${gzip_arg} -c "
+
+    if (params.paired) {
+      tagname = (fastq_name[1][0] =~ /(.*\/){0,1}(.*)_(R){0,1}[0,1]\.fastq(\.gz){0,1}/)[0][2]
+      reads_1 = (fastq_name[1][0] =~ /(.*\/){0,1}(.*)/)[0][2]
+      reads_2 = (fastq_name[1][1] =~ /(.*\/){0,1}(.*)/)[0][2]
+      if (fastq_name[1][0] =~ /.*\.gz/ || fastq_name[1][1] =~ /.*\.gz/) {
+        """
+        cp ${fastq_name[1][0]} ${reads_1}
+        cp ${fastq_name[1][1]} ${reads_2}
+        ${cmd_date} ${reads_1} ${reads_2}
+        """
+      } else {
+        reads_1 = reads_1 + ".gz"
+        reads_2 = reads_2 + ".gz"
+        """
+        ${cmd_gzip} ${fastq_name[1][0]} > ${reads_1}
+        ${cmd_gzip} ${fastq_name[1][1]} > ${reads_2}
+        ${cmd_date} ${reads_1} ${reads_2}
+        """
+      }
+    } else {
+      tagname = (fastq_name =~ /(.*\/){0,1}(.*)\.fastq(\.gz){0,1}/)[0][2]
+      reads = (fastq_name =~ /(.*\/){0,1}(.*)/)[0][2]
+      if (fastq_name =~ /.*\.gz/) {
+        """
+        cp ${fastq_name} ${reads}
+        ${cmd_date} ${reads}
+        """
+      } else {
+        reads = reads + ".gz"
+        """
+        ${cmd_gzip} ${fastq_name} > ${reads}
+        ${cmd_date} ${reads}
+        """
+      }
+    }
 }
 
 process get_file_name_reference {
   tag "${tagname}"
+  cpu = params.cpu
   input:
     val reference_name from reference_names
   output:
-    file "*${reference_name_root}" into dated_reference_names
+    file "*.fasta.gz" into dated_reference_names
   when:
-    reference_name =~ /^.*\.fasta$/ || reference_name =~ /^.*\.fasta\.gz$/ || reference_name =~ /^.*\.fasta\.index$/ || reference_name =~ /^.*\.fasta\.gz\.index$/
+    reference_name =~ /^.*\.fasta$/ || \
+    reference_name =~ /^.*\.fasta\.gz$/
   script:
-    tagname = file(reference_name).baseName
-    reference_name_root = reference_name.name
-    """
-    ${src_path}/func/file_handle.py -f ${reference_name} -c -e | \
-    awk '{system("ln -s "\$0" ."); print(\$0)}'
-    """
+    tagname = (reference_name =~ /(.*\/){0,1}(.*)\.fasta(\.gz){0,1}/)[0][2]
+    reference = (reference_name =~ /(.*\/){0,1}(.*)/)[0][2]
+    cmd_date = "${src_path}/func/file_handle.py -c -e -f"
+
+    if (reference_name =~ /.*\.gz/) {
+      """
+      cp ${reference_name} ${reference}
+      ${cmd_date} ${reference}
+      """
+    } else {
+      reference = reference + ".gz"
+      gzip_arg = ""
+      if(gzip == params.pigz){gzip_arg = "-p ${task.cpu}"}
+      """
+      ${gzip} ${gzip_arg} -c ${reference_name} > ${reference}
+      ${cmd_date} ${reference}
+      """
+    }
 }
 
 dated_reference_names
-  .into{ dated_reference_names_split; dated_reference_names_mapping }
+  .into{
+    dated_reference_names_split;
+    dated_reference_names_mapping
+  }
 
 process get_file_name_annotation {
   tag "${tagname}"
   input:
     val annotation_name from annotation_names
   output:
-    file "*${file_name_root}" into dated_annotation_names
+    file "*${annotation}" into dated_annotation_names
   when:
-    params.annotation != "" & (annotation_name =~ /^.*\.gtf$/ || annotation_name =~ /^.*\.bed$/ || annotation_name =~ /^.*\.gff$/ || annotation_name =~ /^.*\.vcf$/)
+    params.annotation != "" && \
+    (annotation_name =~ /^.*\.gtf$/ || \
+      annotation_name =~ /^.*\.bed$/ || \
+      annotation_name =~ /^.*\.gff$/ || \
+      annotation_name =~ /^.*\.vcf$/)
   script:
-    tagname = file(annotation_name).baseName
-    file_name_root = annotation_name.name
+    tagname = (annotation_name =~ /(.*\/){0,1}(.*)\.*/)[0][2]
+    annotation = (annotation_name =~ /(.*\/){0,1}(.*)/)[0][2]
     """
-    ${src_path}/func/file_handle.py -f ${annotation_name} -c -e | \
-    awk '{system("ln -s "\$0" ."); print(\$0)}'
+    cp ${annotation_name} ${annotation}
+    ${src_path}/func/file_handle.py -c -e -f ${annotation}
     """
 }
 
 dated_annotation_names
-  .into{ dated_annotation_names_split; dated_annotation_names_quantification }
+  .into{
+    dated_annotation_names_split;
+    dated_annotation_names_indexing;
+    dated_annotation_names_quantification
+  }
 
-if(params.mapper in ["salmon", "kallisto"]){
+if(mapper in ["salmon", "kallisto"]){
   process split_ref {
     tag "${tagname}"
     publishDir "${index_res_path}", mode: 'copy'
-    cpu = 12
+    cpu = params.cpu
     input:
       file reference_name from dated_reference_names_split
       file annotation_name from dated_annotation_names_split
     output:
       file "*_split.fasta" into indexing_input
     when:
-      params.mapper in ["salmon", "kallisto"]
+      mapper in ["salmon", "kallisto"]
     script:
-    if ( reference_name ==~ /.*\.index/){
-      exit 1, "Cannot split an index file with a annotation file. Provide a fasta file instead of  ${params.reference}"
-    }
-    basename = (reference_name =~ /(.*)(\.gff){0,1}(\.bed){0,1}(\.vcf){0,1}(\.gtf){0,1}/)[0][1]
-    basename_fasta = (reference_name =~ /(.*)\.fasta/)[0][1]
-    tagname = basename
-    """
-    cat ${basename} | gunzip > ${basename_fasta}.fasta
-    ${params.bedtools} getfasta -fi ${basename_fasta}.fasta -bed ${annotation_name} -fo ${basename_fasta}_split.fasta
-    ${src_path}/func/file_handle.py -f *_split.fasta -r
-    """
+      if ( reference_name ==~ /.*\.index/) {
+        exit 1, "Cannot split an index file with a annotation file. Provide a fasta file instead of  ${params.reference}"
+      }
+      basename = (reference_name =~ /(.*)(\.gff){0,1}(\.bed){0,1}(\.vcf){0,1}(\.gtf){0,1}/)[0][1]
+      basename_fasta = (reference_name =~ /(.*)\.fasta/)[0][1]
+      tagname = basename
+      """
+      cat ${basename} | gunzip > ${basename_fasta}.fasta
+      ${params.bedtools} getfasta -fi ${basename_fasta}.fasta -bed ${annotation_name} -fo ${basename_fasta}_split.fasta
+      ${src_path}/func/file_handle.py -r -f *_split.fasta
+      """
   }
 }else{
   dated_reference_names_split.into{ indexing_input }
@@ -306,109 +402,133 @@ process indexing {
   cpu = params.cpu
   input:
     file index_name from indexing_input
+    file annotation_name from dated_annotation_names_indexing
   output:
     file "*.index*" into indexing_output
     file "*_report.txt*" into indexing_log
   script:
-  basename = (index_name =~ /(.*)\.fasta(\.index){0,1}/)[0][1]
-  tagname = basename
-  if ( index_name ==~ /.*\.index/) {
-    log.info "index file found. Skipping indexing step"
-  } else {
-    switch(params.mapper) {
+    basename = (index_name =~ /(.*)\.fasta(\.gz){0,1}/)[0][1]
+    tagname = basename
+    cmd_date = "${src_path}/func/file_handle.py -r -f *"
+    switch(mapper) {
       case "kallisto":
         """
         ${params.kallisto} index -k 31 --make-unique -i ${basename}.index ${index_name} > ${basename}_kallisto_indexing_report.txt
-        ${src_path}/func/file_handle.py -f * -r
+        ${cmd_date}
         """
       break
       case "bowtie2":
         """
         gunzip -c ${index_name} > ${basename}.fasta
         ${params.bowtie2}-build --threads ${task.cpu} ${basename}.fasta ${basename}.index &> ${basename}_bowtie2_indexing_report.txt
-        ${src_path}/func/file_handle.py -f * -r
-        if grep -q "Error" ${basename}_salmon_indexing_report.txt; then
+        ${cmd_date}
+        if grep -q "Error" ${basename}_bowtie2_indexing_report.txt; then
           exit 1
         fi
+        """
+      break
+      case "bowtie2+rsem":
+        cmd_annotation = "--gff"
+        if(annotation_name =~ /.*\.gtf/){
+          cmd_annotation = "--gtf"
+        }
+        """
+          gunzip -c ${index_name} > ${basename}.fasta
+          ${params.rsem}-prepare-reference -p ${task.cpu} ${rsem_parameters} ${cmd_annotation} ${annotation_name} ${basename}.fasta ${basename}.index &> ${basename}_bowtie2_rsem_indexing_report.txt
+          if grep -q "Error" ${basename}_bowtie2_indexing_report.txt; then
+            exit 1
+          fi
         """
       break
       default:
         """
         ${params.salmon} index -p ${task.cpu} -t ${index_name} -i ${basename}.index --type quasi -k 31 &> ${basename}_salmon_indexing_report.txt
-        ${src_path}/func/file_handle.py -f * -r
+        ${cmd_date}
         if grep -q "Error" ${basename}_salmon_indexing_report.txt; then
           exit 1
         fi
         """
       break
     }
-  }
 }
 
-if(params.mapper in ["salmon", "kallisto"]){
+if(mapper in ["salmon", "kallisto", "bowtie2+rsem"]){
   process mapping_quantification {
     tag "${tagname}"
-    publishDir "${counts_res_path}", mode: 'copy'
+    publishDir "${counts_res_path}", mode: 'copy', pattern: "*.{counts,json,h5,results,cnt,model,theta,_report.txt}"
+    publishDir "${bams_res_path}", mode: 'copy', pattern: "*{.bam,_report.txt}"
     cpu = params.cpu
     input:
       file index_name from indexing_output
       file fastq_name from dated_fastq_names
     output:
-      file "*.{counts,json,h5}" into counts_output
+      file "*.{counts,json,h5,results,cnt,model,theta,bam}" into counts_output
       file "*_report.txt" into mapping_log
     script:
-    if (params.paired) {
-      name = (fastq_name[0] =~ /(.*)\_(R){0,1}[12]\.fastq(\.gz){0,1}/)[0][1]
-      tagname = name
-      basename_1 = (fastq_name[0] =~ /(.*)\.fastq(\.gz){0,1}/)[0][1]
-      basename_2 = (fastq_name[1] =~ /(.*)\.fastq(\.gz){0,1}/)[0][1]
-      switch(params.mapper) {
-        case "kallisto":
-          """
-          ${params.kallisto} quant -i ${index_name} -t ${task.cpu} ${params.kallisto_parameters} -o ./ ${fastq_name[0]} ${fastq_name[1]} &> ${name}_kallisto_report.txt
-          mv abundance.tsv ${name}.counts
-          mv run_info.json ${name}_info.json
-          mv abundance.h5 ${name}.h5
-          ${src_path}/func/file_handle.py -f *_report.txt *.counts *.json *.h5 -r
-          if grep -q "Error" ${name}_kallisto_report.txt; then
-            exit 1
-          fi
-          """
-        break
-        default:
-          """
-          ${params.salmon} quant -i ${index_name} -p ${task.cpu} ${params.salmon_parameters} -1 ${fastq_name[0]} -2 ${fastq_name[1]} -o ${name}.counts > ${name}_salmon_report.txt
-          ${src_path}/func/file_handle.py -f * -r
-          """
-        break
-      }
-    } else {
-      name = (fastq_name =~ /(.*)\.fastq(\.gz){0,1}/)[0][1]
-      tagname = name
-      switch(params.mapper) {
-        case "kallisto":
-          kallisto_parameters = params.kallisto_parameters + " -l ${params.mean} -s ${params.sd}"
-          """
-          ${params.kallisto} quant -i ${index_name} -t ${task.cpu} --single ${kallisto_parameters} -o ./ ${fastq_name} &> ${name}_report.txt
-          mv abundance.tsv ${name}.counts
-          mv run_info.json ${name}_info.json
-          mv abundance.h5 ${name}.h5
-          ${src_path}/func/file_handle.py -f * -r
-          if grep -q "Error" ${name}_kallisto_report.txt; then
-            exit 1
-          fi
-          """
-        break
-        default:
-          salmon_parameters = params.salmon_parameters + " --fldMean ${params.mean} --fldSD ${params.sd}"
-          """
-          ${params.salmon} quant -i ${index_name} -p ${task.cpu} ${salmon_parameters} -r ${fastq_name} -o ${name}.counts > ${name}_report.txt
-          ${src_path}/func/file_handle.py -f * -r
-          """
-        break
+      cmd_date = "${src_path}/func/file_handle.py -r -f"
+      if (params.paired) {
+        name = (fastq_name[0] =~ /(.*)\_(R){0,1}[12]\.fastq(\.gz){0,1}/)[0][1]
+        tagname = name
+        basename_1 = (fastq_name[0] =~ /(.*)\.fastq(\.gz){0,1}/)[0][1]
+        basename_2 = (fastq_name[1] =~ /(.*)\.fastq(\.gz){0,1}/)[0][1]
+        basename_index = (index_name[0] =~ /(.*\.index).*/)[0][1]
+        switch(mapper) {
+          case "kallisto":
+            """
+            ${params.kallisto} quant -i ${basename_index} -t ${task.cpu} ${params.kallisto_parameters} -o ./ ${fastq_name[0]} ${fastq_name[1]} &> ${name}_kallisto_report.txt
+            mv abundance.tsv ${name}.counts
+            mv run_info.json ${name}_info.json
+            mv abundance.h5 ${name}.h5
+            ${cmd_date} *_report.txt *.counts *.json *.h5
+            if grep -q "Error" ${name}_kallisto_report.txt; then
+              exit 1
+            fi
+            """
+          break
+          case "bowtie2+rsem":
+            """
+            ${params.rsem}-calculate-expression -p ${task.cpu} ${rsem_parameters} --paired-end ${fastq_name[0]} ${fastq_name[1]} ${basename_index} ${tagname} 2> ${name}_bowtie2_rsem_report.txt
+            mv ${tagname}.stat/* .
+            ${cmd_date} "*.{results,cnt,model,theta,bam}"
+            if grep -q "Error" ${name}_bowtie2_rsem_report.txt; then
+              exit 1
+            fi
+            """
+          break
+          default:
+            """
+            ${params.salmon} quant -i ${basename_index} -p ${task.cpu} ${params.salmon_parameters} -1 ${fastq_name[0]} -2 ${fastq_name[1]} -o ${name}.counts > ${name}_salmon_report.txt
+            ${cmd_date} *
+            """
+          break
+        }
+      } else {
+        name = (fastq_name =~ /(.*)\.fastq(\.gz){0,1}/)[0][1]
+        tagname = name
+        switch(mapper) {
+          case "kallisto":
+            kallisto_parameters = params.kallisto_parameters + " -l ${params.mean} -s ${params.sd}"
+            """
+            ${params.kallisto} quant -i ${index_name} -t ${task.cpu} --single ${kallisto_parameters} -o ./ ${fastq_name} &> ${name}_report.txt
+            mv abundance.tsv ${name}.counts
+            mv run_info.json ${name}_info.json
+            mv abundance.h5 ${name}.h5
+            ${cmd_date} *
+            if grep -q "Error" ${name}_kallisto_report.txt; then
+              exit 1
+            fi
+            """
+          break
+          default:
+            salmon_parameters = params.salmon_parameters + " --fldMean ${params.mean} --fldSD ${params.sd}"
+            """
+            ${params.salmon} quant -i ${index_name} -p ${task.cpu} ${salmon_parameters} -r ${fastq_name} -o ${name}.counts > ${name}_report.txt
+            ${cmd_date} *
+            """
+          break
+        }
       }
     }
-  }
 }else{
   process mapping {
     tag "${tagname}"
@@ -422,38 +542,29 @@ if(params.mapper in ["salmon", "kallisto"]){
       file "*_report.txt" into mapping_log
     script:
     tagname = (index_name[0] =~ /(.*)\.index.*/)[0][1]
+    cmd_date = "${src_path}/func/file_handle.py -r -f *"
     if (params.paired) {
       name = (fastq_name[0] =~ /(.*)\_(R){0,1}[12]\.fastq(\.gz){0,1}/)[0][1]
       basename_1 = (fastq_name[0] =~ /(.*)\.fastq(\.gz){0,1}/)[0][1]
       basename_2 = (fastq_name[1] =~ /(.*)\.fastq(\.gz){0,1}/)[0][1]
-      switch(params.mapper) {
-        case "bowtie2":
+      switch(mapper) {
+        default:
           """
           ${params.bowtie2} ${params.bowtie2_parameters} -p ${task.cpu} -x ${tagname}.index -1 ${fastq_name[0]} -2 ${fastq_name[1]} 2> ${name}_bowtie2_report.txt | samtools view -Sb - > ${name}.bam
-          ${src_path}/func/file_handle.py -f * -r
+          ${cmd_date}
           if grep -q "Error" ${name}_bowtie2_report.txt; then
             exit 1
           fi
           """
         break
-        default:
-          """
-            echo "test"
-          """
-        break
       }
     } else {
       name = tagname
-      switch(params.mapper) {
-        case "bowtie2":
-          """
-          ${params.bowtie2} ${params.bowtie2_parameters} -p ${task.cpu} -x ${tagname}.index -U ${fastq_name} 2> ${name}_bowtie2_report.txt | samtools view -Sb - > ${name}.bam
-          ${src_path}/func/file_handle.py -f * -r
-          """
-        break
+      switch(mapper) {
         default:
           """
-          echo "test"
+          ${params.bowtie2} ${params.bowtie2_parameters} -p ${task.cpu} -x ${tagname}.index -U ${fastq_name} 2> ${name}_bowtie2_report.txt | samtools view -Sb - > ${name}.bam
+          ${cmd_date}
           """
         break
       }
@@ -473,7 +584,7 @@ if(params.mapper in ["salmon", "kallisto"]){
     tagname = basename
     """
     ${params.samtools} sort -@ ${task.cpu} -O bam -o ${basename}_sorted.bam ${bams_name}
-    ${src_path}/func/file_handle.py -f *_sorted.bam -r
+    ${src_path}/func/file_handle.py -r -f *_sorted.bam
     """
   }
 
@@ -490,33 +601,22 @@ if(params.mapper in ["salmon", "kallisto"]){
     script:
     basename = bams_name.baseName
     tagname = basename
-    if(params.paired){
+    cmd_date = "${src_path}/func/file_handle.py -r -f *.counts"
+    if (params.paired) {
       switch(params.quantifier) {
-        case "rsem":
-          """
-          echo "test"
-          """
-        break
         default:
           """
           ${params.htseq} -r pos ${params.htseq_parameters} --format=bam ${bams_name} ${annotation_name} &> ${basename}.count
-          ${src_path}/func/file_handle.py -f *.counts -r
+          ${cmd_date}
           """
         break
       }
-    }else{
+    } else {
       switch(params.quantifier) {
-        case "rsem":
-          params.rsem_parameters = params.rsem_parameters + " --fragment-length-mean ${params.mean} --fragment-length-sd ${params.sd}"
-          """
-          echo "test"
-          """
-        break
         default:
           """
           ${params.htseq} -r pos ${params.htseq_parameters} --format=bam ${bams_name} ${annotation_name} &> ${basename}.count
-          ${src_path}/func/file_handle.py -f *.counts -r
-          
+          ${cmd_date}
           """
         break
       }
