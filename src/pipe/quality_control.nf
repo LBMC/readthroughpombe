@@ -50,6 +50,11 @@ params.multiqc = "/usr/bin/multiqc"
 params.urqt = "/usr/local/bin/UrQt"
 params.trimmomatic = "/usr/bin/trimmomatic"
 params.cutadapt = "/usr/local/bin/cutadapt"
+params.gzip = "/usr/bin/gzip"
+params.pigz = "/usr/bin/pigz"
+
+params.cpu = 12
+
 if(config.docker.enabled){
   file_handle_path = "/usr/bin/local/file_handle.py"
 }else{
@@ -67,7 +72,6 @@ if(params.paired){
 }
 params.trimmer = "UrQt"
 params.quality_threshold = 20
-
 if(params.paired != true && params.paired != false){
    exit 1, "Invalid paired option: ${params.paired}. Valid options: 'true' or 'false'"
 }
@@ -136,9 +140,10 @@ file_names.into{
 
 process get_file_name {
   tag "${tagname}"
+  cpu = params.cpu
   input:
-    val file_name from file_names_info
-    file reads from file_names_file
+    val fastq_name from file_names_info
+    file reads_file from file_names_file
   output:
     file "*.fastq.gz" into dated_file_names
   when:
@@ -163,16 +168,16 @@ process get_file_name {
       reads_2 = (fastq_name[1][1] =~ /(.*\/){0,1}(.*)/)[0][2]
       if (fastq_name[1][0] =~ /.*\.gz/ || fastq_name[1][1] =~ /.*\.gz/) {
         """
-        cp ${reads[0]} ./${reads_1}
-        cp ${reads[1]} ./${reads_2}
+        cp ${reads_file[0]} ./${reads_1}
+        cp ${reads_file[1]} ./${reads_2}
         ${cmd_date} *.fastq.gz
         """
       } else {
         reads_1 = reads_1 + ".gz"
         reads_2 = reads_2 + ".gz"
         """
-        ${cmd_gzip} ${fastq_name[1][0]} > ${reads_1}
-        ${cmd_gzip} ${fastq_name[1][1]} > ${reads_2}
+        ${cmd_gzip} ${reads_file[0]} > ${reads_1}
+        ${cmd_gzip} ${reads_file[1]} > ${reads_2}
         ${cmd_date} ${reads_1} ${reads_2}
         """
       }
@@ -181,13 +186,13 @@ process get_file_name {
       reads = (fastq_name =~ /(.*\/){0,1}(.*)/)[0][2]
       if (fastq_name =~ /.*\.gz/) {
         """
-        cp ${read} ./${file_name}
+        cp ${reads_file} ./${reads}
         ${cmd_date} *.fastq.gz
         """
       } else {
         reads = reads + ".gz"
         """
-        ${cmd_gzip} ${fastq_name} > ${reads}
+        ${cmd_gzip} ${reads} > ${reads}
         ${cmd_date} ${reads}
         """
       }
