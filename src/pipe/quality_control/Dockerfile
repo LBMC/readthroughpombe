@@ -14,9 +14,9 @@ RUN apt-get update && apt-get install -y \
     libbz2-dev=1.0.6-8 \
     liblzma-dev=5.1.1alpha+20120614-2ubuntu2 \
    && rm -rf /var/lib/apt/lists/*
-RUN pip3 install argparse==1.4.0
-RUN pip install numpy==1.12.1 Cython==0.25.2 && \
-  pip install multiqc==0.9 htseq==0.7.2 cutadapt=1.14
+RUN pip3 install --system argparse==1.4.0
+RUN pip install --system numpy==1.12.1 Cython==0.25.2 && \
+  pip install --system multiqc==0.9 htseq==0.7.2 cutadapt==1.14
 
 RUN wget https://repo.continuum.io/miniconda/Miniconda3-4.3.21-Linux-x86_64.sh && \
   bash Miniconda3-4.3.21-Linux-x86_64.sh -b && \
