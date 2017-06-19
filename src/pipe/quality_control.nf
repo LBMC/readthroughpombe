@@ -49,7 +49,7 @@ params.fastqc = "/usr/bin/fastqc"
 params.multiqc = "/usr/bin/multiqc"
 params.urqt = "/usr/local/bin/UrQt"
 params.trimmomatic = "/usr/bin/trimmomatic"
-params.cutadapt = "/usr/local/bin/cutadaptt"
+params.cutadapt = "/usr/local/bin/cutadapt"
 if(config.docker.enabled){
   file_handle_path = "/usr/bin/local/file_handle.py"
 }else{
