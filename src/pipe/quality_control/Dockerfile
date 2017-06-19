@@ -31,9 +31,10 @@ RUN git clone https://github.com/l-modolo/UrQt.git && \
   cp UrQt /usr/local/bin/
 
 #install fastqc
-RUN wget http://www.bioinformatics.babraham.ac.uk/projects/fastqc/fastqc_v0.11.5_source.zip && \
-  unzip fastqc_v0.11.5_source.zip && \
-  mv fastqc_* /opt/fastqc && \
-  ln -s /opt/fastqc/fastqc /usr/bin/local/fastqc
+RUN wget http://www.bioinformatics.babraham.ac.uk/projects/fastqc/fastqc_v0.11.5.zip && \
+  unzip fastqc_v0.11.5.zip && \
+  mv FastQC /opt/FastQC && \
+  ln -s /opt/FastQC/fastqc /usr/local/bin/fastqc && \
+  chmod +x /usr/local/bin/fastqc
 
 COPY file_handle.py /usr/bin/local/file_handle.py
