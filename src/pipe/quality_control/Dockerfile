@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y \
     python-pip=8.1.1-2ubuntu0.4 \
     python3-pip=8.1.1-2ubuntu0.4 \
     build-essential=12.1ubuntu2 \
+    fastqc=0.11.4+dfsg-3 \
     trimmomatic=0.35+dfsg-1 \
     zlib1g-dev=1:1.2.8.dfsg-2ubuntu4.1 \
     libfreetype6=2.6.1-0.1ubuntu2.3 \
@@ -14,7 +15,7 @@ RUN apt-get update && apt-get install -y \
     liblzma-dev=5.1.1alpha+20120614-2ubuntu2 \
    && rm -rf /var/lib/apt/lists/*
 RUN pip3 install argparse==1.4.0
-RUN pip install numpy==1.12.1 && \
+RUN pip install numpy==1.12.1 Cython==0.25.2 && \
   pip install multiqc==0.9 htseq==0.7.2
 
 RUN wget https://repo.continuum.io/miniconda/Miniconda3-4.3.21-Linux-x86_64.sh && \
