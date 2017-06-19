@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y \
     python-pip=8.1.1-2ubuntu0.4 \
     python3-pip=8.1.1-2ubuntu0.4 \
     build-essential=12.1ubuntu2 \
-    fastqc=0.11.4+dfsg-3 \
+    unzip=6.0-20ubuntu1 \
     trimmomatic=0.35+dfsg-1 \
     zlib1g-dev=1:1.2.8.dfsg-2ubuntu4.1 \
     libfreetype6=2.6.1-0.1ubuntu2.3 \
@@ -29,5 +29,11 @@ RUN git clone https://github.com/l-modolo/UrQt.git && \
   cd UrQt && \
   make && \
   cp UrQt /usr/local/bin/
+
+#install fastqc
+RUN wget http://www.bioinformatics.babraham.ac.uk/projects/fastqc/fastqc_v0.11.5_source.zip && \
+  unzip fastqc_v0.11.5_source.zip && \
+  mv fastqc_* /opt/fastqc && \
+  ln -s /opt/fastqc/fastqc /usr/bin/local/fastqc
 
 COPY file_handle.py /usr/bin/local/file_handle.py
