@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# provide Docker with file_handle
+cp src/func/file_handle.py src/pipe/quality_control/
+
 # install nextflow
 cd bin
 wget -qO- get.nextflow.io | bash
@@ -10,6 +13,7 @@ pip2 install click
 pip2 install jinja2
 sudo pip install cutadapt
 sudo pip2 install htseq
+apt-get install pigz
 
 cd /tmp
 git clone https://github.com/COMBINE-lab/salmon.git
