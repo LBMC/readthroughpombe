@@ -3,7 +3,7 @@ MAINTAINER Laurent Modolo
 
 ENV SALMON_VERSION 0.8.2
 ENV KALLISTO_VERSION 0.43.1
-ENV BOWTIE2_version 2.3.2
+ENV BOWTIE2_VERSION 2.3.2
 
 ENV PACKAGES curl=7.47.0-1ubuntu2.2 \
     git=1:2.7.4-0ubuntu1.1 \
@@ -33,19 +33,21 @@ RUN pip3 install argparse==1.4.0
 RUN pip install setuptools==36.0.1 && \
     pip install multiqc==0.9
 
+RUN curl -k -L  https://github.com/COMBINE-lab/salmon/archive/v${SALMON_VERSION}.tar.gz -o salmon-v${SALMON_VERSION}.tar.gz && \
+    tar xzf salmon-v${SALMON_VERSION}.tar.gz && \
+    cd salmon-${SALMON_VERSION} && \
+    mkdir build && \
+    cd build && \
+    sh ../scripts/fetchRapMap.sh && \
+    cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local && make && make install
 
-RUN  git clone https://github.com/pachterlab/kallisto.git && \
-  cd kallisto && \
-  git checkout tags/v0.43.1 && \
-  mkdir build && \
-  cmake && \
-  make && \
-  make install && \
-  cd .. && rm -Rf kallisto
+RUN  curl -k -L  https://github.com/pachterlab/kallisto/releases/download/v${KALLISTO_VERSION}/kallisto_linux-v${KALLISTO_VERSION}.tar.gz -o kallisto_linux-v${KALLISTO_VERSION}.tar.gz && \
+  tar xzf kallisto_linux-v${KALLISTO_VERSION}.tar.gz && \
+  cp kallisto_linux-v${KALLISTO_VERSION}/kallisto /usr/local/bin/
 
-RUN wget https://sourceforge.net/projects/bowtie-bio/files/bowtie2/2.3.2/bowtie2-2.3.2-linux-x86_64.zip/download && \
-  unzip download && \
-  cd bowtie2-2.3.2 && \
+RUN curl -k -L  https://sourceforge.net/projects/bowtie-bio/files/bowtie2/${BOWTIE2_VERSION}/bowtie2-${BOWTIE2_VERSION}-linux-x86_64.zip/download -o bowtie2-${BOWTIE2_VERSION}.zip && \
+  unzip bowtie2-${BOWTIE2_VERSION}.zip && \
+  cd bowtie2-${BOWTIE2_VERSION} && \
   cp bowtie2* /usr/bin/ && \
   cd .. && rm -Rf bowtie2* download
 
