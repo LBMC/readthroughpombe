@@ -19,5 +19,27 @@ RUN git clone https://github.com/COMBINE-lab/salmon.git && \
   mkdir build && \
   cmake -DFETCH_BOOST=TRUE -DCMAKE_INSTALL_PREFIX=/usr/  && \
   make  && \
+  make install && \
+  cd .. && rm -Rf salmon
+
+RUN  git clone https://github.com/pachterlab/kallisto.git && \
+  cd kallisto && \
+  git checkout tags/v0.43.1 -b master && \
+  mkdir build && \
+  cmake && \
+  make && \
+  make install && \
+  cd .. && rm -Rf kallisto
+
+RUN wget https://sourceforge.net/projects/bowtie-bio/files/bowtie2/2.3.2/bowtie2-2.3.2-linux-x86_64.zip/download && \
+  unzip download && \
+  cd bowtie2-2.3.2 && \
+  cp bowtie2* /usr/bin/ && \
+  cd .. && rm -Rf bowtie2* download
+
+RUN  git clone https://github.com/deweylab/RSEM.git
+  cd RSEM && \
+  git checkout tags/v1.3.0 -b master && \
+  make && \
   sudo make install && \
-  rm -Rf /tmp/salmon
+  cd .. && rm -Rf RSEM
