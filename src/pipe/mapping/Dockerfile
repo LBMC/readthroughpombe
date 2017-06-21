@@ -7,9 +7,10 @@ RUN apt-get update && apt-get install -y \
     python-pip=8.1.1-2ubuntu0.4 \
     python3-pip=8.1.1-2ubuntu0.4 \
     build-essential=12.1ubuntu2 \
+    cmake=3.5.1-1ubuntu3 \
     zlib1g-dev=1:1.2.8.dfsg-2ubuntu4.1 \
     libbz2-dev=1.0.6-8 \
-    cmake=3.5.1-1ubuntu3 \
+    libdivsufsort3=2.0.1-2 \
     liblzma-dev=5.1.1alpha+20120614-2ubuntu2 \
    && rm -rf /var/lib/apt/lists/*
 
