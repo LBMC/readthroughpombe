@@ -55,7 +55,7 @@ RUN  git clone https://github.com/deweylab/RSEM.git && \
   cd RSEM && \
   git checkout tags/v1.3.0 && \
   make && \
-  sudo make install && \
+  make install && \
   cd .. && rm -Rf RSEM
 
 COPY file_handle.py /usr/bin/local/file_handle.py

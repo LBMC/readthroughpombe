@@ -2,6 +2,7 @@
 
 # provide Docker with file_handle
 cp src/func/file_handle.py src/pipe/quality_control/
+cp src/func/file_handle.py src/pipe/mapping/
 
 # install nextflow
 cd bin
