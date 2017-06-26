@@ -414,8 +414,12 @@ process indexing {
         """
       break
       case "bowtie2":
+        gzip_arg = ""
+        if(gzip == params.pigz){gzip_arg = "-p ${task.cpu}"}
+        cmd_gzip = "${gzip} ${gzip_arg} -c -d"
         """
-        gunzip -c ${index_name} > ${basename}.fasta
+        ls -l
+        ${cmd_gzip} ${index_name} > ${basename}.fasta
         ${params.bowtie2}-build --threads ${task.cpu} ${basename}.fasta ${basename}.index &> ${basename}_bowtie2_indexing_report.txt
         ${cmd_date}
         if grep -q "Error" ${basename}_bowtie2_indexing_report.txt; then
@@ -428,12 +432,15 @@ process indexing {
         if(annotation_name =~ /.*\.gtf/){
           cmd_annotation = "--gtf"
         }
+        gzip_arg = ""
+        if(gzip == params.pigz){gzip_arg = "-p ${task.cpu}"}
+        cmd_gzip = "${gzip} ${gzip_arg} -c -d"
         """
-          gunzip -c ${index_name} > ${basename}.fasta
-          ${params.rsem}-prepare-reference -p ${task.cpu} ${rsem_parameters} ${cmd_annotation} ${annotation_name} ${basename}.fasta ${basename}.index &> ${basename}_bowtie2_rsem_indexing_report.txt
-          if grep -q "Error" ${basename}_bowtie2_indexing_report.txt; then
-            exit 1
-          fi
+        ${cmd_gzip} ${index_name} > ${basename}.fasta
+        ${params.rsem}-prepare-reference -p ${task.cpu} ${rsem_parameters} ${cmd_annotation} ${annotation_name} ${basename}.fasta ${basename}.index &> ${basename}_bowtie2_rsem_indexing_report.txt
+        if grep -q "Error" ${basename}_bowtie2_rsem_indexing_report.txt; then
+          exit 1
+        fi
         """
       break
       default:
