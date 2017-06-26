@@ -300,13 +300,13 @@ process get_file_name_reference {
     file "*.fasta.gz" into dated_reference_names
   script:
     if (!(
-      refs =~ /^.*\.fasta$/ || \
-      refs =~ /^.*\.fasta\.gz$/
+      reference_name =~ /^.*\.fasta$/ || \
+      reference_name =~ /^.*\.fasta\.gz$/
       )) {
-      exit 1, "Can only work with fasta or fasta.gz files: ${refs}"
+      exit 1, "Can only work with fasta or fasta.gz files: ${reference_name}"
     }
-    tagname = (refs =~ /(.*\/){0,1}(.*)\.fasta(\.gz){0,1}/)[0][2]
-    reference = (refs =~ /(.*\/){0,1}(.*)/)[0][2]
+    tagname = (reference_name =~ /(.*\/){0,1}(.*)\.fasta(\.gz){0,1}/)[0][2]
+    reference = (reference_name =~ /(.*\/){0,1}(.*)/)[0][2]
     cmd_date = "${file_handle_path} -c -e -f"
 
     if (reference_name =~ /.*\.gz/) {
