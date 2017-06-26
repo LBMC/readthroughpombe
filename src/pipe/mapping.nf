@@ -336,19 +336,19 @@ process get_file_name_annotation {
   input:
     set val(annotation_name), file(annot) from annotation_names
   output:
-    file "*${annotation}" into dated_annotation_names
+    file "*.{gtf,bed,gff,vcf}" into dated_annotation_names
   script:
     if (!(
       params.annotation != "" && \
-        (annot =~ /^.*\.gtf$/ || \
-          annot =~ /^.*\.bed$/ || \
-          annot =~ /^.*\.gff$/ || \
-          annot =~ /^.*\.vcf$/)
+        (annotation_name =~ /^.*\.gtf$/ || \
+          annotation_name =~ /^.*\.bed$/ || \
+          annotation_name =~ /^.*\.gff$/ || \
+          annotation_name =~ /^.*\.vcf$/)
       )) {
-      exit 1, "Can only work with gtf, bed, gff or vcf files: ${annot}"
+      exit 1, "Can only work with gtf, bed, gff or vcf files: ${annotation_name}"
     }
-    tagname = (annot =~ /(.*\/){0,1}(.*)\.*/)[0][2]
-    annotation = (annot =~ /(.*\/){0,1}(.*)/)[0][2]
+    tagname = (annotation_name =~ /(.*\/){0,1}(.*)\.*/)[0][2]
+    annotation = (annotation_name =~ /(.*\/){0,1}(.*)/)[0][2]
     """
     cp ${annot} ${annotation}
     ${file_handle_path} -c -e -f ${annotation}
