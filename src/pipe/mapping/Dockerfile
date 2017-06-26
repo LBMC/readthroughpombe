@@ -23,7 +23,9 @@ ENV PACKAGES curl=7.47.0-1ubuntu2.2 \
     libbz2-dev=1.0.6-8 \
     zlib1g-dev=1:1.2.8.dfsg-2ubuntu4.1 \
     libjemalloc-dev=3.6.0-9ubuntu1 \
-    libdivsufsort-dev=2.0.1-2
+    libdivsufsort-dev=2.0.1-2 \
+    bedtools=2.25.0-1 \
+    samtools=0.1.19-1ubuntu1
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends ${PACKAGES} && \
@@ -48,7 +50,7 @@ RUN  curl -k -L  https://github.com/pachterlab/kallisto/releases/download/v${KAL
 RUN curl -k -L  https://sourceforge.net/projects/bowtie-bio/files/bowtie2/${BOWTIE2_VERSION}/bowtie2-${BOWTIE2_VERSION}-linux-x86_64.zip/download -o bowtie2-${BOWTIE2_VERSION}.zip && \
   unzip bowtie2-${BOWTIE2_VERSION}.zip && \
   cd bowtie2-${BOWTIE2_VERSION} && \
-  cp bowtie2* /usr/bin/ && \
+  cp bowtie2* /usr/local/bin/ && \
   cd .. && rm -Rf bowtie2* download
 
 RUN  git clone https://github.com/deweylab/RSEM.git && \
