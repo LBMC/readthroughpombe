@@ -294,7 +294,6 @@ process get_fastq_name {
 process get_file_name_reference {
   tag "${tagname}"
   cpu = params.cpu
-  echo true
   input:
     file refs from reference_names
   output:
@@ -312,7 +311,6 @@ process get_file_name_reference {
 
     if (refs =~ /.*\.gz/) {
       """
-      cp ${refs} ./${reference}
       ${cmd_date} ${reference}
       """
     } else {
@@ -334,27 +332,24 @@ dated_reference_names
 
 process get_file_name_annotation {
   tag "${tagname}"
-  echo true
   input:
-    set val(annotation_name), file(annot) from annotation_names
+    file annot from annotation_names
   output:
     file "*.{gtf,bed,gff,vcf}" into dated_annotation_names
   script:
     if (!(
       params.annotation != "" && \
-        (annotation_name =~ /^.*\.gtf$/ || \
-          annotation_name =~ /^.*\.bed$/ || \
-          annotation_name =~ /^.*\.gff$/ || \
-          annotation_name =~ /^.*\.vcf$/)
+        (annot =~ /^.*\.gtf$/ || \
+          annot =~ /^.*\.bed$/ || \
+          annot =~ /^.*\.gff$/ || \
+          annot =~ /^.*\.vcf$/)
       )) {
-      exit 1, "Can only work with gtf, bed, gff or vcf files: ${annotation_name}"
+      exit 1, "Can only work with gtf, bed, gff or vcf files: ${annot}"
     }
-    tagname = (annotation_name =~ /(.*\/){0,1}(.*)\.*/)[0][2]
-    annotation = (annotation_name =~ /(.*\/){0,1}(.*)/)[0][2]
+    tagname = (annot =~ /(.*\/){0,1}(.*)\.*/)[0][2]
+    annotation = (annot =~ /(.*\/){0,1}(.*)/)[0][2]
     """
-    cp -L ${annot} ./${annotation}
     ${file_handle_path} -c -e -f ${annotation}
-    ls -l
     """
 }
 
