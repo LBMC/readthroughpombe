@@ -24,6 +24,7 @@ ENV PACKAGES curl=7.47.0-1ubuntu2.2 \
     zlib1g-dev=1:1.2.8.dfsg-2ubuntu4.1 \
     libjemalloc-dev=3.6.0-9ubuntu1 \
     libdivsufsort-dev=2.0.1-2 \
+    libtbb2=4.4~20151115-0ubuntu3 \
     bedtools=2.25.0-1 \
     samtools=0.1.19-1ubuntu1
 
