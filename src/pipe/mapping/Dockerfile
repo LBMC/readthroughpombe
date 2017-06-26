@@ -32,9 +32,9 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends ${PACKAGES} && \
     apt-get clean
 
-RUN pip3 install argparse==1.4.0
-RUN pip install setuptools==36.0.1 && \
-    pip install multiqc==0.9
+RUN pip3 install --system argparse==1.4.0
+RUN pip install --system numpy==1.12.1 setuptools==36.0.1 && \
+    pip install --system multiqc==0.9 htseq==0.8.0
 
 RUN curl -k -L  https://github.com/COMBINE-lab/salmon/archive/v${SALMON_VERSION}.tar.gz -o salmon-v${SALMON_VERSION}.tar.gz && \
     tar xzf salmon-v${SALMON_VERSION}.tar.gz && \
