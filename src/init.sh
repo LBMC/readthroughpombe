@@ -20,7 +20,7 @@ cd /tmp
 git clone https://github.com/COMBINE-lab/salmon.git
 cd /tmp/salmon
 mkdir build
-cmake -DFETCH_BOOST=TRUE -DCMAKE_INSTALL_PREFIX=/usr/
+cmake -DFETCH_BOOST=TRUE -DCMAKE_INSTALL_PREFIX=/usr/local/
 make
 sudo make install
 rm -Rf /tmp/salmon
@@ -39,7 +39,7 @@ cd /tmp
 wget https://sourceforge.net/projects/bowtie-bio/files/bowtie2/2.3.2/bowtie2-2.3.2-linux-x86_64.zip/download
 unzip download
 cd bowtie2-2.3.2
-sudo cp bowtie2* /usr/bin/
+sudo cp bowtie2* /usr/local/bin/
 rm -Rf /tmp/bowtie2* /tmp/download
 
 mkdir /tmp/rsem
