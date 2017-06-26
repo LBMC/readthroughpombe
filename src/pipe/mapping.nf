@@ -365,7 +365,6 @@ if(mapper in ["salmon", "kallisto"]){
     tag "${tagname}"
     publishDir "${index_res_path}", mode: 'copy'
     cpu = params.cpu
-    echo true
     input:
       file reference_name from dated_reference_names_split
       file annotation_name from dated_annotation_names_split
@@ -384,10 +383,7 @@ if(mapper in ["salmon", "kallisto"]){
       if(gzip == params.pigz){gzip_arg = "-p ${task.cpu}"}
       cmd_gzip = "${gzip} ${gzip_arg} -c -d"
       """
-      ls -l
-      head ${reference_name}
       ${cmd_gzip} ${reference_name} > ${basename_fasta}.fasta
-      ls -l
       ${params.bedtools} getfasta -fi ${basename_fasta}.fasta -bed ${annotation_name} -fo ${basename_fasta}_split.fasta
       ${file_handle_path} -r -f *_split.fasta
       """
