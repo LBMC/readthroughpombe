@@ -265,7 +265,7 @@ process get_file_name_fastq {
     }
 
   script:
-    cmd_date = "${src_path}/func/file_handle.py -c -e -f"
+    cmd_date = "${file_handle_path} -c -e -f"
     gzip_arg = ""
     if (gzip == params.pigz) { gzip_arg = "-p ${task.cpu}" }
     cmd_gzip = "${gzip} ${gzip_arg} -c "
@@ -320,7 +320,7 @@ process get_file_name_reference {
   script:
     tagname = (reference_name =~ /(.*\/){0,1}(.*)\.fasta(\.gz){0,1}/)[0][2]
     reference = (reference_name =~ /(.*\/){0,1}(.*)/)[0][2]
-    cmd_date = "${src_path}/func/file_handle.py -c -e -f"
+    cmd_date = "${file_handle_path} -c -e -f"
 
     if (reference_name =~ /.*\.gz/) {
       """
@@ -361,7 +361,7 @@ process get_file_name_annotation {
     annotation = (annotation_name =~ /(.*\/){0,1}(.*)/)[0][2]
     """
     cp ${annotation_name} ${annotation}
-    ${src_path}/func/file_handle.py -c -e -f ${annotation}
+    ${file_handle_path} -c -e -f ${annotation}
     """
 }
 
@@ -394,7 +394,7 @@ if(mapper in ["salmon", "kallisto"]){
       """
       cat ${basename} | gunzip > ${basename_fasta}.fasta
       ${params.bedtools} getfasta -fi ${basename_fasta}.fasta -bed ${annotation_name} -fo ${basename_fasta}_split.fasta
-      ${src_path}/func/file_handle.py -r -f *_split.fasta
+      ${file_handle_path} -r -f *_split.fasta
       """
   }
 }else{
@@ -414,7 +414,7 @@ process indexing {
   script:
     basename = (index_name =~ /(.*)\.fasta(\.gz){0,1}/)[0][1]
     tagname = basename
-    cmd_date = "${src_path}/func/file_handle.py -r -f *"
+    cmd_date = "${file_handle_path} -r -f *"
     switch(mapper) {
       case "kallisto":
         """
@@ -470,7 +470,7 @@ if(mapper in ["salmon", "kallisto", "bowtie2+rsem"]){
       file "*.{counts,json,h5,results,cnt,model,theta,bam}" into counts_output
       file "*_report.txt" into mapping_log
     script:
-      cmd_date = "${src_path}/func/file_handle.py -r -f"
+      cmd_date = "${file_handle_path} -r -f"
       if (params.paired) {
         name = (fastq_name[0] =~ /(.*)\_(R){0,1}[12]\.fastq(\.gz){0,1}/)[0][1]
         tagname = name
@@ -547,7 +547,7 @@ if(mapper in ["salmon", "kallisto", "bowtie2+rsem"]){
       file "*_report.txt" into mapping_log
     script:
     tagname = (index_name[0] =~ /(.*)\.index.*/)[0][1]
-    cmd_date = "${src_path}/func/file_handle.py -r -f *"
+    cmd_date = "${file_handle_path} -r -f *"
     if (params.paired) {
       name = (fastq_name[0] =~ /(.*)\_(R){0,1}[12]\.fastq(\.gz){0,1}/)[0][1]
       basename_1 = (fastq_name[0] =~ /(.*)\.fastq(\.gz){0,1}/)[0][1]
@@ -589,7 +589,7 @@ if(mapper in ["salmon", "kallisto", "bowtie2+rsem"]){
     tagname = basename
     """
     ${params.samtools} sort -@ ${task.cpu} -O bam -o ${basename}_sorted.bam ${bams_name}
-    ${src_path}/func/file_handle.py -r -f *_sorted.bam
+    ${file_handle_path} -r -f *_sorted.bam
     """
   }
 
@@ -606,7 +606,7 @@ if(mapper in ["salmon", "kallisto", "bowtie2+rsem"]){
     script:
     basename = bams_name.baseName
     tagname = basename
-    cmd_date = "${src_path}/func/file_handle.py -r -f *.counts"
+    cmd_date = "${file_handle_path} -r -f *.counts"
     if (params.paired) {
       switch(params.quantifier) {
         default:
