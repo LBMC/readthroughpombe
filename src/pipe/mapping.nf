@@ -237,7 +237,6 @@ if (params.mapper == "bowtie2" && params.quantifier == "rsem") {
 
 process get_fastq_name {
   tag "${tagname}"
-  cpu = params.cpu
   input:
     set val(fastq_name), file(reads) from fastq_files
   output:
@@ -245,7 +244,7 @@ process get_fastq_name {
   script:
     cmd_date = "${file_handle_path} -c -e -f"
     gzip_arg = ""
-    if (gzip == params.pigz) { gzip_arg = "-p ${task.cpu}" }
+    if (gzip == params.pigz) { gzip_arg = "-p ${task.cpus}" }
     cmd_gzip = "${gzip} ${gzip_arg} -c "
     if (!(
       reads =~ /^.*\.fastq$/ || \
@@ -293,7 +292,6 @@ process get_fastq_name {
 
 process get_file_name_reference {
   tag "${tagname}"
-  cpu = params.cpu
   input:
     file refs from reference_names
   output:
@@ -316,7 +314,7 @@ process get_file_name_reference {
     } else {
       reference = reference + ".gz"
       gzip_arg = ""
-      if(gzip == params.pigz){gzip_arg = "-p ${task.cpu}"}
+      if(gzip == params.pigz){gzip_arg = "-p ${task.cpus}"}
       """
       ${gzip} ${gzip_arg} -c ${refs} > ${reference}
       ${cmd_date} ${reference}
@@ -364,7 +362,7 @@ if(mapper in ["salmon", "kallisto"]){
   process split_ref {
     tag "${tagname}"
     publishDir "${index_res_path}", mode: 'copy'
-    cpu = params.cpu
+
     input:
       file reference_name from dated_reference_names_split
       file annotation_name from dated_annotation_names_split
@@ -380,7 +378,7 @@ if(mapper in ["salmon", "kallisto"]){
       basename_fasta = (reference_name =~ /(.*)\.fasta/)[0][1]
       tagname = basename
       gzip_arg = ""
-      if(gzip == params.pigz){gzip_arg = "-p ${task.cpu}"}
+      if(gzip == params.pigz){gzip_arg = "-p ${task.cpus}"}
       cmd_gzip = "${gzip} ${gzip_arg} -c -d"
       """
       ${cmd_gzip} ${reference_name} > ${basename_fasta}.fasta
@@ -395,7 +393,6 @@ if(mapper in ["salmon", "kallisto"]){
 process indexing {
   tag "${tagname}"
   publishDir "${index_res_path}", mode: 'copy'
-  cpu = params.cpu
   input:
     file index_name from indexing_input
     file annotation_name from dated_annotation_names_indexing
@@ -415,12 +412,12 @@ process indexing {
       break
       case "bowtie2":
         gzip_arg = ""
-        if(gzip == params.pigz){gzip_arg = "-p ${task.cpu}"}
+        if(gzip == params.pigz){gzip_arg = "-p ${task.cpus}"}
         cmd_gzip = "${gzip} ${gzip_arg} -c -d"
         """
         ls -l
         ${cmd_gzip} ${index_name} > ${basename}.fasta
-        ${params.bowtie2}-build --threads ${task.cpu} ${basename}.fasta ${basename}.index &> ${basename}_bowtie2_indexing_report.txt
+        ${params.bowtie2}-build --threads ${task.cpus} ${basename}.fasta ${basename}.index &> ${basename}_bowtie2_indexing_report.txt
         ${cmd_date}
         if grep -q "Error" ${basename}_bowtie2_indexing_report.txt; then
           exit 1
@@ -433,11 +430,11 @@ process indexing {
           cmd_annotation = "--gtf"
         }
         gzip_arg = ""
-        if(gzip == params.pigz){gzip_arg = "-p ${task.cpu}"}
+        if(gzip == params.pigz){gzip_arg = "-p ${task.cpus}"}
         cmd_gzip = "${gzip} ${gzip_arg} -c -d"
         """
         ${cmd_gzip} ${index_name} > ${basename}.fasta
-        ${params.rsem}-prepare-reference -p ${task.cpu} ${rsem_parameters} ${cmd_annotation} ${annotation_name} ${basename}.fasta ${basename}.index &> ${basename}_bowtie2_rsem_indexing_report.txt
+        ${params.rsem}-prepare-reference -p ${task.cpus} ${rsem_parameters} ${cmd_annotation} ${annotation_name} ${basename}.fasta ${basename}.index &> ${basename}_bowtie2_rsem_indexing_report.txt
         if grep -q "Error" ${basename}_bowtie2_rsem_indexing_report.txt; then
           exit 1
         fi
@@ -445,7 +442,7 @@ process indexing {
       break
       default:
         """
-        ${params.salmon} index -p ${task.cpu} -t ${index_name} -i ${basename}.index --type quasi -k 31 &> ${basename}_salmon_indexing_report.txt
+        ${params.salmon} index -p ${task.cpus} -t ${index_name} -i ${basename}.index --type quasi -k 31 &> ${basename}_salmon_indexing_report.txt
         ${cmd_date}
         if grep -q "Error" ${basename}_salmon_indexing_report.txt; then
           exit 1
@@ -460,7 +457,7 @@ if(mapper in ["salmon", "kallisto", "bowtie2+rsem"]){
     tag "${tagname}"
     publishDir "${counts_res_path}", mode: 'copy', pattern: "*.{counts,json,h5,results,cnt,model,theta,_report.txt}"
     publishDir "${bams_res_path}", mode: 'copy', pattern: "*{.bam,_report.txt}"
-    cpu = params.cpu
+
     input:
       file index_name from indexing_output
       file fastq_name from dated_fastq_names
@@ -478,7 +475,7 @@ if(mapper in ["salmon", "kallisto", "bowtie2+rsem"]){
         switch(mapper) {
           case "kallisto":
             """
-            ${params.kallisto} quant -i ${basename_index} -t ${task.cpu} ${params.kallisto_parameters} -o ./ ${fastq_name[0]} ${fastq_name[1]} &> ${name}_kallisto_report.txt
+            ${params.kallisto} quant -i ${basename_index} -t ${task.cpus} ${params.kallisto_parameters} -o ./ ${fastq_name[0]} ${fastq_name[1]} &> ${name}_kallisto_report.txt
             mv abundance.tsv ${name}.counts
             mv run_info.json ${name}_info.json
             mv abundance.h5 ${name}.h5
@@ -490,7 +487,7 @@ if(mapper in ["salmon", "kallisto", "bowtie2+rsem"]){
           break
           case "bowtie2+rsem":
             """
-            ${params.rsem}-calculate-expression -p ${task.cpu} ${rsem_parameters} --paired-end ${fastq_name[0]} ${fastq_name[1]} ${basename_index} ${tagname} 2> ${name}_bowtie2_rsem_report.txt
+            ${params.rsem}-calculate-expression -p ${task.cpus} ${rsem_parameters} --paired-end ${fastq_name[0]} ${fastq_name[1]} ${basename_index} ${tagname} 2> ${name}_bowtie2_rsem_report.txt
             mv ${tagname}.stat/* .
             ${cmd_date} "*.{results,cnt,model,theta,bam}"
             if grep -q "Error" ${name}_bowtie2_rsem_report.txt; then
@@ -500,7 +497,7 @@ if(mapper in ["salmon", "kallisto", "bowtie2+rsem"]){
           break
           default:
             """
-            ${params.salmon} quant -i ${basename_index} -p ${task.cpu} ${params.salmon_parameters} -1 ${fastq_name[0]} -2 ${fastq_name[1]} -o ${name}.counts > ${name}_salmon_report.txt
+            ${params.salmon} quant -i ${basename_index} -p ${task.cpus} ${params.salmon_parameters} -1 ${fastq_name[0]} -2 ${fastq_name[1]} -o ${name}.counts > ${name}_salmon_report.txt
             ${cmd_date} *
             """
           break
@@ -512,7 +509,7 @@ if(mapper in ["salmon", "kallisto", "bowtie2+rsem"]){
           case "kallisto":
             kallisto_parameters = params.kallisto_parameters + " -l ${params.mean} -s ${params.sd}"
             """
-            ${params.kallisto} quant -i ${index_name} -t ${task.cpu} --single ${kallisto_parameters} -o ./ ${fastq_name} &> ${name}_report.txt
+            ${params.kallisto} quant -i ${index_name} -t ${task.cpus} --single ${kallisto_parameters} -o ./ ${fastq_name} &> ${name}_report.txt
             mv abundance.tsv ${name}.counts
             mv run_info.json ${name}_info.json
             mv abundance.h5 ${name}.h5
@@ -525,7 +522,7 @@ if(mapper in ["salmon", "kallisto", "bowtie2+rsem"]){
           default:
             salmon_parameters = params.salmon_parameters + " --fldMean ${params.mean} --fldSD ${params.sd}"
             """
-            ${params.salmon} quant -i ${index_name} -p ${task.cpu} ${salmon_parameters} -r ${fastq_name} -o ${name}.counts > ${name}_report.txt
+            ${params.salmon} quant -i ${index_name} -p ${task.cpus} ${salmon_parameters} -r ${fastq_name} -o ${name}.counts > ${name}_report.txt
             ${cmd_date} *
             """
           break
@@ -536,7 +533,7 @@ if(mapper in ["salmon", "kallisto", "bowtie2+rsem"]){
   process mapping {
     tag "${tagname}"
     publishDir "${bams_res_path}", mode: 'copy'
-    cpu = params.cpu
+
     input:
       file index_name from indexing_output
       file fastq_name from dated_fastq_names
@@ -553,7 +550,7 @@ if(mapper in ["salmon", "kallisto", "bowtie2+rsem"]){
       switch(mapper) {
         default:
           """
-          ${params.bowtie2} ${params.bowtie2_parameters} -p ${task.cpu} -x ${tagname}.index -1 ${fastq_name[0]} -2 ${fastq_name[1]} 2> ${name}_bowtie2_report.txt | samtools view -Sb - > ${name}.bam
+          ${params.bowtie2} ${params.bowtie2_parameters} -p ${task.cpus} -x ${tagname}.index -1 ${fastq_name[0]} -2 ${fastq_name[1]} 2> ${name}_bowtie2_report.txt | samtools view -Sb - > ${name}.bam
           ${cmd_date}
           if grep -q "Error" ${name}_bowtie2_report.txt; then
             exit 1
@@ -566,7 +563,7 @@ if(mapper in ["salmon", "kallisto", "bowtie2+rsem"]){
       switch(mapper) {
         default:
           """
-          ${params.bowtie2} ${params.bowtie2_parameters} -p ${task.cpu} -x ${tagname}.index -U ${fastq_name} 2> ${name}_bowtie2_report.txt | samtools view -Sb - > ${name}.bam
+          ${params.bowtie2} ${params.bowtie2_parameters} -p ${task.cpus} -x ${tagname}.index -U ${fastq_name} 2> ${name}_bowtie2_report.txt | samtools view -Sb - > ${name}.bam
           ${cmd_date}
           """
         break
@@ -576,7 +573,7 @@ if(mapper in ["salmon", "kallisto", "bowtie2+rsem"]){
 
   process sorting {
     tag "${tagname}"
-    cpu = params.cpu
+
     echo true
     publishDir "${bams_res_path}", mode: 'copy'
     input:
@@ -587,14 +584,14 @@ if(mapper in ["salmon", "kallisto", "bowtie2+rsem"]){
     basename = bams_name.baseName
     tagname = basename
     """
-    ${params.samtools} sort -@ ${task.cpu} ${bams_name} ${basename}_sorted
+    ${params.samtools} sort -@ ${task.cpus} ${bams_name} ${basename}_sorted
     ${file_handle_path} -r -f *_sorted.bam
     """
   }
 
   process quantification {
     tag "${tagname}"
-    cpu = params.cpu
+
     echo true
     publishDir "${counts_res_path}", mode: 'copy'
     input:
