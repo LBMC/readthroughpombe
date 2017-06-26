@@ -1,8 +1,15 @@
 #!/bin/sh
 
+################################## Docker ######################################
 # provide Docker with file_handle
 cp src/func/file_handle.py src/pipe/quality_control/
+# build docker image for quality_control.nf
+docker build src/pipe/quality_control -t 'quality_control:0.0.1'
+
+# provide Docker with file_handle
 cp src/func/file_handle.py src/pipe/mapping/
+# build docker image for mapping.nf
+docker build src/pipe/mapping -t 'mapping:0.0.1'
 
 # install nextflow
 cd bin
