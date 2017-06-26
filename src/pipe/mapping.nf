@@ -79,22 +79,9 @@ log.info params.name
 log.info "============================================"
 if(params.fastq_files == ""){exit 1, "missing params \"--fastq_files\""}
 log.info "fastq files : ${params.fastq_files}"
-log.info "paired files : ${params.paired}"
-if(params.paired != true && params.paired != false){
-   exit 1, "Invalid paired option: ${params.paired}. Valid options: 'true' or 'false'"
-}
-if (params.paired) {
-  log.info "file names are expected to end in the format *_{1,2}.fastq*."
-  log.info "or *_R{1,2}.fastq*."
-  log.info "otherwise the pairs will not be paired for the analysis"
-  fastq_names = Channel.fromFilePairs( params.fastq_files, size:2)
-    .ifEmpty { exit 1, "Cannot find any fastq files matching: ${params.fastq_files}" }
-}else{
-  log.info "mean fragment length : ${params.mean}"
-  log.info "standar deviation fragment length : ${params.sd}"
-  fastq_names = Channel.fromPath( params.fastq_files )
-    .ifEmpty { exit 1, "Cannot find any fastq files matching: ${params.fastq_files}" }
-}
+fastq_files = Channel.fromFilePairs( params.fastq_files, size: -1)
+  .ifEmpty { exit 1, "Cannot find any fastq files matching: ${params.fastq_files}" }
+
 if(params.reference == ""){exit 1, "missing params \"--reference\""}
 log.info "reference files : ${params.reference}"
 reference_names = Channel.fromPath( params.reference)
@@ -246,62 +233,57 @@ if (params.mapper == "bowtie2" && params.quantifier == "rsem") {
   rsem_parameters = rsem_parameters + " --bowtie2 --bowtie2-path ${bowtie2_path}"
 }
 
-process get_file_name_fastq {
+process get_file_name {
   tag "${tagname}"
   cpu = params.cpu
   input:
-    val fastq_name from fastq_names
+    set val(fastq_name), file(reads) from fastq_files
   output:
     file "*.fastq.gz" into dated_fastq_names
-  when:
-    if (params.paired) {
-      (fastq_name[1][0] =~ /^.*\.fastq$/ || \
-        fastq_name[1][0] =~ /^.*\.fastq\.gz$/) \
-      && (fastq_name[1][1] =~ /^.*\.fastq$/ || \
-        fastq_name[1][1] =~ /^.*\.fastq\.gz$/)
-    } else {
-      fastq_name =~ /^.*\.fastq$/ || \
-      fastq_name =~ /^.*\.fastq\.gz$/
-    }
-
   script:
     cmd_date = "${file_handle_path} -c -e -f"
     gzip_arg = ""
     if (gzip == params.pigz) { gzip_arg = "-p ${task.cpu}" }
     cmd_gzip = "${gzip} ${gzip_arg} -c "
-
-    if (params.paired) {
-      tagname = (fastq_name[1][0] =~ /(.*\/){0,1}(.*)_(R){0,1}[0,1]\.fastq(\.gz){0,1}/)[0][2]
-      reads_1 = (fastq_name[1][0] =~ /(.*\/){0,1}(.*)/)[0][2]
-      reads_2 = (fastq_name[1][1] =~ /(.*\/){0,1}(.*)/)[0][2]
-      if (fastq_name[1][0] =~ /.*\.gz/ || fastq_name[1][1] =~ /.*\.gz/) {
+    if (!(
+      reads =~ /^.*\.fastq$/ || \
+      reads =~ /^.*\.fastq\.gz$/
+      )) {
+      exit 1, "Can only work with fastq or fastq.gz files: ${reads}"
+    }
+    single = reads instanceof Path
+    if (single) {
+      tagname = (reads =~ /(.*\/){0,1}(.*)\.fastq(\.gz){0,1}/)[0][2]
+      reads_0 = (reads =~ /(.*\/){0,1}(.*)/)[0][2]
+      if (reads =~ /.*\.gz/) {
         """
-        cp ${fastq_name[1][0]} ${reads_1}
-        cp ${fastq_name[1][1]} ${reads_2}
-        ${cmd_date} ${reads_1} ${reads_2}
+        cp ${reads} ./${reads_0}
+        ${cmd_date} *.fastq.gz
+        """
+      } else {
+        reads_0 = reads_0 + ".gz"
+        """
+        ${cmd_gzip} ${reads} > ${reads_0}
+        ${cmd_date} ${reads_0}
+        """
+      }
+    } else {
+      tagname = (reads[0] =~ /(.*\/){0,1}(.*)_(R){0,1}[0,1]\.fastq(\.gz){0,1}/)[0][2]
+      reads_1 = (reads[0] =~ /(.*\/){0,1}(.*)/)[0][2]
+      reads_2 = (reads[1] =~ /(.*\/){0,1}(.*)/)[0][2]
+      if (reads[0] =~ /.*\.gz/ || reads[1] =~ /.*\.gz/) {
+        """
+        cp ${reads[0]} ./${reads_1}
+        cp ${reads[1]} ./${reads_2}
+        ${cmd_date} *.fastq.gz
         """
       } else {
         reads_1 = reads_1 + ".gz"
         reads_2 = reads_2 + ".gz"
         """
-        ${cmd_gzip} ${fastq_name[1][0]} > ${reads_1}
-        ${cmd_gzip} ${fastq_name[1][1]} > ${reads_2}
+        ${cmd_gzip} ${reads[0]} > ${reads_1}
+        ${cmd_gzip} ${reads[1]} > ${reads_2}
         ${cmd_date} ${reads_1} ${reads_2}
-        """
-      }
-    } else {
-      tagname = (fastq_name =~ /(.*\/){0,1}(.*)\.fastq(\.gz){0,1}/)[0][2]
-      reads = (fastq_name =~ /(.*\/){0,1}(.*)/)[0][2]
-      if (fastq_name =~ /.*\.gz/) {
-        """
-        cp ${fastq_name} ${reads}
-        ${cmd_date} ${reads}
-        """
-      } else {
-        reads = reads + ".gz"
-        """
-        ${cmd_gzip} ${fastq_name} > ${reads}
-        ${cmd_date} ${reads}
         """
       }
     }
