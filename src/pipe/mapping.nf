@@ -79,17 +79,17 @@ log.info params.name
 log.info "============================================"
 if(params.fastq_files == ""){exit 1, "missing params \"--fastq_files\""}
 log.info "fastq files : ${params.fastq_files}"
-fastq_files = Channel.fromFilePairs( params.fastq_files, size: -1)
+fastq_files = Channel.fromFilePairs( params.fastq_files, size: -1 )
   .ifEmpty { exit 1, "Cannot find any fastq files matching: ${params.fastq_files}" }
 
 if(params.reference == ""){exit 1, "missing params \"--reference\""}
 log.info "reference files : ${params.reference}"
-reference_names = Channel.fromPath( params.reference)
+reference_names = Channel.fromPath( params.reference )
   .ifEmpty { exit 1, "Cannot find any reference file matching: ${params.reference}" }
 
 if(params.annotation == ""){exit 1, "missing params \"--annotation\""}
 log.info "annotation files : ${params.annotation}"
-annotation_names = Channel.fromPath(params.annotation)
+annotation_names = Channel.fromPath( params.annotation )
   .ifEmpty { exit 1, "Cannot find any annotation file matching: ${params.annotation}" }
 
 log.info "mapper : ${params.mapper}"
@@ -294,24 +294,25 @@ process get_fastq_name {
 process get_file_name_reference {
   tag "${tagname}"
   cpu = params.cpu
+  echo true
   input:
-    set val(reference_name), file(refs) from reference_names
+    file refs from reference_names
   output:
     file "*.fasta.gz" into dated_reference_names
   script:
     if (!(
-      reference_name =~ /^.*\.fasta$/ || \
-      reference_name =~ /^.*\.fasta\.gz$/
+      refs =~ /^.*\.fasta$/ || \
+      refs =~ /^.*\.fasta\.gz$/
       )) {
-      exit 1, "Can only work with fasta or fasta.gz files: ${reference_name}"
+      exit 1, "Can only work with fasta or fasta.gz files: ${refs}"
     }
-    tagname = (reference_name =~ /(.*\/){0,1}(.*)\.fasta(\.gz){0,1}/)[0][2]
-    reference = (reference_name =~ /(.*\/){0,1}(.*)/)[0][2]
+    tagname = (refs =~ /(.*\/){0,1}(.*)\.fasta(\.gz){0,1}/)[0][2]
+    reference = (refs =~ /(.*\/){0,1}(.*)/)[0][2]
     cmd_date = "${file_handle_path} -c -e -f"
 
-    if (reference_name =~ /.*\.gz/) {
+    if (refs =~ /.*\.gz/) {
       """
-      cp ${refs} ${reference}
+      cp ${refs} ./${reference}
       ${cmd_date} ${reference}
       """
     } else {
@@ -333,6 +334,7 @@ dated_reference_names
 
 process get_file_name_annotation {
   tag "${tagname}"
+  echo true
   input:
     set val(annotation_name), file(annot) from annotation_names
   output:
@@ -350,8 +352,9 @@ process get_file_name_annotation {
     tagname = (annotation_name =~ /(.*\/){0,1}(.*)\.*/)[0][2]
     annotation = (annotation_name =~ /(.*\/){0,1}(.*)/)[0][2]
     """
-    cp ${annot} ${annotation}
+    cp -L ${annot} ./${annotation}
     ${file_handle_path} -c -e -f ${annotation}
+    ls -l
     """
 }
 
@@ -367,6 +370,7 @@ if(mapper in ["salmon", "kallisto"]){
     tag "${tagname}"
     publishDir "${index_res_path}", mode: 'copy'
     cpu = params.cpu
+    echo true
     input:
       file reference_name from dated_reference_names_split
       file annotation_name from dated_annotation_names_split
@@ -381,8 +385,14 @@ if(mapper in ["salmon", "kallisto"]){
       basename = (reference_name =~ /(.*)(\.gff){0,1}(\.bed){0,1}(\.vcf){0,1}(\.gtf){0,1}/)[0][1]
       basename_fasta = (reference_name =~ /(.*)\.fasta/)[0][1]
       tagname = basename
+      gzip_arg = ""
+      if(gzip == params.pigz){gzip_arg = "-p ${task.cpu}"}
+      cmd_gzip = "${gzip} ${gzip_arg} -c -d"
       """
-      cat ${basename} | gunzip > ${basename_fasta}.fasta
+      ls -l
+      head ${reference_name}
+      ${cmd_gzip} ${reference_name} > ${basename_fasta}.fasta
+      ls -l
       ${params.bedtools} getfasta -fi ${basename_fasta}.fasta -bed ${annotation_name} -fo ${basename_fasta}_split.fasta
       ${file_handle_path} -r -f *_split.fasta
       """
