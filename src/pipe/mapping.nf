@@ -334,20 +334,23 @@ dated_reference_names
 process get_file_name_annotation {
   tag "${tagname}"
   input:
-    val annotation_name from annotation_names
+    set val(annotation_name), file(annot) from annotation_names
   output:
     file "*${annotation}" into dated_annotation_names
-  when:
-    params.annotation != "" && \
-    (annotation_name =~ /^.*\.gtf$/ || \
-      annotation_name =~ /^.*\.bed$/ || \
-      annotation_name =~ /^.*\.gff$/ || \
-      annotation_name =~ /^.*\.vcf$/)
   script:
-    tagname = (annotation_name =~ /(.*\/){0,1}(.*)\.*/)[0][2]
-    annotation = (annotation_name =~ /(.*\/){0,1}(.*)/)[0][2]
+    if (!(
+      params.annotation != "" && \
+        (annot =~ /^.*\.gtf$/ || \
+          annot =~ /^.*\.bed$/ || \
+          annot =~ /^.*\.gff$/ || \
+          annot =~ /^.*\.vcf$/)
+      )) {
+      exit 1, "Can only work with gtf, bed, gff or vcf files: ${annot}"
+    }
+    tagname = (annot =~ /(.*\/){0,1}(.*)\.*/)[0][2]
+    annotation = (annot =~ /(.*\/){0,1}(.*)/)[0][2]
     """
-    cp ${annotation_name} ${annotation}
+    cp ${annot} ${annotation}
     ${file_handle_path} -c -e -f ${annotation}
     """
 }
