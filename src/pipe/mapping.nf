@@ -110,7 +110,7 @@ switch(params.mapper) {
   break
   case "kallisto":
     log.info "kallisto path : ${params.kallisto}"
-    if( !config.docker.enabled && !!file(params.kallisto).exists() ) exit 1, "kallisto binary not found at: ${params.kallisto}"
+    if( !config.docker.enabled && !file(params.kallisto).exists() ) exit 1, "kallisto binary not found at: ${params.kallisto}"
     process get_kallisto_version {
       echo true
       input:
