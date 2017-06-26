@@ -245,8 +245,6 @@ if (params.mapper == "bowtie2" && params.quantifier == "rsem") {
   bowtie2_path = (params.bowtie2 =~ /(.*)bowtie2/)[0][1]
   rsem_parameters = rsem_parameters + " --bowtie2 --bowtie2-path ${bowtie2_path}"
 }
-log.info "test ${mapper}"
-log.info "test ${rsem_parameters}"
 
 process get_file_name_fastq {
   tag "${tagname}"
