@@ -130,7 +130,6 @@ fastq_files = Channel.fromFilePairs( params.fastq_files, size: -1)
 
 process get_file_name {
   tag "${tagname}"
-  cpu = params.cpu
   input:
     set val(fastq_name), file(reads) from fastq_files
   output:
@@ -138,7 +137,7 @@ process get_file_name {
   script:
     cmd_date = "${file_handle_path} -c -e -f"
     gzip_arg = ""
-    if (gzip == params.pigz) { gzip_arg = "-p ${task.cpu}" }
+    if (gzip == params.pigz) { gzip_arg = "-p ${task.cpus}" }
     cmd_gzip = "${gzip} ${gzip_arg} -c "
     if (!(
       reads =~ /^.*\.fastq$/ || \
@@ -191,7 +190,6 @@ dated_file_names.into{
 
 process fastqc {
   tag "${tagname}"
-  cpu = params.cpu
   publishDir "${fastqc_res_path}", mode: 'copy'
   input:
      file reads from fastqc_input
@@ -209,7 +207,7 @@ process fastqc {
     } else {
       tagname = (reads[0] =~ /(.*\/){0,1}(.*)_(R){0,1}[0,1]\.fastq(\.gz){0,1}/)[0][2]
       """
-        ${params.fastqc} --quiet --threads ${task.cpu} --outdir ./ ${reads[0]} ${reads[1]}
+        ${params.fastqc} --quiet --threads ${task.cpus} --outdir ./ ${reads[0]} ${reads[1]}
         ${cmd_date}
       """
     }
@@ -246,7 +244,6 @@ process adaptor_removal {
 
 process trimming {
   tag "${tagname}"
-  cpu = params.cpu
   publishDir "${trimming_res_path}", mode: 'copy'
   input:
     file reads from adaptor_rm_output
@@ -266,7 +263,7 @@ process trimming {
       """
       }else{
       """
-        ${params.urqt} --m ${task.cpu} --t ${params.quality_threshold} --gz --in ${reads} --out ${basename}_trim.fastq.gz > ${basename}_UrQt_report.txt
+        ${params.urqt} --m ${task.cpus} --t ${params.quality_threshold} --gz --in ${reads} --out ${basename}_trim.fastq.gz > ${basename}_UrQt_report.txt
         ${cmd_date}
       """
       }
@@ -281,7 +278,7 @@ process trimming {
       """
       }else{
       """
-        ${params.urqt} --m ${task.cpu} --t ${params.quality_threshold} --gz --in ${reads[0]} --inpair ${reads[1]} --out ${basename_1} --outpair ${basename_2} > ${tagname}_UrQt_report.txt
+        ${params.urqt} --m ${task.cpus} --t ${params.quality_threshold} --gz --in ${reads[0]} --inpair ${reads[1]} --out ${basename_1} --outpair ${basename_2} > ${tagname}_UrQt_report.txt
         ${cmd_date}
       """
       }
@@ -290,7 +287,6 @@ process trimming {
 
 process fastqc_trimmed {
   tag "${tagname}"
-  cpu = params.cpu
   publishDir "${fastqc_res_path}", mode: 'copy'
   input:
     file reads from trimming_output
@@ -309,7 +305,7 @@ process fastqc_trimmed {
     } else {
       tagname = (reads[0] =~ /(.*)_trim_(R){0,1}[12]\.fastq.gz/)[0][1]
       """
-        ${params.fastqc} --quiet --threads ${task.cpu} --outdir ./ ${reads[0]} ${reads[1]}
+        ${params.fastqc} --quiet --threads ${task.cpus} --outdir ./ ${reads[0]} ${reads[1]}
         ${cmd_date}
       """
     }
