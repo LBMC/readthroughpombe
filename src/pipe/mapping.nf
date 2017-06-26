@@ -86,10 +86,12 @@ if(params.reference == ""){exit 1, "missing params \"--reference\""}
 log.info "reference files : ${params.reference}"
 reference_names = Channel.fromPath( params.reference)
   .ifEmpty { exit 1, "Cannot find any reference file matching: ${params.reference}" }
+
 if(params.annotation == ""){exit 1, "missing params \"--annotation\""}
 log.info "annotation files : ${params.annotation}"
 annotation_names = Channel.fromPath(params.annotation)
   .ifEmpty { exit 1, "Cannot find any annotation file matching: ${params.annotation}" }
+
 log.info "mapper : ${params.mapper}"
 switch(params.mapper) {
   case "salmon":
@@ -233,7 +235,7 @@ if (params.mapper == "bowtie2" && params.quantifier == "rsem") {
   rsem_parameters = rsem_parameters + " --bowtie2 --bowtie2-path ${bowtie2_path}"
 }
 
-process get_file_name {
+process get_fastq_name {
   tag "${tagname}"
   cpu = params.cpu
   input:
@@ -293,20 +295,23 @@ process get_file_name_reference {
   tag "${tagname}"
   cpu = params.cpu
   input:
-    val reference_name from reference_names
+    set val(reference_name), file(refs) from reference_names
   output:
     file "*.fasta.gz" into dated_reference_names
-  when:
-    reference_name =~ /^.*\.fasta$/ || \
-    reference_name =~ /^.*\.fasta\.gz$/
   script:
-    tagname = (reference_name =~ /(.*\/){0,1}(.*)\.fasta(\.gz){0,1}/)[0][2]
-    reference = (reference_name =~ /(.*\/){0,1}(.*)/)[0][2]
+    if (!(
+      refs =~ /^.*\.fasta$/ || \
+      refs =~ /^.*\.fasta\.gz$/
+      )) {
+      exit 1, "Can only work with fasta or fasta.gz files: ${refs}"
+    }
+    tagname = (refs =~ /(.*\/){0,1}(.*)\.fasta(\.gz){0,1}/)[0][2]
+    reference = (refs =~ /(.*\/){0,1}(.*)/)[0][2]
     cmd_date = "${file_handle_path} -c -e -f"
 
     if (reference_name =~ /.*\.gz/) {
       """
-      cp ${reference_name} ${reference}
+      cp ${refs} ${reference}
       ${cmd_date} ${reference}
       """
     } else {
@@ -314,7 +319,7 @@ process get_file_name_reference {
       gzip_arg = ""
       if(gzip == params.pigz){gzip_arg = "-p ${task.cpu}"}
       """
-      ${gzip} ${gzip_arg} -c ${reference_name} > ${reference}
+      ${gzip} ${gzip_arg} -c ${refs} > ${reference}
       ${cmd_date} ${reference}
       """
     }
