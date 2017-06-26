@@ -577,6 +577,7 @@ if(mapper in ["salmon", "kallisto", "bowtie2+rsem"]){
   process sorting {
     tag "${tagname}"
     cpu = params.cpu
+    echo true
     publishDir "${bams_res_path}", mode: 'copy'
     input:
       file bams_name from mapping_output
@@ -586,7 +587,7 @@ if(mapper in ["salmon", "kallisto", "bowtie2+rsem"]){
     basename = bams_name.baseName
     tagname = basename
     """
-    ${params.samtools} sort -@ ${task.cpu} -O bam -o ${basename}_sorted.bam ${bams_name}
+    ${params.samtools} sort -@ ${task.cpu} ${bams_name} ${basename}_sorted
     ${file_handle_path} -r -f *_sorted.bam
     """
   }
