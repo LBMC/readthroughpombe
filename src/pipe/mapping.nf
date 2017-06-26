@@ -123,8 +123,8 @@ switch(params.mapper) {
   break
   case "bowtie2":
     log.info "bowtie2 path : ${params.bowtie2}"
-    if( !config.docker.enabled && !!file(params.bowtie2).exists() ) exit 1, "bowtie2 binary not found at: ${params.bowtie2}"
-    if( !config.docker.enabled && !!file(params.bowtie2+"-build").exists() ) exit 1, "bowtie2-build binary not found at: ${params.bowtie2}-build"
+    if( !config.docker.enabled && !file(params.bowtie2).exists() ) exit 1, "bowtie2 binary not found at: ${params.bowtie2}"
+    if( !config.docker.enabled && !file(params.bowtie2+"-build").exists() ) exit 1, "bowtie2-build binary not found at: ${params.bowtie2}-build"
     process get_bowtie2_version {
       echo true
       input:
@@ -142,9 +142,9 @@ switch(params.mapper) {
 switch(params.quantifier) {
   case "rsem":
     log.info "rsem path : ${params.rsem}"
-    if( !config.docker.enabled && !!file(params.rsem+"-prepare-reference").exists() ) exit 1, "rsem binaries not found at: ${params.rsem}-prepare-reference"
-    if( !config.docker.enabled && !!file(params.rsem+"-calculate-expression").exists() ) exit 1, "rsem binaries not found at: ${params.rsem}-calculate-expression"
-    if( !config.docker.enabled && !!params.mapper in ["bowtie2"]) {
+    if( !config.docker.enabled && !file(params.rsem+"-prepare-reference").exists() ) exit 1, "rsem binaries not found at: ${params.rsem}-prepare-reference"
+    if( !config.docker.enabled && !file(params.rsem+"-calculate-expression").exists() ) exit 1, "rsem binaries not found at: ${params.rsem}-calculate-expression"
+    if( !config.docker.enabled && !params.mapper in ["bowtie2"]) {
       exit 1, "RSEM can only work with bowtie2"
     }
     process get_rsem_version {
@@ -415,7 +415,6 @@ process indexing {
         if(gzip == params.pigz){gzip_arg = "-p ${task.cpus}"}
         cmd_gzip = "${gzip} ${gzip_arg} -c -d"
         """
-        ls -l
         ${cmd_gzip} ${index_name} > ${basename}.fasta
         ${params.bowtie2}-build --threads ${task.cpus} ${basename}.fasta ${basename}.index &> ${basename}_bowtie2_indexing_report.txt
         ${cmd_date}
