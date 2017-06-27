@@ -54,7 +54,7 @@ params.kallisto_parameters = "--bias --bootstrap-samples 100"
 params.bowtie2 = "/usr/local/bin/bowtie2"
 params.bowtie2_parameters = "--very-sensitive"
 params.bedtools = "/usr/bin/bedtools"
-params.samtools = "/usr/bin/samtools"
+params.samtools = "/usr/local/bin/samtools"
 params.quantifier = "htseq"
 params.htseq = "/usr/local/bin/htseq-count"
 params.htseq_parameters = "--mode=intersection-nonempty -a 10 -s no -t exon -i gene_id"
@@ -572,8 +572,6 @@ if(mapper in ["salmon", "kallisto", "bowtie2+rsem"]){
 
   process sorting {
     tag "${tagname}"
-
-    echo true
     publishDir "${bams_res_path}", mode: 'copy'
     input:
       file bams_name from mapping_output
@@ -583,7 +581,7 @@ if(mapper in ["salmon", "kallisto", "bowtie2+rsem"]){
     basename = bams_name.baseName
     tagname = basename
     """
-    ${params.samtools} sort -@ ${task.cpus} ${bams_name} ${basename}_sorted
+    ${params.samtools} sort -@ ${task.cpus} -O BAM -o ${basename}_sorted.bam ${bams_name}
     ${file_handle_path} -r -f *_sorted.bam
     """
   }
