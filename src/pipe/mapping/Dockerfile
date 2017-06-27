@@ -4,6 +4,7 @@ MAINTAINER Laurent Modolo
 ENV SALMON_VERSION 0.8.2
 ENV KALLISTO_VERSION 0.43.1
 ENV BOWTIE2_VERSION 2.3.2
+ENV SAMTOOLS_version 1.5
 
 ENV PACKAGES curl=7.47.0-1ubuntu2.2 \
     git=1:2.7.4-0ubuntu1.1 \
@@ -25,8 +26,7 @@ ENV PACKAGES curl=7.47.0-1ubuntu2.2 \
     libjemalloc-dev=3.6.0-9ubuntu1 \
     libdivsufsort-dev=2.0.1-2 \
     libtbb2=4.4~20151115-0ubuntu3 \
-    bedtools=2.25.0-1 \
-    samtools=0.1.19-1ubuntu1
+    bedtools=2.25.0-1
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends ${PACKAGES} && \
@@ -46,13 +46,14 @@ RUN curl -k -L  https://github.com/COMBINE-lab/salmon/archive/v${SALMON_VERSION}
 
 RUN  curl -k -L  https://github.com/pachterlab/kallisto/releases/download/v${KALLISTO_VERSION}/kallisto_linux-v${KALLISTO_VERSION}.tar.gz -o kallisto_linux-v${KALLISTO_VERSION}.tar.gz && \
   tar xzf kallisto_linux-v${KALLISTO_VERSION}.tar.gz && \
-  cp kallisto_linux-v${KALLISTO_VERSION}/kallisto /usr/local/bin/
+  cp kallisto_linux-v${KALLISTO_VERSION}/kallisto /usr/local/bin/ && \
+  cd .. && rm -Rf kallisto_linux-v${KALLISTO_VERSION}*
 
 RUN curl -k -L  https://sourceforge.net/projects/bowtie-bio/files/bowtie2/${BOWTIE2_VERSION}/bowtie2-${BOWTIE2_VERSION}-linux-x86_64.zip/download -o bowtie2-${BOWTIE2_VERSION}.zip && \
   unzip bowtie2-${BOWTIE2_VERSION}.zip && \
   cd bowtie2-${BOWTIE2_VERSION} && \
   cp bowtie2* /usr/local/bin/ && \
-  cd .. && rm -Rf bowtie2* download
+  cd .. && rm -Rf bowtie2*
 
 RUN  git clone https://github.com/deweylab/RSEM.git && \
   cd RSEM && \
@@ -60,5 +61,13 @@ RUN  git clone https://github.com/deweylab/RSEM.git && \
   make && \
   make install && \
   cd .. && rm -Rf RSEM
+
+RUN curl -k -L https://sourceforge.net/projects/samtools/files/samtools/${SALMON_VERSION}/samtools-${SALMON_VERSION}.tar.bz2/download -o samtools-${SALMON_VERSION}.tar.bz2 && \
+  tar xvf samtools-${SALMON_VERSION}.tar.bz2 && \
+  cd samtools-${SALMON_VERSION} && \
+  ./configure && \
+  make && \
+  make install && \
+  cd .. && rm -Rf samtools-${SALMON_VERSION}*
 
 COPY file_handle.py /usr/bin/local/file_handle.py
