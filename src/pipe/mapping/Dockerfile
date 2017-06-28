@@ -4,7 +4,7 @@ MAINTAINER Laurent Modolo
 ENV SALMON_VERSION 0.8.2
 ENV KALLISTO_VERSION 0.43.1
 ENV BOWTIE2_VERSION 2.3.2
-ENV SAMTOOLS_version 1.5
+ENV SAMTOOLS_VERSION 1.5
 
 ENV PACKAGES curl=7.47.0-1ubuntu2.2 \
     git=1:2.7.4-0ubuntu1.1 \
@@ -26,6 +26,8 @@ ENV PACKAGES curl=7.47.0-1ubuntu2.2 \
     libjemalloc-dev=3.6.0-9ubuntu1 \
     libdivsufsort-dev=2.0.1-2 \
     libtbb2=4.4~20151115-0ubuntu3 \
+    libncurses5=6.0+20160213-1ubuntu1 \
+    libncurses5-dev=6.0+20160213-1ubuntu1 \
     bedtools=2.25.0-1
 
 RUN apt-get update && \
@@ -62,12 +64,12 @@ RUN  git clone https://github.com/deweylab/RSEM.git && \
   make install && \
   cd .. && rm -Rf RSEM
 
-RUN curl -k -L https://sourceforge.net/projects/samtools/files/samtools/${SALMON_VERSION}/samtools-${SALMON_VERSION}.tar.bz2/download -o samtools-${SALMON_VERSION}.tar.bz2 && \
-  tar xvf samtools-${SALMON_VERSION}.tar.bz2 && \
-  cd samtools-${SALMON_VERSION} && \
+RUN curl -k -L https://sourceforge.net/projects/samtools/files/samtools/${SAMTOOLS_VERSION}/samtools-${SAMTOOLS_VERSION}.tar.bz2/download -o samtools-${SAMTOOLS_VERSION}.tar.bz2 && \
+  tar xvf samtools-${SAMTOOLS_VERSION}.tar.bz2 && \
+  cd samtools-${SAMTOOLS_VERSION} && \
   ./configure && \
   make && \
   make install && \
-  cd .. && rm -Rf samtools-${SALMON_VERSION}*
+  cd .. && rm -Rf samtools-${SAMTOOLS_VERSION}*
 
 COPY file_handle.py /usr/bin/local/file_handle.py
