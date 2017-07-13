@@ -1,5 +1,5 @@
 #!/bin/sh
-cp src/func/file_handle.py src/pipe/mapping/ && \
+cp src/file_handle/src/file_handle.py src/pipe/mapping/ && \
 docker build src/pipe/mapping -t 'mapping:0.0.1' && \
 bin/nextflow src/pipe/mapping.nf -c src/nextflow.config -profile mapping_docker --fastq_files 'data/examples/tiny_dataset/fastq/*tiny_R{1,2}.fastq' --mapper 'salmon' --paired true --reference 'data/examples/tiny_dataset/fasta/*tiny_v2.fasta' --annotation 'data/examples/tiny_dataset/annot/*tiny.gff' --cpu 2 && \
 bin/nextflow src/pipe/mapping.nf -c src/nextflow.config -profile mapping_docker --fastq_files 'data/examples/tiny_dataset/fastq/*tiny_S.fastq' --mapper 'salmon' --paired false --reference 'data/examples/tiny_dataset/fasta/*tiny_v2.fasta' --annotation 'data/examples/tiny_dataset/annot/*tiny.gff'  --cpu 2 && \

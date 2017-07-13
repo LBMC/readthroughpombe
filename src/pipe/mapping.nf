@@ -42,7 +42,7 @@ bams_res_path = quality_control_path + '/bams'
 index_res_path = quality_control_path + '/index'
 counts_res_path = quality_control_path + '/counts'
 src_path = rootDir + '/src'
-file_handle_path = "${src_path}/func/file_handle.py"
+file_handle_path = "${src_path}/file_handle/src/file_handle.py"
 
 params.name = "mapping and quantification analysis"
 params.mapper = "salmon"
