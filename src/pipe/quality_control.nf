@@ -45,13 +45,19 @@ trimming_res_path = quality_control_path + '/trimming'
 src_path = rootDir + '/src'
 file_handle_path = "${src_path}/file_handle/src/file_handle.py"
 params.name = "quality control analysis"
-params.fastqc = "/usr/local/bin/fastqc"
-params.multiqc = "/usr/local/bin/multiqc"
-params.urqt = "/usr/local/bin/UrQt"
-params.trimmomatic = "/usr/bin/trimmomatic"
-params.cutadapt = "/usr/local/bin/cutadapt"
-params.gzip = "/usr/bin/gzip"
-params.pigz = "/usr/bin/pigz"
+params.fastqc = "fastqc"
+params.fastqc_version = "0.11.5"
+params.multiqc = "multiqc"
+params.multiqc_version = "0.9"
+params.urqt = "UrQt"
+params.urqt = "d62c1f8"
+params.cutadapt = "cutadapt"
+params.python2_version = "2.7"
+params.python3_version = "3.5"
+params.nextflow_version = "0.25.1"
+params.gzip = "gzip"
+params.pigz = "pigz"
+params.pigz_version = "2.3.4"
 
 if (config.docker.enabled) {
   file_handle_path = "/usr/bin/local/file_handle.py"
@@ -59,7 +65,6 @@ if (config.docker.enabled) {
   if( !file(params.fastqc).exists() ) exit 1, "fastqc binary not found at: ${params.fastqc}"
   if( !file(params.multiqc).exists() ) exit 1, "multiqc binary not found at: ${params.multiqc}"
   if( !file(params.urqt).exists() ) exit 1, "UrQt binary not found at: ${params.urqt}"
-  if( !file(params.trimmomatic).exists() ) exit 1, "trimmomatic binary not found at: ${params.trimmomatic}"
   if( !file(params.cutadapt).exists() ) exit 1, "cutadapt binary not found at: ${params.cutadapt}"
 }
 params.adaptor_removal = "cutadapt"
@@ -77,6 +82,7 @@ if(params.paired != true && params.paired != false){
 process_header = ""
 if (params.global_executor == 'sge'){
   process_header = params.pbs_header
+  file_handle_path = "file_handle.py"
 }
 
 log.info params.name
