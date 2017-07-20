@@ -53,8 +53,6 @@ params.cutadapt = "/usr/local/bin/cutadapt"
 params.gzip = "/usr/bin/gzip"
 params.pigz = "/usr/bin/pigz"
 
-params.cpu = 4
-
 if (config.docker.enabled) {
   file_handle_path = "/usr/bin/local/file_handle.py"
 } else {
@@ -74,6 +72,11 @@ params.trimmer = "UrQt"
 params.quality_threshold = 20
 if(params.paired != true && params.paired != false){
    exit 1, "Invalid paired option: ${params.paired}. Valid options: 'true' or 'false'"
+}
+
+process_header = ""
+if (params.global_executor == 'sge'){
+  process_header = params.pbs_header
 }
 
 log.info params.name
@@ -151,12 +154,14 @@ process get_file_name {
       reads_0 = (reads =~ /(.*\/){0,1}(.*)/)[0][2]
       if (reads =~ /.*\.gz/) {
         """
+        ${process_header}
         cp ${reads} ./${reads_0}
         ${cmd_date} *.fastq.gz
         """
       } else {
         reads_0 = reads_0 + ".gz"
         """
+        ${process_header}
         ${cmd_gzip} ${reads} > ${reads_0}
         ${cmd_date} ${reads_0}
         """
@@ -167,6 +172,7 @@ process get_file_name {
       reads_2 = (reads[1] =~ /(.*\/){0,1}(.*)/)[0][2]
       if (reads[0] =~ /.*\.gz/ || reads[1] =~ /.*\.gz/) {
         """
+        ${process_header}
         cp ${reads[0]} ./${reads_1}
         cp ${reads[1]} ./${reads_2}
         ${cmd_date} *.fastq.gz
@@ -175,6 +181,7 @@ process get_file_name {
         reads_1 = reads_1 + ".gz"
         reads_2 = reads_2 + ".gz"
         """
+        ${process_header}
         ${cmd_gzip} ${reads[0]} > ${reads_1}
         ${cmd_gzip} ${reads[1]} > ${reads_2}
         ${cmd_date} ${reads_1} ${reads_2}
@@ -201,12 +208,14 @@ process fastqc {
     if (single) {
       tagname = (reads =~ /(.*\/){0,1}(.*)\.fastq(\.gz){0,1}/)[0][2]
       """
+        ${process_header}
         ${params.fastqc} --quiet --outdir ./ ${reads}
         ${cmd_date}
       """
     } else {
       tagname = (reads[0] =~ /(.*\/){0,1}(.*)_(R){0,1}[0,1]\.fastq(\.gz){0,1}/)[0][2]
       """
+        ${process_header}
         ${params.fastqc} --quiet --threads ${task.cpus} --outdir ./ ${reads[0]} ${reads[1]}
         ${cmd_date}
       """
@@ -228,6 +237,7 @@ process adaptor_removal {
       tagname = (reads =~ /(.*\/){0,1}(.*)\.fastq(\.gz){0,1}/)[0][2]
       reads_0 = tagname
       """
+      ${process_header}
       ${params.cutadapt} ${params.adaptor_sequence} -o ${reads_0}_cut.fastq.gz ${reads} > ${tagname}_report.txt
       ${cmd_date}
       """
@@ -236,6 +246,7 @@ process adaptor_removal {
       reads_1 = "${tagname}_cut_R1.fastq.gz"
       reads_2 = "${tagname}_cut_R2.fastq.gz"
       """
+      ${process_header}
       ${params.cutadapt} ${params.adaptor_sequence} -o ${reads_1} -p ${reads_2} ${reads[0]} ${reads[1]} > ${tagname}_report.txt
       ${cmd_date}
       """
@@ -258,11 +269,13 @@ process trimming {
       tagname = basename
       if (params.trimmer == "cutadapt") {
       """
+        ${process_header}
         ${params.cutadapt} -q ${params.quality_threshold},${params.quality_threshold} -o ${basename}_trim.fastq.gz ${reads} > ${basename}_cutadapt_report.txt
         ${cmd_date}
       """
       }else{
       """
+        ${process_header}
         ${params.urqt} --m ${task.cpus} --t ${params.quality_threshold} --gz --in ${reads} --out ${basename}_trim.fastq.gz > ${basename}_UrQt_report.txt
         ${cmd_date}
       """
@@ -273,11 +286,13 @@ process trimming {
       basename_2 = "${tagname}_trim_R2.fastq.gz"
       if (params.trimmer == "cutadapt") {
       """
+        ${process_header}
         ${params.cutadapt} -q ${params.quality_threshold},${params.quality_threshold} -o ${basename_1} -p ${basename_2} ${reads[0]} ${reads[1]} > ${tagname}_cutadapt_report.txt
         ${cmd_date}
       """
       }else{
       """
+        ${process_header}
         ${params.urqt} --m ${task.cpus} --t ${params.quality_threshold} --gz --in ${reads[0]} --inpair ${reads[1]} --out ${basename_1} --outpair ${basename_2} > ${tagname}_UrQt_report.txt
         ${cmd_date}
       """
@@ -299,12 +314,14 @@ process fastqc_trimmed {
       basename = (reads =~ /(.*)_trim\.fastq\.gz/)[0][1]
       tagname = basename
       """
+        ${process_header}
         ${params.fastqc} --quiet --outdir ./ ${reads}
         ${cmd_date}
       """
     } else {
       tagname = (reads[0] =~ /(.*)_trim_(R){0,1}[12]\.fastq.gz/)[0][1]
       """
+        ${process_header}
         ${params.fastqc} --quiet --threads ${task.cpus} --outdir ./ ${reads[0]} ${reads[1]}
         ${cmd_date}
       """
