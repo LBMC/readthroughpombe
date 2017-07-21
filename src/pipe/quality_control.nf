@@ -60,7 +60,7 @@ params.gzip = "gzip"
 params.pigz = "pigz"
 params.pigz_version = "2.3.4"
 
-if (config.docker.enabled) {
+if (config.docker.enabled || params.global_executor == "sge") {
   file_handle_path = "/usr/bin/local/file_handle.py"
 } else {
   if( !file(params.fastqc).exists() ) exit 1, "fastqc binary not found at: ${params.fastqc}"
