@@ -44,13 +44,14 @@ adaptor_removal_res_path = quality_control_path + '/adaptor'
 trimming_res_path = quality_control_path + '/trimming'
 src_path = rootDir + '/src'
 file_handle_path = "${src_path}/file_handle/src/file_handle.py"
+params.file_handle_version = "0.1.1"
 params.name = "quality control analysis"
 params.fastqc = "fastqc"
 params.fastqc_version = "0.11.5"
 params.multiqc = "multiqc"
 params.multiqc_version = "0.9"
 params.urqt = "UrQt"
-params.urqt = "d62c1f8"
+params.urqt_version = "d62c1f8"
 params.cutadapt = "cutadapt"
 params.python2_version = "2.7"
 params.python3_version = "3.5"
@@ -80,9 +81,25 @@ if(params.paired != true && params.paired != false){
 }
 
 process_header = ""
+file_handle_module = ""
+fastqc_module = ""
+multiqc_module = ""
+urqt_module = ""
+cutadapt_module = ""
+pigz_module = ""
+python2_unload_mnodule = ""
+python3_unload_mnodule = ""
 if (params.global_executor == 'sge'){
   process_header = params.pbs_header
   file_handle_path = "file_handle.py"
+  file_handle_module = "module load file_handle/${file_handle_version}"
+  fastqc_module = "module load FastQC/${fastqc_version}"
+  multiqc_module = "module load MultiQC/1.0"
+  urqt_module = "module load UrQt/${urqt_version}"
+  cutadapt_module = "module load python/${python2_version}"
+  pigz_module = "module load pigz/${pigz_version}"
+  python2_unload_mnodule = "module unload python/${python2_version}"
+  python3_unload_mnodule = "module unload python/${python3_version}"
 }
 
 log.info params.name
@@ -104,7 +121,7 @@ if (params.trimmer == 'cutadapt') {
   log.info "UrQt path : ${params.urqt}"
 }
 gzip = ""
-if(config.docker.enabled || file(params.pigz).exists() ){
+if(config.docker.enabled || params.global_executor == 'sge' || file(params.pigz).exists() ){
   gzip = params.pigz
   process get_pigz_version {
     echo true
@@ -112,6 +129,7 @@ if(config.docker.enabled || file(params.pigz).exists() ){
       val params.pigz
     script:
     """
+    ${pigz_module}
     echo "\$(${params.pigz} --version)" &> grep pigz
     """
   }
@@ -162,13 +180,16 @@ process get_file_name {
         """
         ${process_header}
         cp ${reads} ./${reads_0}
+        ${file_handle_module}
         ${cmd_date} *.fastq.gz
         """
       } else {
         reads_0 = reads_0 + ".gz"
         """
         ${process_header}
+        ${pigz_module}
         ${cmd_gzip} ${reads} > ${reads_0}
+        ${file_handle_module}
         ${cmd_date} ${reads_0}
         """
       }
@@ -181,6 +202,7 @@ process get_file_name {
         ${process_header}
         cp ${reads[0]} ./${reads_1}
         cp ${reads[1]} ./${reads_2}
+        ${file_handle_module}
         ${cmd_date} *.fastq.gz
         """
       } else {
@@ -188,8 +210,10 @@ process get_file_name {
         reads_2 = reads_2 + ".gz"
         """
         ${process_header}
+        ${pigz_module}
         ${cmd_gzip} ${reads[0]} > ${reads_1}
         ${cmd_gzip} ${reads[1]} > ${reads_2}
+        ${file_handle_module}
         ${cmd_date} ${reads_1} ${reads_2}
         """
       }
@@ -215,14 +239,18 @@ process fastqc {
       tagname = (reads =~ /(.*\/){0,1}(.*)\.fastq(\.gz){0,1}/)[0][2]
       """
         ${process_header}
+        ${fastqc_module}
         ${params.fastqc} --quiet --outdir ./ ${reads}
+        ${file_handle_module}
         ${cmd_date}
       """
     } else {
       tagname = (reads[0] =~ /(.*\/){0,1}(.*)_(R){0,1}[0,1]\.fastq(\.gz){0,1}/)[0][2]
       """
         ${process_header}
+        ${fastqc_module}
         ${params.fastqc} --quiet --threads ${task.cpus} --outdir ./ ${reads[0]} ${reads[1]}
+        ${file_handle_module}
         ${cmd_date}
       """
     }
@@ -244,7 +272,10 @@ process adaptor_removal {
       reads_0 = tagname
       """
       ${process_header}
+      ${cutadapt_module}
       ${params.cutadapt} ${params.adaptor_sequence} -o ${reads_0}_cut.fastq.gz ${reads} > ${tagname}_report.txt
+      ${python2_unload_mnodule}
+      ${file_handle_module}
       ${cmd_date}
       """
     } else {
@@ -253,7 +284,10 @@ process adaptor_removal {
       reads_2 = "${tagname}_cut_R2.fastq.gz"
       """
       ${process_header}
+      ${cutadapt_module}
       ${params.cutadapt} ${params.adaptor_sequence} -o ${reads_1} -p ${reads_2} ${reads[0]} ${reads[1]} > ${tagname}_report.txt
+      ${python2_unload_mnodule}
+      ${file_handle_module}
       ${cmd_date}
       """
     }
@@ -276,13 +310,18 @@ process trimming {
       if (params.trimmer == "cutadapt") {
       """
         ${process_header}
+        ${cutadapt_module}
         ${params.cutadapt} -q ${params.quality_threshold},${params.quality_threshold} -o ${basename}_trim.fastq.gz ${reads} > ${basename}_cutadapt_report.txt
+        ${python2_unload_mnodule}
+        ${file_handle_module}
         ${cmd_date}
       """
       }else{
       """
         ${process_header}
+        ${urqt_module}
         ${params.urqt} --m ${task.cpus} --t ${params.quality_threshold} --gz --in ${reads} --out ${basename}_trim.fastq.gz > ${basename}_UrQt_report.txt
+        ${file_handle_module}
         ${cmd_date}
       """
       }
@@ -293,13 +332,18 @@ process trimming {
       if (params.trimmer == "cutadapt") {
       """
         ${process_header}
+        ${cutadapt_module}
         ${params.cutadapt} -q ${params.quality_threshold},${params.quality_threshold} -o ${basename_1} -p ${basename_2} ${reads[0]} ${reads[1]} > ${tagname}_cutadapt_report.txt
+        ${python2_unload_mnodule}
+        ${file_handle_module}
         ${cmd_date}
       """
       }else{
       """
         ${process_header}
+        ${urqt_module}
         ${params.urqt} --m ${task.cpus} --t ${params.quality_threshold} --gz --in ${reads[0]} --inpair ${reads[1]} --out ${basename_1} --outpair ${basename_2} > ${tagname}_UrQt_report.txt
+        ${file_handle_module}
         ${cmd_date}
       """
       }
@@ -321,14 +365,18 @@ process fastqc_trimmed {
       tagname = basename
       """
         ${process_header}
+        ${fastqc_module}
         ${params.fastqc} --quiet --outdir ./ ${reads}
+        ${file_handle_module}
         ${cmd_date}
       """
     } else {
       tagname = (reads[0] =~ /(.*)_trim_(R){0,1}[12]\.fastq.gz/)[0][1]
       """
         ${process_header}
+        ${fastqc_module}
         ${params.fastqc} --quiet --threads ${task.cpus} --outdir ./ ${reads[0]} ${reads[1]}
+        ${file_handle_module}
         ${cmd_date}
       """
     }
@@ -343,7 +391,10 @@ process multiqc {
       file "*multiqc_{report,data}*" into multiqc_report
     script:
     """
+    ${multiqc_module}
     ${params.multiqc} -f .
+    ${python2_unload_mnodule}
+    ${file_handle_module}
     ${file_handle_path} -f multiqc_report.html -r
     ${file_handle_path} -f multiqc_data -r
     """
