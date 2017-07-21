@@ -98,7 +98,7 @@ if (params.global_executor == 'sge'){
   file_handle_path = "file_handle.py"
   file_handle_module = "module load file_handle/${params.file_handle_version}"
   fastqc_module = "module load FastQC/${params.fastqc_version}"
-  multiqc_module = "module load MultiQC/1.0"
+  multiqc_module = "module load python/${params.python2_version}"
   urqt_module = "module load UrQt/${params.urqt_version}"
   cutadapt_module = "module load python/${params.python2_version}"
   pigz_module = "module load pigz/${params.pigz_version}"
