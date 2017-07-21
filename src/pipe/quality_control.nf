@@ -49,7 +49,7 @@ params.name = "quality control analysis"
 params.fastqc = "fastqc"
 params.fastqc_version = "0.11.5"
 params.multiqc = "multiqc"
-params.multiqc_version = "0.9"
+params.multiqc_version = "1.0"
 params.urqt = "UrQt"
 params.urqt_version = "d62c1f8"
 params.cutadapt = "cutadapt"
@@ -59,6 +59,10 @@ params.nextflow_version = "0.25.1"
 params.gzip = "gzip"
 params.pigz = "pigz"
 params.pigz_version = "2.3.4"
+
+println(params)
+
+log.info "test files : ${params.global_executor}"
 
 if (config.docker.enabled || params.global_executor == "sge") {
   file_handle_path = "/usr/bin/local/file_handle.py"
