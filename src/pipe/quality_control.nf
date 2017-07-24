@@ -60,9 +60,6 @@ params.gzip = "gzip"
 params.pigz = "pigz"
 params.pigz_version = "2.3.4"
 
-println(params)
-
-log.info "test files : ${params.global_executor}"
 
 if (config.docker.enabled || params.global_executor == "sge") {
   file_handle_path = "/usr/bin/local/file_handle.py"
@@ -108,6 +105,7 @@ if (params.global_executor == 'sge'){
 
 log.info params.name
 log.info "============================================"
+log.info "executor: ${params.global_executor}"
 log.info "fastq files : ${params.fastq_files}"
 log.info "paired files : ${params.paired}"
 if (params.paired) {
@@ -166,6 +164,7 @@ process get_file_name {
   output:
     file "*.fastq.gz" into dated_file_names
   script:
+    println(process.executor)
     cmd_date = "${file_handle_path} -c -e -f"
     gzip_arg = ""
     if (gzip == params.pigz) { gzip_arg = "-p ${task.cpus}" }
