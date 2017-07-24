@@ -164,7 +164,6 @@ process get_file_name {
   output:
     file "*.fastq.gz" into dated_file_names
   script:
-    println(process.executor)
     cmd_date = "${file_handle_path} -c -e -f"
     gzip_arg = ""
     if (gzip == params.pigz) { gzip_arg = "-p ${task.cpus}" }
