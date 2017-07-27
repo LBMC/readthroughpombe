@@ -456,6 +456,7 @@ if(mapper in ["salmon", "kallisto"]){
 
 process indexing {
   tag "${tagname}"
+  echo true
   publishDir "${index_res_path}", mode: 'copy'
   input:
     file index_name from indexing_input
@@ -509,8 +510,10 @@ process indexing {
         ${cmd_gzip} ${index_name} > ${basename}.fasta
         ${params.rsem}-prepare-reference -p ${task.cpus} ${rsem_parameters} ${cmd_annotation} ${annotation_name} ${basename}.fasta ${basename}.index &> ${basename}_bowtie2_rsem_indexing_report.txt
         if grep -q "Error" ${basename}_bowtie2_rsem_indexing_report.txt; then
+          cat ${basename}_bowtie2_rsem_indexing_report.txt
           exit 1
         fi
+        ls -l
         ${file_handle_module}
         ${cmd_date}
         """
