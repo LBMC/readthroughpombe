@@ -48,29 +48,69 @@ params.name = "mapping and quantification analysis"
 params.mapper = "salmon"
 params.paired = true
 params.salmon = "/usr/local/bin/salmon"
+params.salmon_version = "0.8.2"
 params.salmon_parameters = "--useVBOpt --numBootstraps 100 --seqBias --gcBias --posBias --libType IU"
 params.kallisto = "/usr/local/bin/kallisto"
+params.kallisto_version = "0.43.1"
 params.kallisto_parameters = "--bias --bootstrap-samples 100"
 params.bowtie2 = "/usr/local/bin/bowtie2"
+params.bowtie2_version = "2.3.2"
 params.bowtie2_parameters = "--very-sensitive"
 params.bedtools = "/usr/bin/bedtools"
+params.bedtools_version = "2.25.0"
 params.samtools = "/usr/local/bin/samtools"
+params.samtools_version = "1.5"
 params.quantifier = "htseq"
 params.htseq = "/usr/local/bin/htseq-count"
+params.htseq_version = "0.8.0"
 params.htseq_parameters = "--mode=intersection-nonempty -a 10 -s no -t exon -i gene_id"
 params.rsem = "/usr/local/bin/rsem"
-params.rsem_parameters = ""
+params.rsem_version =
+params.rsem_parameters = "1.3.0"
 params.gzip = "/usr/bin/gzip"
 params.pigz = "/usr/bin/pigz"
+params.pigz_version = "2.3.4"
 params.mean = 200
 params.sd = 20
 params.annotation = ""
 params.reference = ""
 params.fastq_files = ""
 params.cpu = 12
+params.file_handle_version = "0.1.1"
+params.python2_version = "2.7"
+params.python3_version = "3.5"
+params.nextflow_version = "0.25.1"
 
 if (config.docker.enabled || params.global_executor == "sge") {
   file_handle_path = "/usr/bin/local/file_handle.py"
+}
+
+process_header = ""
+file_handle_module = ""
+pigz_module = ""
+salmon_module = ""
+kallisto_module = ""
+bowtie2_module = ""
+bedtools_module = ""
+samtools_module = ""
+htseq_module = ""
+rsem_module = ""
+python2_unload_mnodule = ""
+python3_unload_mnodule = ""
+if (params.global_executor == 'sge'){
+  process_header = params.pbs_header
+  file_handle_path = "file_handle.py"
+  file_handle_module = "module load file_handle/${params.file_handle_version}"
+  pigz_module = "module load pigz/${params.pigz_version}"
+  salmon_module = "module load Salmon/${params.salmon_version}"
+  kallisto_module = "module load Kallisto/${params.kallisto_version}"
+  bowtie2_module = "module load Bowtie2/${params.bowtie2_version}"
+  bedtools_module = "module load BEDtools/${params.bedtools_version}"
+  samtools_module = "module load SAMtools/${params.samtools_version}"
+  htseq_module = "module load HTSeq/${params.htseq_version}"
+  rsem_module = "module load RSEM/${params.rsem_version}"
+  python2_unload_mnodule = "module unload python/${params.python2_version}"
+  python3_unload_mnodule = "module unload python/${params.python3_version}"
 }
 
 log.info params.name
@@ -101,6 +141,7 @@ switch(params.mapper) {
         val params.salmon
       script:
       """
+      ${salmon_module}
       ${params.salmon} --version &> salmon_version.txt
       echo "salmon \$(cat salmon_version.txt)"
       """
@@ -115,6 +156,7 @@ switch(params.mapper) {
         val params.kallisto
       script:
       """
+      ${kallisto_module}
       echo "\$(${params.kallisto} version)"
       """
     }
@@ -129,6 +171,7 @@ switch(params.mapper) {
         val params.bowtie2
       script:
       """
+      ${bowtie2_module}
       echo "\$(${params.bowtie2} --version | grep "bowtie")"
       """
     }
@@ -151,6 +194,7 @@ switch(params.quantifier) {
         val params.rsem
       script:
       """
+      ${rsem_module}
       echo "\$(${params.rsem}-calculate-expression --version)"
       """
     }
@@ -164,6 +208,7 @@ switch(params.quantifier) {
         val params.htseq
       script:
       """
+      ${htseq_module}
       echo "\$(${params.htseq} -h | grep "version")"
       """
     }
@@ -181,6 +226,7 @@ process get_bedtools_version {
     val params.bedtools
   script:
   """
+  ${bedtools_module}
   echo "\$(${params.bedtools} --version)"
   """
 }
@@ -192,6 +238,7 @@ process get_samtools_version {
     val params.samtools
   script:
   """
+  ${samtools_module}
   echo "\$(${params.samtools} --version | grep "samtools")"
   """
 }
@@ -204,6 +251,7 @@ if( config.docker.enabled || params.global_executor == "sge" || file(params.pigz
       val params.pigz
     script:
     """
+    ${pigz_module}
     echo "\$(${params.pigz} --version)" &> grep pigz
     """
   }
@@ -256,13 +304,18 @@ process get_fastq_name {
       reads_0 = (reads =~ /(.*\/){0,1}(.*)/)[0][2]
       if (reads =~ /.*\.gz/) {
         """
+        ${process_header}
         cp ${reads} ./${reads_0}
+        ${file_handle_module}
         ${cmd_date} *.fastq.gz
         """
       } else {
         reads_0 = reads_0 + ".gz"
         """
+        ${process_header}
+        ${pigz_module}
         ${cmd_gzip} ${reads} > ${reads_0}
+        ${file_handle_module}
         ${cmd_date} ${reads_0}
         """
       }
@@ -272,6 +325,7 @@ process get_fastq_name {
       reads_2 = (reads[1] =~ /(.*\/){0,1}(.*)/)[0][2]
       if (reads[0] =~ /.*\.gz/ || reads[1] =~ /.*\.gz/) {
         """
+        ${process_header}
         cp ${reads[0]} ./${reads_1}
         cp ${reads[1]} ./${reads_2}
         ${cmd_date} *.fastq.gz
@@ -280,8 +334,11 @@ process get_fastq_name {
         reads_1 = reads_1 + ".gz"
         reads_2 = reads_2 + ".gz"
         """
+        ${process_header}
+        ${pigz_module}
         ${cmd_gzip} ${reads[0]} > ${reads_1}
         ${cmd_gzip} ${reads[1]} > ${reads_2}
+        ${file_handle_module}
         ${cmd_date} ${reads_1} ${reads_2}
         """
       }
@@ -307,6 +364,7 @@ process get_file_name_reference {
 
     if (refs =~ /.*\.gz/) {
       """
+      ${process_header}
       ${cmd_date} ${reference}
       """
     } else {
@@ -314,7 +372,10 @@ process get_file_name_reference {
       gzip_arg = ""
       if(gzip == params.pigz){gzip_arg = "-p ${task.cpus}"}
       """
+      ${process_header}
+      ${pigz_module}
       ${gzip} ${gzip_arg} -c ${refs} > ${reference}
+      ${file_handle_module}
       ${cmd_date} ${reference}
       """
     }
@@ -345,6 +406,7 @@ process get_file_name_annotation {
     tagname = (annot =~ /(.*\/){0,1}(.*)\.*/)[0][2]
     annotation = (annot =~ /(.*\/){0,1}(.*)/)[0][2]
     """
+    ${file_handle_module}
     ${file_handle_path} -c -e -f ${annotation}
     """
 }
@@ -379,8 +441,12 @@ if(mapper in ["salmon", "kallisto"]){
       if(gzip == params.pigz){gzip_arg = "-p ${task.cpus}"}
       cmd_gzip = "${gzip} ${gzip_arg} -c -d"
       """
+      ${process_header}
+      ${pigz_module}
+      ${bedtools_module}
       ${cmd_gzip} ${reference_name} > ${basename_fasta}.fasta
       ${params.bedtools} getfasta -fi ${basename_fasta}.fasta -bed ${annotation_name} -fo ${basename_fasta}_split.fasta
+      ${file_handle_module}
       ${file_handle_path} -r -f *_split.fasta
       """
   }
@@ -404,7 +470,10 @@ process indexing {
     switch(mapper) {
       case "kallisto":
         """
+        ${process_header}
+        ${kallisto_module}
         ${params.kallisto} index -k 31 --make-unique -i ${basename}.index ${index_name} > ${basename}_kallisto_indexing_report.txt
+        ${file_handle_module}
         ${cmd_date}
         """
       break
@@ -413,12 +482,16 @@ process indexing {
         if(gzip == params.pigz){gzip_arg = "-p ${task.cpus}"}
         cmd_gzip = "${gzip} ${gzip_arg} -c -d"
         """
+        ${process_header}
+        ${pigz_module}
+        ${bowtie2_module}
         ${cmd_gzip} ${index_name} > ${basename}.fasta
         ${params.bowtie2}-build --threads ${task.cpus} ${basename}.fasta ${basename}.index &> ${basename}_bowtie2_indexing_report.txt
-        ${cmd_date}
         if grep -q "Error" ${basename}_bowtie2_indexing_report.txt; then
           exit 1
         fi
+        ${file_handle_module}
+        ${cmd_date}
         """
       break
       case "bowtie2+rsem":
@@ -430,20 +503,28 @@ process indexing {
         if(gzip == params.pigz){gzip_arg = "-p ${task.cpus}"}
         cmd_gzip = "${gzip} ${gzip_arg} -c -d"
         """
+        ${process_header}
+        ${pigz_module}
+        ${rsem_module}
         ${cmd_gzip} ${index_name} > ${basename}.fasta
         ${params.rsem}-prepare-reference -p ${task.cpus} ${rsem_parameters} ${cmd_annotation} ${annotation_name} ${basename}.fasta ${basename}.index &> ${basename}_bowtie2_rsem_indexing_report.txt
         if grep -q "Error" ${basename}_bowtie2_rsem_indexing_report.txt; then
           exit 1
         fi
+        ${file_handle_module}
+        ${cmd_date}
         """
       break
       default:
         """
+        ${process_header}
+        ${salmon_module}
         ${params.salmon} index -p ${task.cpus} -t ${index_name} -i ${basename}.index --type quasi -k 31 &> ${basename}_salmon_indexing_report.txt
-        ${cmd_date}
         if grep -q "Error" ${basename}_salmon_indexing_report.txt; then
           exit 1
         fi
+        ${file_handle_module}
+        ${cmd_date}
         """
       break
     }
@@ -472,29 +553,38 @@ if(mapper in ["salmon", "kallisto", "bowtie2+rsem"]){
         switch(mapper) {
           case "kallisto":
             """
+            ${process_header}
+            ${kallisto_module}
             ${params.kallisto} quant -i ${basename_index} -t ${task.cpus} ${params.kallisto_parameters} -o ./ ${fastq_name[0]} ${fastq_name[1]} &> ${name}_kallisto_report.txt
             mv abundance.tsv ${name}.counts
             mv run_info.json ${name}_info.json
             mv abundance.h5 ${name}.h5
-            ${cmd_date} *_report.txt *.counts *.json *.h5
             if grep -q "Error" ${name}_kallisto_report.txt; then
               exit 1
             fi
+            ${file_handle_module}
+            ${cmd_date} *_report.txt *.counts *.json *.h5
             """
           break
           case "bowtie2+rsem":
             """
+            ${process_header}
+            ${rsem_module}
             ${params.rsem}-calculate-expression -p ${task.cpus} ${rsem_parameters} --paired-end ${fastq_name[0]} ${fastq_name[1]} ${basename_index} ${tagname} 2> ${name}_bowtie2_rsem_report.txt
             mv ${tagname}.stat/* .
-            ${cmd_date} "*.{results,cnt,model,theta,bam}"
             if grep -q "Error" ${name}_bowtie2_rsem_report.txt; then
               exit 1
             fi
+            ${file_handle_module}
+            ${cmd_date} "*.{results,cnt,model,theta,bam}"
             """
           break
           default:
             """
+            ${process_header}
+            ${salmon_module}
             ${params.salmon} quant -i ${basename_index} -p ${task.cpus} ${params.salmon_parameters} -1 ${fastq_name[0]} -2 ${fastq_name[1]} -o ${name}.counts > ${name}_salmon_report.txt
+            ${file_handle_module}
             ${cmd_date} *
             """
           break
@@ -506,20 +596,26 @@ if(mapper in ["salmon", "kallisto", "bowtie2+rsem"]){
           case "kallisto":
             kallisto_parameters = params.kallisto_parameters + " -l ${params.mean} -s ${params.sd}"
             """
+            ${process_header}
+            ${kallisto_module}
             ${params.kallisto} quant -i ${index_name} -t ${task.cpus} --single ${kallisto_parameters} -o ./ ${fastq_name} &> ${name}_report.txt
             mv abundance.tsv ${name}.counts
             mv run_info.json ${name}_info.json
             mv abundance.h5 ${name}.h5
-            ${cmd_date} *
             if grep -q "Error" ${name}_kallisto_report.txt; then
               exit 1
             fi
+            ${file_handle_module}
+            ${cmd_date} *
             """
           break
           default:
             salmon_parameters = params.salmon_parameters + " --fldMean ${params.mean} --fldSD ${params.sd}"
             """
+            ${process_header}
+            ${salmon_module}
             ${params.salmon} quant -i ${index_name} -p ${task.cpus} ${salmon_parameters} -r ${fastq_name} -o ${name}.counts > ${name}_report.txt
+            ${file_handle_module}
             ${cmd_date} *
             """
           break
@@ -547,11 +643,14 @@ if(mapper in ["salmon", "kallisto", "bowtie2+rsem"]){
       switch(mapper) {
         default:
           """
+          ${process_header}
+          ${bowtie2_module}
           ${params.bowtie2} ${params.bowtie2_parameters} -p ${task.cpus} -x ${tagname}.index -1 ${fastq_name[0]} -2 ${fastq_name[1]} 2> ${name}_bowtie2_report.txt | samtools view -Sb - > ${name}.bam
-          ${cmd_date}
           if grep -q "Error" ${name}_bowtie2_report.txt; then
             exit 1
           fi
+          ${file_handle_module}
+          ${cmd_date}
           """
         break
       }
@@ -560,7 +659,10 @@ if(mapper in ["salmon", "kallisto", "bowtie2+rsem"]){
       switch(mapper) {
         default:
           """
+          ${process_header}
+          ${bowtie2_module}
           ${params.bowtie2} ${params.bowtie2_parameters} -p ${task.cpus} -x ${tagname}.index -U ${fastq_name} 2> ${name}_bowtie2_report.txt | samtools view -Sb - > ${name}.bam
+          ${file_handle_module}
           ${cmd_date}
           """
         break
@@ -579,7 +681,10 @@ if(mapper in ["salmon", "kallisto", "bowtie2+rsem"]){
     basename = bams_name.baseName
     tagname = basename
     """
+    ${process_header}
+    ${samtools_module}
     ${params.samtools} sort -@ ${task.cpus} -O BAM -o ${basename}_sorted.bam ${bams_name}
+    ${file_handle_module}
     ${file_handle_path} -r -f *_sorted.bam
     """
   }
@@ -602,7 +707,10 @@ if(mapper in ["salmon", "kallisto", "bowtie2+rsem"]){
       switch(params.quantifier) {
         default:
           """
+          ${process_header}
+          ${htseq_module}
           ${params.htseq} -r pos ${params.htseq_parameters} --format=bam ${bams_name} ${annotation_name} &> ${basename}.count
+          ${file_handle_module}
           ${cmd_date}
           """
         break
@@ -611,7 +719,10 @@ if(mapper in ["salmon", "kallisto", "bowtie2+rsem"]){
       switch(params.quantifier) {
         default:
           """
+          ${process_header}
+          ${htseq_module}
           ${params.htseq} -r pos ${params.htseq_parameters} --format=bam ${bams_name} ${annotation_name} &> ${basename}.count
+          ${file_handle_module}
           ${cmd_date}
           """
         break
