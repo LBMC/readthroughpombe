@@ -65,8 +65,8 @@ params.htseq = "/usr/local/bin/htseq-count"
 params.htseq_version = "0.8.0"
 params.htseq_parameters = "--mode=intersection-nonempty -a 10 -s no -t exon -i gene_id"
 params.rsem = "/usr/local/bin/rsem"
-params.rsem_version =
-params.rsem_parameters = "1.3.0"
+params.rsem_version = "1.3.0"
+params.rsem_parameters = ""
 params.gzip = "/usr/bin/gzip"
 params.pigz = "/usr/bin/pigz"
 params.pigz_version = "2.3.4"
@@ -456,7 +456,6 @@ if(mapper in ["salmon", "kallisto"]){
 
 process indexing {
   tag "${tagname}"
-  echo true
   publishDir "${index_res_path}", mode: 'copy'
   input:
     file index_name from indexing_input
@@ -513,7 +512,6 @@ process indexing {
           cat ${basename}_bowtie2_rsem_indexing_report.txt
           exit 1
         fi
-        ls -l
         ${file_handle_module}
         ${cmd_date}
         """
