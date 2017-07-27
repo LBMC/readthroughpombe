@@ -69,10 +69,8 @@ params.reference = ""
 params.fastq_files = ""
 params.cpu = 12
 
-if (config.docker.enabled) {
+if (config.docker.enabled || params.global_executor == "sge") {
   file_handle_path = "/usr/bin/local/file_handle.py"
-} else {
-
 }
 
 log.info params.name
@@ -96,7 +94,7 @@ log.info "mapper : ${params.mapper}"
 switch(params.mapper) {
   case "salmon":
     log.info "salmon path : ${params.salmon}"
-    if( !config.docker.enabled && !file(params.salmon).exists() ) exit 1, "salmon binary not found at: ${params.salmon}"
+    if( !config.docker.enabled && !params.global_executor == "sge" && !file(params.salmon).exists() ) exit 1, "salmon binary not found at: ${params.salmon}"
     process get_salmon_version {
       echo true
       input:
@@ -110,7 +108,7 @@ switch(params.mapper) {
   break
   case "kallisto":
     log.info "kallisto path : ${params.kallisto}"
-    if( !config.docker.enabled && !file(params.kallisto).exists() ) exit 1, "kallisto binary not found at: ${params.kallisto}"
+    if( !config.docker.enabled && !params.global_executor == "sge" && !file(params.kallisto).exists() ) exit 1, "kallisto binary not found at: ${params.kallisto}"
     process get_kallisto_version {
       echo true
       input:
@@ -123,8 +121,8 @@ switch(params.mapper) {
   break
   case "bowtie2":
     log.info "bowtie2 path : ${params.bowtie2}"
-    if( !config.docker.enabled && !file(params.bowtie2).exists() ) exit 1, "bowtie2 binary not found at: ${params.bowtie2}"
-    if( !config.docker.enabled && !file(params.bowtie2+"-build").exists() ) exit 1, "bowtie2-build binary not found at: ${params.bowtie2}-build"
+    if( !config.docker.enabled && !params.global_executor == "sge" && !file(params.bowtie2).exists() ) exit 1, "bowtie2 binary not found at: ${params.bowtie2}"
+    if( !config.docker.enabled && !params.global_executor == "sge" && !file(params.bowtie2+"-build").exists() ) exit 1, "bowtie2-build binary not found at: ${params.bowtie2}-build"
     process get_bowtie2_version {
       echo true
       input:
@@ -142,9 +140,9 @@ switch(params.mapper) {
 switch(params.quantifier) {
   case "rsem":
     log.info "rsem path : ${params.rsem}"
-    if( !config.docker.enabled && !file(params.rsem+"-prepare-reference").exists() ) exit 1, "rsem binaries not found at: ${params.rsem}-prepare-reference"
-    if( !config.docker.enabled && !file(params.rsem+"-calculate-expression").exists() ) exit 1, "rsem binaries not found at: ${params.rsem}-calculate-expression"
-    if( !config.docker.enabled && !params.mapper in ["bowtie2"]) {
+    if( !config.docker.enabled && !params.global_executor == "sge" && !file(params.rsem+"-prepare-reference").exists() ) exit 1, "rsem binaries not found at: ${params.rsem}-prepare-reference"
+    if( !config.docker.enabled && !params.global_executor == "sge" && !file(params.rsem+"-calculate-expression").exists() ) exit 1, "rsem binaries not found at: ${params.rsem}-calculate-expression"
+    if(!params.mapper in ["bowtie2"]) {
       exit 1, "RSEM can only work with bowtie2"
     }
     process get_rsem_version {
@@ -159,7 +157,7 @@ switch(params.quantifier) {
   break
   case "htseq":
     log.info "htseq path : ${params.htseq}"
-    if( !config.docker.enabled && !file(params.htseq).exists() ) exit 1, "htseq binaries not found at: ${params.htseq}"
+    if( !config.docker.enabled && !params.global_executor == "sge" && !file(params.htseq).exists() ) exit 1, "htseq binaries not found at: ${params.htseq}"
     process get_htseq_version {
       echo true
       input:
@@ -175,7 +173,7 @@ switch(params.quantifier) {
   break
 }
 log.info "bedtools path : ${params.bedtools}"
-if( !config.docker.enabled && !file(params.bedtools).exists() ) exit 1, "bedtools binary not found at: ${params.bedtools}"
+if( !config.docker.enabled && !params.global_executor == "sge" && !file(params.bedtools).exists() ) exit 1, "bedtools binary not found at: ${params.bedtools}"
 log.info "samtools path : ${params.samtools}"
 process get_bedtools_version {
   echo true
@@ -186,7 +184,7 @@ process get_bedtools_version {
   echo "\$(${params.bedtools} --version)"
   """
 }
-if( !config.docker.enabled && !file(params.samtools).exists() ) exit 1, "samtools binary not found at: ${params.samtools}"
+if( !config.docker.enabled && !params.global_executor == "sge" && !file(params.samtools).exists() ) exit 1, "samtools binary not found at: ${params.samtools}"
 log.info "results folder : ${results_path}"
 process get_samtools_version {
   echo true
@@ -198,7 +196,7 @@ process get_samtools_version {
   """
 }
 gzip = ""
-if( config.docker.enabled || file(params.pigz).exists() ){
+if( config.docker.enabled || params.global_executor == "sge" || file(params.pigz).exists() ){
   gzip = params.pigz
   process get_pigz_version {
     echo true
