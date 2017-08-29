@@ -47,6 +47,8 @@ file_handle_path = "${src_path}/file_handle/src/file_handle.py"
 params.name = "mapping and quantification analysis"
 params.mapper = "salmon"
 params.paired = true
+params.multiqc = "/usr/local/bin/multiqc"
+params.multiqc_version = "1.0"
 params.salmon = "/usr/local/bin/salmon"
 params.salmon_version = "0.8.2"
 params.salmon_parameters = "--useVBOpt --numBootstraps 100 --seqBias --gcBias --posBias --libType IU"
@@ -88,6 +90,7 @@ if (config.docker.enabled || params.global_executor == "sge") {
 process_header = ""
 file_handle_module = ""
 pigz_module = ""
+multiqc_module = ""
 salmon_module = ""
 kallisto_module = ""
 bowtie2_module = ""
@@ -102,6 +105,7 @@ if (params.global_executor == 'sge'){
   file_handle_path = "file_handle.py"
   file_handle_module = "module load file_handle/${params.file_handle_version}"
   pigz_module = "module load pigz/${params.pigz_version}"
+  multiqc_module = "module load python/${params.python2_version}"
   salmon_module = "module load Salmon/${params.salmon_version}"
   kallisto_module = "module load Kallisto/${params.kallisto_version}"
   bowtie2_module = "module load Bowtie2/${params.bowtie2_version}"
@@ -531,11 +535,9 @@ process indexing {
 if(mapper in ["salmon", "kallisto", "bowtie2+rsem"]){
   process mapping_quantification {
     tag "${tagname}"
-    publishDir "${counts_res_path}", mode: 'copy', pattern: "*.{counts,json,h5,results,cnt,model,theta,_report.txt}"
-    publishDir "${bams_res_path}", mode: 'copy', pattern: "*{.bam,_report.txt}"
-
+    publishDir "${counts_res_path}", mode: 'copy', pattern: "*"
     input:
-      file index_name from indexing_output
+      file index_name from indexing_output.first()
       file fastq_name from dated_fastq_names
     output:
       file "*.{counts,json,h5,results,cnt,model,theta,bam}" into counts_output
@@ -626,7 +628,7 @@ if(mapper in ["salmon", "kallisto", "bowtie2+rsem"]){
     publishDir "${bams_res_path}", mode: 'copy'
 
     input:
-      file index_name from indexing_output
+      file index_name from indexing_output.first()
       file fastq_name from dated_fastq_names
     output:
       file "*.bam" into mapping_output
@@ -693,7 +695,7 @@ if(mapper in ["salmon", "kallisto", "bowtie2+rsem"]){
     echo true
     publishDir "${counts_res_path}", mode: 'copy'
     input:
-      file annotation_name from dated_annotation_names_quantification
+      file annotation_name from dated_annotation_names_quantification.first()
       file bams_name from sorted_mapping_output
     output:
       file "*.count*" into counts_output
