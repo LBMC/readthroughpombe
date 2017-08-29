@@ -1,4 +1,9 @@
 #!/bin/sh
+cp data/examples/tiny_dataset/fastq/tiny_R1.fastq data/examples/tiny_dataset/fastq/c1tiny_R1.fastq
+cp data/examples/tiny_dataset/fastq/tiny_R2.fastq data/examples/tiny_dataset/fastq/c1tiny_R2.fastq
+cp data/examples/tiny_dataset/fastq/tiny_R1.fastq data/examples/tiny_dataset/fastq/c2tiny_R1.fastq
+cp data/examples/tiny_dataset/fastq/tiny_R2.fastq data/examples/tiny_dataset/fastq/c2tiny_R2.fastq
+
 cp src/file_handle/src/file_handle.py src/pipe/mapping/ && \
 docker build src/pipe/mapping -t 'mapping:0.0.1' && \
 
