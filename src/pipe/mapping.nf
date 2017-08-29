@@ -305,7 +305,6 @@ process get_fastq_name {
       if (reads =~ /.*\.gz/) {
         """
         ${process_header}
-        cp ${reads} ./${reads_0}
         ${file_handle_module}
         ${cmd_date} *.fastq.gz
         """
@@ -326,8 +325,6 @@ process get_fastq_name {
       if (reads[0] =~ /.*\.gz/ || reads[1] =~ /.*\.gz/) {
         """
         ${process_header}
-        cp ${reads[0]} ./${reads_1}
-        cp ${reads[1]} ./${reads_2}
         ${cmd_date} *.fastq.gz
         """
       } else {
