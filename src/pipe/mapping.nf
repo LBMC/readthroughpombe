@@ -555,7 +555,7 @@ if(mapper in ["salmon", "kallisto", "bowtie2+rsem"]){
             """
             ${process_header}
             ${kallisto_module}
-            ${params.kallisto} quant -i ${basename_index} -t ${task.cpus} ${params.kallisto_parameters} -o ./ ${fastq_name[0]} ${fastq_name[1]} &> ${name}_kallisto_report.txt
+            ${params.kallisto} quant --plaintext -i ${basename_index} -t ${task.cpus} ${params.kallisto_parameters} -o ./ ${fastq_name[0]} ${fastq_name[1]} &> ${name}_kallisto_report.txt
             mv abundance.tsv ${name}.counts
             mv run_info.json ${name}_info.json
             mv abundance.h5 ${name}.h5
