@@ -50,19 +50,17 @@ parser = argparse.ArgumentParser(
 parser.add_argument(
     "-t", "--transcripts",
     help="transcripts file used for the index (in fasta format)",
-    default=None,
+    type=str,
     action="store",
     dest="transcripts_file_name",
-    required=True,
-    nargs='+')
+    required=True)
 parser.add_argument(
     "-o", "--ouput_dir",
     help="kallisto pseudo output directory",
-    default=None,
+    type=str,
     action="store",
     dest="kallisto_output",
-    required=True,
-    nargs='+')
+    required=True)
 parser.add_argument(
     "-v",
     help="version information",
@@ -77,12 +75,12 @@ if args.version:
     exit(0)
 
 cells_id = list()
-with open(args.kallisto_output+'/matrix.cells', 'r') as cells_file:
+with open(str(args.kallisto_output)+'/matrix.cells', 'r') as cells_file:
     for line in cells_file:
         cells_id.append(line[:-1])
 
 transcripts = list()
-with open(args.transcripts_file_name, 'r') as transcripts_file:
+with open(str(args.transcripts_file_name), 'r') as transcripts_file:
     for line in transcripts_file:
         if line[0] == '>':
             line = line.split("|")
@@ -97,7 +95,7 @@ for transcript in transcripts:
         genes_pos[transcript] = len(genes) - 1
 
 transcripts_class = dict()
-with open(args.kallisto_output+'/matrix.ec', 'r') as transcripts_file:
+with open(str(args.kallisto_output)+'/matrix.ec', 'r') as transcripts_file:
     for line in transcripts_file:
         line = line.split()
         tclass = int(line[0])
@@ -106,7 +104,7 @@ with open(args.kallisto_output+'/matrix.ec', 'r') as transcripts_file:
         transcripts_class[tclass] = tlist
 
 counts = numpy.zeros((len(cells_id), len(transcripts)))
-with open(args.kallisto_output+'/matrix.tsv', 'r') as counts_file:
+with open(str(args.kallisto_output)+'/matrix.tsv', 'r') as counts_file:
     for line in counts_file:
         line = line.split()
         line = [int(n) for n in line]
@@ -118,7 +116,7 @@ with open(args.kallisto_output+'/matrix.tsv', 'r') as counts_file:
                 transcript_class_counts / \
                 float(len(transcripts_class[transcript_pos]))
 
-with open(args.kallisto_output+'/transcripts.counts', 'w') as output_file:
+with open(str(args.kallisto_output)+'/transcripts.counts', 'w') as output_file:
     output_file.write("id")
     for cell in range(0, len(cells_id)-1):
         output_file.write("\t"+cells_id[cell])
@@ -130,7 +128,7 @@ with open(args.kallisto_output+'/transcripts.counts', 'w') as output_file:
         output_file.write("\n")
 
 counts = numpy.zeros((len(cells_id), len(genes)))
-with open(args.kallisto_output+'/matrix.tsv', 'r') as counts_file:
+with open(str(args.kallisto_output)+'/matrix.tsv', 'r') as counts_file:
     for line in counts_file:
         line = line.split()
         line = [int(n) for n in line]
@@ -143,7 +141,7 @@ with open(args.kallisto_output+'/matrix.tsv', 'r') as counts_file:
                 transcript_class_counts / \
                 float(len(transcripts_class[transcript_pos]))
 
-with open(args.kallisto_output+'/genes.counts', 'w') as output_file:
+with open(str(args.kallisto_output)+'/genes.counts', 'w') as output_file:
     output_file.write("id")
     for cell in range(0, len(cells_id)-1):
         output_file.write("\t"+cells_id[cell])
