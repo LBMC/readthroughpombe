@@ -129,10 +129,14 @@ log.info "reference files : ${params.reference}"
 reference_names = Channel.fromPath( params.reference )
   .ifEmpty { exit 1, "Cannot find any reference file matching: ${params.reference}" }
 
-if(params.annotation == ""){exit 1, "missing params \"--annotation\""}
-log.info "annotation files : ${params.annotation}"
-annotation_names = Channel.fromPath( params.annotation )
-  .ifEmpty { exit 1, "Cannot find any annotation file matching: ${params.annotation}" }
+use_annotation = true
+if(params.annotation == "") {
+  log.info "missing params \"--annotation\" be sure to use a good reference"
+  use_annotation = false
+} else {
+  log.info "annotation files : ${params.annotation}"
+  annotation_names = Channel.fromPath( params.annotation )
+}
 
 log.info "mapper : ${params.mapper}"
 switch(params.mapper) {
@@ -388,28 +392,32 @@ dated_reference_names
     dated_reference_names_mapping
   }
 
-process get_file_name_annotation {
-  tag "${tagname}"
-  input:
-    file annot from annotation_names
-  output:
-    file "*.{gtf,bed,gff,vcf}" into dated_annotation_names
-  script:
-    if (!(
-      params.annotation != "" && \
-        (annot =~ /^.*\.gtf$/ || \
-          annot =~ /^.*\.bed$/ || \
-          annot =~ /^.*\.gff$/ || \
-          annot =~ /^.*\.vcf$/)
-      )) {
-      exit 1, "Can only work with gtf, bed, gff or vcf files: ${annot}"
-    }
-    tagname = (annot =~ /(.*\/){0,1}(.*)\.*/)[0][2]
-    annotation = (annot =~ /(.*\/){0,1}(.*)/)[0][2]
-    """
-    ${file_handle_module}
-    ${file_handle_path} -c -e -f ${annotation}
-    """
+if(use_annotation) {
+  process get_file_name_annotation {
+    tag "${tagname}"
+    input:
+      file annot from annotation_names
+    output:
+      file "*.{gtf,bed,gff,vcf}" into dated_annotation_names
+    script:
+      if (!(
+        params.annotation != "" && \
+          (annot =~ /^.*\.gtf$/ || \
+            annot =~ /^.*\.bed$/ || \
+            annot =~ /^.*\.gff$/ || \
+            annot =~ /^.*\.vcf$/)
+        )) {
+        exit 1, "Can only work with gtf, bed, gff or vcf files: ${annot}"
+      }
+      tagname = (annot =~ /(.*\/){0,1}(.*)\.*/)[0][2]
+      annotation = (annot =~ /(.*\/){0,1}(.*)/)[0][2]
+      """
+      ${file_handle_module}
+      ${file_handle_path} -c -e -f ${annotation}
+      """
+  }
+}else{
+  dated_annotation_names = Channel.value( 'No annotation' )
 }
 
 dated_annotation_names
@@ -419,7 +427,7 @@ dated_annotation_names
     dated_annotation_names_quantification
   }
 
-if(mapper in ["salmon", "kallisto"]){
+if(mapper in ["salmon", "kallisto"] && use_annotation){
   process split_ref {
     tag "${tagname}"
     publishDir "${index_res_path}", mode: 'copy'
@@ -452,7 +460,7 @@ if(mapper in ["salmon", "kallisto"]){
       """
   }
 }else{
-  dated_reference_names_split.into{ indexing_input }
+  dated_reference_names_split.set{ indexing_input }
 }
 
 process indexing {
@@ -555,7 +563,7 @@ if(mapper in ["salmon", "kallisto", "bowtie2+rsem"]){
             """
             ${process_header}
             ${kallisto_module}
-            ${params.kallisto} quant --plaintext -i ${basename_index} -t ${task.cpus} ${params.kallisto_parameters} -o ./ ${fastq_name[0]} ${fastq_name[1]} &> ${name}_kallisto_report.txt
+            ${params.kallisto} quant -i ${basename_index} -t ${task.cpus} ${params.kallisto_parameters} -o ./ ${fastq_name[0]} ${fastq_name[1]} &> ${name}_kallisto_report.txt
             mv abundance.tsv ${name}.counts
             mv run_info.json ${name}_info.json
             mv abundance.h5 ${name}.h5
