@@ -9,3 +9,4 @@ trace.txt*
 src/pipe/quality_control/file_handle.py
 src/pipe/mapping/file_handle.py
 data/examples/
+.DS_Store
