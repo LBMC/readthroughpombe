@@ -59,7 +59,7 @@ params.nextflow_version = "0.25.1"
 params.gzip = "/usr/local/bin/gzip"
 params.pigz = "/usr/local/bin/pigz"
 params.pigz_version = "2.3.4"
-
+params.do_adapter_removal = true
 
 if (config.docker.enabled || params.global_executor == "sge") {
   file_handle_path = "/usr/bin/local/file_handle.py"
@@ -269,26 +269,49 @@ process adaptor_removal {
     if (single) {
       tagname = (reads =~ /(.*\/){0,1}(.*)\.fastq(\.gz){0,1}/)[0][2]
       reads_0 = tagname
+      if (params.do_adapter_removal) {
       """
-      ${process_header}
-      ${cutadapt_module}
-      ${params.cutadapt} ${params.adaptor_sequence} -o ${reads_0}_cut.fastq.gz ${reads} > ${tagname}_report.txt
-      ${python2_unload_mnodule}
-      ${file_handle_module}
-      ${cmd_date}
+        ${process_header}
+        ${cutadapt_module}
+        ${params.cutadapt} ${params.adaptor_sequence} -o ${reads_0}_cut.fastq.gz ${reads} > ${tagname}_report.txt
+        ${python2_unload_mnodule}
+        ${file_handle_module}
+        ${cmd_date}
       """
+      } else {
+      """
+        ${process_header}
+        cp ${reads} ${reads_0}_cut.fastq.gz
+	printf 'No adapter removal done' > ${tagname}_report.txt
+        ${python2_unload_mnodule}
+        ${file_handle_module}
+        ${cmd_date}
+      """
+      }
     } else {
       tagname = (reads[0] =~ /(.*\/){0,1}(.*)_(R){0,1}[0,1]\.fastq(\.gz){0,1}/)[0][2]
       reads_1 = "${tagname}_cut_R1.fastq.gz"
       reads_2 = "${tagname}_cut_R2.fastq.gz"
+      if (params.do_adapter_removal) {
       """
-      ${process_header}
-      ${cutadapt_module}
-      ${params.cutadapt} ${params.adaptor_sequence} -o ${reads_1} -p ${reads_2} ${reads[0]} ${reads[1]} > ${tagname}_report.txt
-      ${python2_unload_mnodule}
-      ${file_handle_module}
-      ${cmd_date}
+        ${process_header}
+        ${cutadapt_module}
+        ${params.cutadapt} ${params.adaptor_sequence} -o ${reads_1} -p ${reads_2} ${reads[0]} ${reads[1]} > ${tagname}_report.txt
+        ${python2_unload_mnodule}
+        ${file_handle_module}
+        ${cmd_date}
       """
+      } else {
+      """
+        ${process_header}
+        cp ${reads[0]} ${reads_1}
+        cp ${reads[1]} ${reads_2}
+	printf 'No adapter removal done' > ${tagname}_report.txt
+        ${python2_unload_mnodule}
+        ${file_handle_module}
+        ${cmd_date}
+      """
+      }
     }
 }
 
