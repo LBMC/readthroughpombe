@@ -82,6 +82,7 @@ params.file_handle_version = "0.1.1"
 params.python2_version = "2.7"
 params.python3_version = "3.5"
 params.nextflow_version = "0.25.1"
+params.quantif = true
 
 if (config.docker.enabled || params.global_executor == "sge") {
   file_handle_path = "/usr/bin/local/file_handle.py"
@@ -280,6 +281,7 @@ if( config.docker.enabled || params.global_executor == "sge" || file(params.pigz
 }
 log.info "gz software: ${gzip}"
 log.info "number of cpu : ${params.cpu}"
+log.info "skip quantification : ${!params.quantif}"
 log.info "\n"
 mapper = params.mapper
 rsem_parameters = params.rsem_parameters
@@ -678,62 +680,64 @@ if(mapper in ["salmon", "kallisto", "bowtie2+rsem"]){
     }
   }
 
-  process sorting {
-    tag "${tagname}"
-    publishDir "${bams_res_path}", mode: 'copy'
-    input:
-      file bams_name from mapping_output
-    output:
-      file "*_sorted.bam" into sorted_mapping_output
-    script:
-    basename = bams_name.baseName
-    tagname = basename
-    """
-    ${process_header}
-    ${samtools_module}
-    ${params.samtools} sort -@ ${task.cpus} -O BAM -o ${basename}_sorted.bam ${bams_name}
-    ${file_handle_module}
-    ${file_handle_path} -r -f *_sorted.bam
-    """
-  }
+  if (params.quantif == true){
+    process sorting {
+      tag "${tagname}"
+      publishDir "${bams_res_path}", mode: 'copy'
+      input:
+        file bams_name from mapping_output
+      output:
+        file "*_sorted.bam" into sorted_mapping_output
+      script:
+      basename = bams_name.baseName
+      tagname = basename
+      """
+      ${process_header}
+      ${samtools_module}
+      ${params.samtools} sort -@ ${task.cpus} -O BAM -o ${basename}_sorted.bam ${bams_name}
+      ${file_handle_module}
+      ${file_handle_path} -r -f *_sorted.bam
+      """
+    }
 
-  process quantification {
-    tag "${tagname}"
+    process quantification {
+      tag "${tagname}"
 
-    echo true
-    publishDir "${counts_res_path}", mode: 'copy'
-    input:
-      file annotation_name from dated_annotation_names_quantification.first()
-      file bams_name from sorted_mapping_output
-    output:
-      file "*.count*" into counts_output
-    script:
-    basename = bams_name.baseName
-    tagname = basename
-    cmd_date = "${file_handle_path} -r -f *.counts"
-    if (params.paired) {
-      switch(params.quantifier) {
-        default:
-          """
-          ${process_header}
-          ${htseq_module}
-          ${params.htseq} -r pos ${params.htseq_parameters} --format=bam ${bams_name} ${annotation_name} &> ${basename}.count
-          ${file_handle_module}
-          ${cmd_date}
-          """
-        break
-      }
-    } else {
-      switch(params.quantifier) {
-        default:
-          """
-          ${process_header}
-          ${htseq_module}
-          ${params.htseq} -r pos ${params.htseq_parameters} --format=bam ${bams_name} ${annotation_name} &> ${basename}.count
-          ${file_handle_module}
-          ${cmd_date}
-          """
-        break
+      echo true
+      publishDir "${counts_res_path}", mode: 'copy'
+      input:
+        file annotation_name from dated_annotation_names_quantification.first()
+        file bams_name from sorted_mapping_output
+      output:
+        file "*.count*" into counts_output
+      script:
+      basename = bams_name.baseName
+      tagname = basename
+      cmd_date = "${file_handle_path} -r -f *.counts"
+      if (params.paired) {
+        switch(params.quantifier) {
+          default:
+            """
+            ${process_header}
+            ${htseq_module}
+            ${params.htseq} -r pos ${params.htseq_parameters} --format=bam ${bams_name} ${annotation_name} &> ${basename}.count
+            ${file_handle_module}
+            ${cmd_date}
+            """
+          break
+        }
+      } else {
+        switch(params.quantifier) {
+          default:
+            """
+            ${process_header}
+            ${htseq_module}
+            ${params.htseq} -r pos ${params.htseq_parameters} --format=bam ${bams_name} ${annotation_name} &> ${basename}.count
+            ${file_handle_module}
+            ${cmd_date}
+            """
+          break
+        }
       }
     }
   }

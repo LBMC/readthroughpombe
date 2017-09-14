@@ -1,5 +1,10 @@
 #!/bin/sh
 
+################################### all ########################################
+# install nextflow
+cd bin
+wget -qO- get.nextflow.io | bash
+
 ################################## Docker ######################################
 # provide Docker with file_handle
 cp src/file_handle/src/file_handle.py src/pipe/quality_control/
@@ -11,19 +16,32 @@ cp src/file_handle/src/file_handle.py src/pipe/mapping/
 # build docker image for mapping.nf
 docker build src/pipe/mapping -t 'mapping:0.0.1'
 
-# install nextflow
-cd bin
-wget -qO- get.nextflow.io | bash
+################################### PSMN #######################################
+# echo $SHELL must return /bin/bash for this to work
+ln -s /Xnfs/site/lbmcdb/common/modules/modulefiles ~/privatemodules
+
+# then add the two following line to the file ~/.bashrc
+source /usr/share/modules/init/bash
+module load use.own
+
+################################## local #######################################
+
+# install python3 modules
 pip install argparse
 pip install docker
 pip install numpy
+sudo pip install cutadapt
+
+# install python2 modules
 pip2 install multiqc
 pip2 install click
 pip2 install jinja2
-sudo pip install cutadapt
 sudo pip2 install htseq
-apt-get install pigz
 
+# install pigz
+sudo apt-get install pigz
+
+# install salmon
 cd /tmp
 git clone https://github.com/COMBINE-lab/salmon.git
 cd /tmp/salmon
@@ -33,6 +51,7 @@ make
 sudo make install
 rm -Rf /tmp/salmon
 
+# install kallisto
 cd /tmp
 git clone https://github.com/pachterlab/kallisto.git
 cd /tmp/kallisto
@@ -43,6 +62,7 @@ make
 sudo make install
 rm -Rf /tmp/kallisto
 
+# install bowtie2
 cd /tmp
 wget https://sourceforge.net/projects/bowtie-bio/files/bowtie2/2.3.2/bowtie2-2.3.2-linux-x86_64.zip/download
 unzip download
@@ -50,6 +70,7 @@ cd bowtie2-2.3.2
 sudo cp bowtie2* /usr/local/bin/
 rm -Rf /tmp/bowtie2* /tmp/download
 
+# install RSEM
 mkdir /tmp/rsem
 cd /tmp/rsem
 git clone https://github.com/deweylab/RSEM.git
