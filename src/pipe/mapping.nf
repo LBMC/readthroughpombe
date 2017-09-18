@@ -298,7 +298,7 @@ process get_fastq_name {
   output:
     file "*.fastq.gz" into dated_fastq_names
   script:
-    cmd_date = "${file_handle_path} -c -e -f"
+    cmd_date = "${file_handle_path} -c -e -r -f"
     gzip_arg = ""
     if (gzip == params.pigz) { gzip_arg = "-p ${task.cpus}" }
     cmd_gzip = "${gzip} ${gzip_arg} -c "
