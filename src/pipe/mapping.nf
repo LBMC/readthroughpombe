@@ -143,6 +143,7 @@ log.info "mapper : ${params.mapper}"
 switch(params.mapper) {
   case "salmon":
     log.info "salmon path : ${params.salmon}"
+    log.info "salmon parameters : ${params.salmon_parameters}"
     if( !config.docker.enabled && !params.global_executor == "sge" && !file(params.salmon).exists() ) exit 1, "salmon binary not found at: ${params.salmon}"
     process get_salmon_version {
       echo true
@@ -158,6 +159,7 @@ echo "salmon \$(cat salmon_version.txt)"
   break
   case "kallisto":
     log.info "kallisto path : ${params.kallisto}"
+    log.info "kallisto parameters : ${params.kallisto_parameters}"
     if( !config.docker.enabled && !params.global_executor == "sge" && !file(params.kallisto).exists() ) exit 1, "kallisto binary not found at: ${params.kallisto}"
     process get_kallisto_version {
       echo true
@@ -172,6 +174,7 @@ echo "\$(${params.kallisto} version)"
   break
   case "bowtie2":
     log.info "bowtie2 path : ${params.bowtie2}"
+    log.info "bowtie2 parameters : ${params.bowtie2_parameters}"
     if( !config.docker.enabled && !params.global_executor == "sge" && !file(params.bowtie2).exists() ) exit 1, "bowtie2 binary not found at: ${params.bowtie2}"
     if( !config.docker.enabled && !params.global_executor == "sge" && !file(params.bowtie2+"-build").exists() ) exit 1, "bowtie2-build binary not found at: ${params.bowtie2}-build"
     process get_bowtie2_version {
@@ -192,6 +195,7 @@ echo "\$(${params.bowtie2} --version | grep "bowtie")"
 switch(params.quantifier) {
   case "rsem":
     log.info "rsem path : ${params.rsem}"
+    log.info "rsem parameters : ${params.rsem_parameters}"
     if( !config.docker.enabled && !params.global_executor == "sge" && !file(params.rsem+"-prepare-reference").exists() ) exit 1, "rsem binaries not found at: ${params.rsem}-prepare-reference"
     if( !config.docker.enabled && !params.global_executor == "sge" && !file(params.rsem+"-calculate-expression").exists() ) exit 1, "rsem binaries not found at: ${params.rsem}-calculate-expression"
     if(!params.mapper in ["bowtie2"]) {
@@ -210,6 +214,7 @@ echo "\$(${params.rsem}-calculate-expression --version)"
   break
   case "htseq":
     log.info "htseq path : ${params.htseq}"
+    log.info "htseq parameters : ${params.htseq_parameters}"
     if( !config.docker.enabled && !params.global_executor == "sge" && !file(params.htseq).exists() ) exit 1, "htseq binaries not found at: ${params.htseq}"
     process get_htseq_version {
       echo true
@@ -617,6 +622,19 @@ if grep -q "Error" ${name}_kallisto_report.txt; then
 fi
 ${file_handle_module}
 ${cmd_date} *
+"""
+          break
+          case "bowtie2+rsem":
+"""
+${process_header}
+${rsem_module}
+${params.rsem}-calculate-expression -p ${task.cpus} ${rsem_parameters} --paired-end ${fastq_name[0]} ${fastq_name[1]} ${basename_index} ${tagname} 2> ${name}_bowtie2_rsem_report.txt
+mv ${tagname}.stat/* .
+if grep -q "Error" ${name}_bowtie2_rsem_report.txt; then
+  exit 1
+fi
+${file_handle_module}
+${cmd_date} "*.{results,cnt,model,theta,bam}"
 """
           break
           default:
