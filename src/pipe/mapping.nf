@@ -68,7 +68,8 @@ params.htseq_version = "0.8.0"
 params.htseq_parameters = "--mode=intersection-nonempty -a 10 -s no -t exon -i gene_id"
 params.rsem = "/usr/local/bin/rsem"
 params.rsem_version = "1.3.0"
-params.rsem_parameters = ""
+params.rsem_parameters_indexing = ""
+params.rsem_parameters_quantif = ""
 params.gzip = "/usr/bin/gzip"
 params.pigz = "/usr/bin/pigz"
 params.pigz_version = "2.3.4"
@@ -143,6 +144,7 @@ log.info "mapper : ${params.mapper}"
 switch(params.mapper) {
   case "salmon":
     log.info "salmon path : ${params.salmon}"
+    log.info "salmon parameters : ${params.salmon_parameters}"
     if( !config.docker.enabled && !params.global_executor == "sge" && !file(params.salmon).exists() ) exit 1, "salmon binary not found at: ${params.salmon}"
     process get_salmon_version {
       echo true
@@ -158,6 +160,7 @@ echo "salmon \$(cat salmon_version.txt)"
   break
   case "kallisto":
     log.info "kallisto path : ${params.kallisto}"
+    log.info "kallisto parameters : ${params.kallisto_parameters}"
     if( !config.docker.enabled && !params.global_executor == "sge" && !file(params.kallisto).exists() ) exit 1, "kallisto binary not found at: ${params.kallisto}"
     process get_kallisto_version {
       echo true
@@ -172,6 +175,7 @@ echo "\$(${params.kallisto} version)"
   break
   case "bowtie2":
     log.info "bowtie2 path : ${params.bowtie2}"
+    log.info "bowtie2 parameters : ${params.bowtie2_parameters}"
     if( !config.docker.enabled && !params.global_executor == "sge" && !file(params.bowtie2).exists() ) exit 1, "bowtie2 binary not found at: ${params.bowtie2}"
     if( !config.docker.enabled && !params.global_executor == "sge" && !file(params.bowtie2+"-build").exists() ) exit 1, "bowtie2-build binary not found at: ${params.bowtie2}-build"
     process get_bowtie2_version {
@@ -210,6 +214,7 @@ echo "\$(${params.rsem}-calculate-expression --version)"
   break
   case "htseq":
     log.info "htseq path : ${params.htseq}"
+    log.info "htseq parameters : ${params.htseq_parameters}"
     if( !config.docker.enabled && !params.global_executor == "sge" && !file(params.htseq).exists() ) exit 1, "htseq binaries not found at: ${params.htseq}"
     process get_htseq_version {
       echo true
@@ -282,14 +287,18 @@ echo "\$(${params.gzip} --version)"
 log.info "gz software: ${gzip}"
 log.info "number of cpu : ${params.cpu}"
 log.info "skip quantification : ${!params.quantif}"
-log.info "\n"
 mapper = params.mapper
-rsem_parameters = params.rsem_parameters
+rsem_parameters_indexing = params.rsem_parameters_indexing
+rsem_parameters_quantif = params.rsem_parameters_quantif
 if (params.mapper == "bowtie2" && params.quantifier == "rsem") {
   mapper = "bowtie2+rsem"
   bowtie2_path = (params.bowtie2 =~ /(.*)bowtie2/)[0][1]
-  rsem_parameters = rsem_parameters + " --bowtie2 --bowtie2-path ${bowtie2_path}"
+  rsem_parameters_indexing = "${rsem_parameters_indexing} --bowtie2 --bowtie2-path ${bowtie2_path}"
+  rsem_parameters_quantif = "${rsem_parameters_quantif} --bowtie2 --bowtie2-path ${bowtie2_path} --bowtie2-sensitivity-level \"--very-sensitive\""
+  log.info "rsem parameters indexing : ${rsem_parameters_indexing}"
+  log.info "rsem parameters quantification : ${rsem_parameters_quantif}"
 }
+log.info "\n"
 
 process get_fastq_name {
   tag "${tagname}"
@@ -518,7 +527,7 @@ ${process_header}
 ${pigz_module}
 ${rsem_module}
 ${cmd_gzip} ${index_name} > ${basename}.fasta
-${params.rsem}-prepare-reference -p ${task.cpus} ${rsem_parameters} ${cmd_annotation} ${annotation_name} ${basename}.fasta ${basename}.index &> ${basename}_bowtie2_rsem_indexing_report.txt
+${params.rsem}-prepare-reference -p ${task.cpus} ${rsem_parameters_indexing} ${cmd_annotation} ${annotation_name} ${basename}.fasta ${basename}.index &> ${basename}_bowtie2_rsem_indexing_report.txt
 if grep -q "Error" ${basename}_bowtie2_rsem_indexing_report.txt; then
   cat ${basename}_bowtie2_rsem_indexing_report.txt
   exit 1
@@ -580,7 +589,7 @@ ${cmd_date} *_report.txt *.counts *.json *.h5
 """
 ${process_header}
 ${rsem_module}
-${params.rsem}-calculate-expression -p ${task.cpus} ${rsem_parameters} --paired-end ${fastq_name[0]} ${fastq_name[1]} ${basename_index} ${tagname} 2> ${name}_bowtie2_rsem_report.txt
+${params.rsem}-calculate-expression -p ${task.cpus} ${rsem_parameters_quantif} --paired-end ${fastq_name[0]} ${fastq_name[1]} ${basename_index} ${tagname} 2> ${name}_bowtie2_rsem_report.txt
 mv ${tagname}.stat/* .
 if grep -q "Error" ${name}_bowtie2_rsem_report.txt; then
   exit 1
@@ -617,6 +626,19 @@ if grep -q "Error" ${name}_kallisto_report.txt; then
 fi
 ${file_handle_module}
 ${cmd_date} *
+"""
+          break
+          case "bowtie2+rsem":
+"""
+${process_header}
+${rsem_module}
+${params.rsem}-calculate-expression -p ${task.cpus} ${rsem_parameters_quantif} --paired-end ${fastq_name[0]} ${fastq_name[1]} ${basename_index} ${tagname} 2> ${name}_bowtie2_rsem_report.txt
+mv ${tagname}.stat/* .
+if grep -q "Error" ${name}_bowtie2_rsem_report.txt; then
+  exit 1
+fi
+${file_handle_module}
+${cmd_date} "*.{results,cnt,model,theta,bam}"
 """
           break
           default:
