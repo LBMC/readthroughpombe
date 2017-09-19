@@ -506,7 +506,7 @@ ${cmd_date}
 """
       break
       case "bowtie2+rsem":
-        cmd_annotation = "--gff"
+        cmd_annotation = "--gff3"
         if(annotation_name =~ /.*\.gtf/){
           cmd_annotation = "--gtf"
         }
