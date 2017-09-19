@@ -367,7 +367,7 @@ process get_file_name_reference {
     }
     tagname = (refs =~ /(.*\/){0,1}(.*)\.fasta(\.gz){0,1}/)[0][2]
     reference = (refs =~ /(.*\/){0,1}(.*)/)[0][2]
-    cmd_date = "${file_handle_path} -c -e -f"
+    cmd_date = "${file_handle_path} -c -e -r -f"
 
     if (refs =~ /.*\.gz/) {
 """
@@ -415,7 +415,7 @@ if(use_annotation) {
       annotation = (annot =~ /(.*\/){0,1}(.*)/)[0][2]
 """
 ${file_handle_module}
-${file_handle_path} -c -e -f ${annotation}
+${file_handle_path} -c -e -r -f ${annotation}
 """
   }
 }else{
