@@ -293,8 +293,8 @@ rsem_parameters_quantif = params.rsem_parameters_quantif
 if (params.mapper == "bowtie2" && params.quantifier == "rsem") {
   mapper = "bowtie2+rsem"
   bowtie2_path = (params.bowtie2 =~ /(.*)bowtie2/)[0][1]
-  rsem_parameters_indexing = "${rsem_parameters_indexing} --bowtie2 --bowtie2-path ${bowtie2_path}"
-  rsem_parameters_quantif = "${rsem_parameters_quantif} --bowtie2 --bowtie2-path ${bowtie2_path} --bowtie2-sensitivity-level \"--very-sensitive\""
+  rsem_parameters_indexing = "--bowtie2 --bowtie2-path ${bowtie2_path} ${rsem_parameters_indexing}"
+  rsem_parameters_quantif = "--bowtie2 --bowtie2-path ${bowtie2_path} --bowtie2-sensitivity-level \"very_sensitive\" ${rsem_parameters_quantif} "
   log.info "rsem parameters indexing : ${rsem_parameters_indexing}"
   log.info "rsem parameters quantification : ${rsem_parameters_quantif}"
 }
