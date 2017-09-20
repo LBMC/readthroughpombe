@@ -563,12 +563,12 @@ if(mapper in ["salmon", "kallisto", "bowtie2+rsem"]){
       file "*_report.txt" into mapping_log
     script:
       cmd_date = "${file_handle_path} -r -f"
+      basename_index = (index_name[0] =~ /(.*\.index).*/)[0][1]
       if (params.paired) {
         name = (fastq_name[0] =~ /(.*)\_(R){0,1}[12]\.fastq(\.gz){0,1}/)[0][1]
         tagname = name
         basename_1 = (fastq_name[0] =~ /(.*)\.fastq(\.gz){0,1}/)[0][1]
         basename_2 = (fastq_name[1] =~ /(.*)\.fastq(\.gz){0,1}/)[0][1]
-        basename_index = (index_name[0] =~ /(.*\.index).*/)[0][1]
         switch(mapper) {
           case "kallisto":
 """
@@ -617,7 +617,7 @@ ${cmd_date} *
 """
 ${process_header}
 ${kallisto_module}
-${params.kallisto} quant -i ${index_name} -t ${task.cpus} --single ${kallisto_parameters} -o ./ ${fastq_name} &> ${name}_report.txt
+${params.kallisto} quant -i ${basename_index} -t ${task.cpus} --single ${kallisto_parameters} -o ./ ${fastq_name} &> ${name}_report.txt
 mv abundance.tsv ${name}.counts
 mv run_info.json ${name}_info.json
 mv abundance.h5 ${name}.h5
@@ -632,7 +632,7 @@ ${cmd_date} *
 """
 ${process_header}
 ${rsem_module}
-${params.rsem}-calculate-expression -p ${task.cpus} ${rsem_parameters_quantif} ${fastq_name} ${index_name} ${tagname} 2> ${name}_bowtie2_rsem_report.txt
+${params.rsem}-calculate-expression -p ${task.cpus} ${rsem_parameters_quantif} ${fastq_name} ${basename_index} ${tagname} 2> ${name}_bowtie2_rsem_report.txt
 mv ${tagname}.stat/* .
 if grep -q "Error" ${name}_bowtie2_rsem_report.txt; then
   exit 1
@@ -646,7 +646,7 @@ ${cmd_date} "*.{results,cnt,model,theta,bam}"
 """
 ${process_header}
 ${salmon_module}
-${params.salmon} quant -i ${index_name} -p ${task.cpus} ${salmon_parameters} -r ${fastq_name} -o ${name}.counts > ${name}_report.txt
+${params.salmon} quant -i ${basename_index} -p ${task.cpus} ${salmon_parameters} -r ${fastq_name} -o ${name}.counts > ${name}_report.txt
 ${file_handle_module}
 ${cmd_date} *
 """
