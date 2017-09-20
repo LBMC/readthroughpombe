@@ -632,7 +632,7 @@ ${cmd_date} *
 """
 ${process_header}
 ${rsem_module}
-${params.rsem}-calculate-expression -p ${task.cpus} ${rsem_parameters_quantif} --paired-end ${fastq_name[0]} ${fastq_name[1]} ${basename_index} ${tagname} 2> ${name}_bowtie2_rsem_report.txt
+${params.rsem}-calculate-expression -p ${task.cpus} ${rsem_parameters_quantif} ${fastq_name} ${index_name} ${tagname} 2> ${name}_bowtie2_rsem_report.txt
 mv ${tagname}.stat/* .
 if grep -q "Error" ${name}_bowtie2_rsem_report.txt; then
   exit 1
