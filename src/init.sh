@@ -3,6 +3,7 @@
 ############################ we rename the data ################################
 mv /home/laurent/data/readthroughpombe/data/fastq /home/laurent/data/readthroughpombe/data/fastq_original
 ln -s /home/laurent/data/readthroughpombe/data/fastq_original data/fastq_original
+mkdir /home/laurent/data/readthroughpombe/data/fastq
 cp data/fastq_original/PLBD1.fastq.gz	data/fastq/2017_04_14_PLBD1_wt_R1.fastq.gz
 cp data/fastq_original/PLBD2.fastq.gz	data/fastq/2017_04_14_PLBD2_cut14_208_R1.fastq.gz
 cp data/fastq_original/PLBD3.fastq.gz	data/fastq/2017_04_14_PLBD3_cut14_208 cdc15_118_R1.fastq.gz
