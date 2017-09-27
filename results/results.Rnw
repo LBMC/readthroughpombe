@@ -1,0 +1,225 @@
+\documentclass[a4paper]{article}
+\usepackage{pdfpages}
+\usepackage[latin9]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{color}
+\usepackage{Sweave}
+\usepackage{pdfcolmk}
+\usepackage{multicol}
+\usepackage{ifthen}
+\usepackage{multido}
+\usepackage[labelformat = empty]{caption}
+\usepackage{fancyhdr}
+\usepackage[top=1.2cm, bottom=0.5cm, right=1.3cm, left=1.3cm]{geometry}
+\usepackage{lastpage}
+\pagestyle{fancy}
+\usepackage{fancyvrb}
+\usepackage{etoolbox}
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true, %set true if you want colored links
+    linktoc=all,     %set to all if you want both sections and subsections linked
+    linkcolor=blue,  %choose some color if you want links to stand out
+}
+\makeatletter
+\patchcmd{\FV@ListVSpace}{\@topsepadd\topsep}{}{}  %% Reduce space between Sin/output
+\makeatother
+\fancyhf{}
+\rhead{\date\today \hspace{0.2cm}- \thepage/\pageref{LastPage}}
+\renewcommand{\footrulewidth}{0pt}
+\newcommand{\bslash}{\textbackslash}
+
+\begin{document}
+
+\setkeys{Gin}{width = 0.2\textwidth}  %% Auto position of the figures
+
+\setlength\parindent{0pt}
+\SweaveOpts{tidy = FALSE, keep.source = TRUE, keep.space = FALSE, keep.blank.space = FALSE, keep.comment = TRUE}
+\DefineVerbatimEnvironment{Sinput}{Verbatim}{formatcom = {\color[rgb]{0, 0, 0.56}}}
+\DefineVerbatimEnvironment{Soutput}{Verbatim}{formatcom = {\color[rgb]{0.56, 0, 0}}}
+
+<< options, echo = FALSE >>=
+options(prompt = ">", continue = "...", width = 100)
+@
+
+\title{Condensine implication in gene expression}
+\author{Claire Burny, Clémence Hocquet, Xavier Robellet, Laurent Modolo, Pascal Bernard}
+\maketitle
+\tableofcontents
+\newpage
+
+\section{Settings and sourcing useful functions}
+
+When and where we are :
+<<dir-and-date, echo = FALSE>>=
+date();
+R.Version()$version.string;
+getwd();
+@
+
+We source here useful functions and load necessary packages and tools.
+
+<<load-pack-scripts>>=
+##### Packages #####
+require(DESeq2)
+require(tximport)
+require(ggplot2)
+require(reshape2)
+library("RColorBrewer")
+library("pheatmap")
+@
+
+\setkeys{Gin}{width = 0.2\textwidth}  
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Data pre-processing}
+
+Data were sequenced on 1 lane on the same flowcell with an Illumina Hiseq platform 50-read length single-end in IGBMC (S17017 project). This was RNA seq experiments using a Ribozero kit depletion.\\
+Each strain was sequenced in triplicates: 
+\begin{itemize}
+  \item WT: samples 1, 6, 11
+  \item cut14-208 mutant: samples 2, 7, 12
+  \item rrp6D mutant: samples 5, 10, 15
+  \item cut14-208/cdc15-118 double mutant: samples 3, 8, 13
+  \item cdc15-118 mutant: samples 4, 9, 14
+\end{itemize}
+
+Samples from 59,340,962 to 93,363,639 reads after adapters removal were provided. 
+The encoding of quality values is Sanger / Illumina 1.9 format.\\
+See doc directory for reports produced by IGBMC. 
+
+% ----------------
+\subsection{FastQC}
+
+\begin{itemize}
+  \item adapter trimming. This was performed by IGBMC and not done, indeed there is no contamination in adapter as regards FASTQ reports. 
+  \item quality of sequencing. It is good quality data as regards mean(QPhred)>30 whathever the position within the read on both ends. There is potential high level of library duplication for some samples (presence of observations in the last duplicate bin plot).
+  \item bp content. First 12 bp are biased in bp content probably due to experimental protocole (random hexamer fixation on RNA fragments), this does not required trimming. 3 samples (cut14 repl1, rrp6D repl3 and cdc15 repl1) displayed, raw and after trimming, 2 modes in GC\% distribution; this could reflect rRNA sequences after some BLAST attempts. Indeed according to https://www.pombase.org/status/statistics, rRNA contains 48\% of GC compared to protein coding genes (36\%). This could also reflects tRNA content (54\% of GC). These 3 samples also display a high content of overrepresented sequences. Note that cdc15 repl2 also displays a high content of overrepresented sequences. I did a BLAST and these are rRNAs. 
+\end{itemize}
+
+\includegraphics{{results/quality_control/fastqc_per_sequence_gc_content_plot}.png}\\
+\includegraphics{{results/quality_control/fastqc_overrepresented_sequencesi_plot}.png}
+
+
+% ------------------------
+\subsection{Data cleaning}
+
+We used cutadapt to trim tails with quality lower than 20. No other filter was applied.
+
+\begin{tabular}{c|c|c|c|c|c}
+sample & initial & after adapter removal by IGBMC & \% bases over 30 & after cleaning & \% GC\\
+\hline
+1 - wt repl1 & 59,342,221 & 59,340,962 & 97.22 & 59,340,962 & 41\\
+6 - wt repl2 & 73,560,652 & 73,556,476 & 97.28 & 73,556,476 & 41\\
+11 - wt repl3 & 71,364,436 & 71,362,250 & 97.31 & 71,362,250 & 41\\
+\hline
+2 - cut14-208 repl1 & 71,036,268 & 71,035,324 & 97.36 & 71,035,324  & 43\\
+7 - cut14-208 repl2 & 80,549,007 & 80,546,568 & 97.31 &  80,546,568& 41\\
+12 - cut14-208 repl3 & 80,171,863 & 80,170,034 & 97.38 &  80,170,034 & 41\\
+\hline
+3 - cut14-208  cdc15-118 repl1 & 78,987,460 & 78,984,731 & 97.16 &78,984,731 & 41\\
+8 - cut14-208  cdc15-118 repl2 & 72,204,300 & 72,200,808 & 97.26 & 72,200,808 & 41\\
+13 - cut14-208  cdc15-118 repl3 & 84,285,814 & 84,240,516 & 97.06 & 84,285,814 & 41\\
+\hline
+4 - cdc15-118 repl1 & 77,862,467 & 77,859,813 & 97.26 &  77,859,813& 43\\
+9 - cdc15-118 repl2 &71,883,098 & 71,880,239 & 97.3 &  71,880,239& 42\\
+14 - cdc15-118 repl3 & 85,663,522 & 85,661,211 & 97.22 &  85,661,211  & 41\\
+\hline
+5 - rrp6D repl1 & 76,816,322 & 76,809,781 & 97.24 & 76,809,781  & 40\\
+10 - rrp6D repl2 & 93,367,340 & 93,363,639 & 97.13 &  93,363,639 & 41\\
+15 - rrp6D repl3 & 78,292,366 & 78,288,309 & 97.36 & 78,288,309 & 43\\
+\end{tabular}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Mapping and quantification}
+
+% ----------------------------------------
+\subsection{Pick S. pombe reference genome}
+
+S. pombe ASM294v2.30 fasta and gff3 were downloaded resp. with wget from \texttt{ftp://ftp.ebi.ac.uk/pub/databases/pombase/pombe/Chromosome\_Dumps/Schizosaccharomyces\_pombe.ASM294v2.30.dna.genome.fa.gz} and \texttt{ftp://ftp.ebi.ac.uk/pub/databases/pombase/pombe/Chromosome\_Dumps/gff3/schizosaccharomyces\_pombe.chr.gff3} on 9th August 2017.
+
+% ------------------------------------------------------------------
+\subsection{Mapping to S. pombe reference genome and quantification}
+
+This was done using mapping.nf on PSMN. This was done by coupling Bowtie2 and RSEM. It gives:
+
+\begin{tabular}{c|c|c|c|c}
+sample & aligned concordantly 0 times & exactly 1 time & > 1 time & \% mapped\\
+\hline
+1 - wt repl1 & 50,615,390 (85.30\%) & 8,159,838 (13.75\%) & 565,734 (0.95\%) & 14.7\%\\
+6 - wt repl2 & 62,951,979 (85.58\%) & 9,885,080 (13.44\%)  & 719,417 (0.98\%) & 14.42\%\\
+11 - wt repl3 & 60,820,577 (85.23\%) & 9,839,256 (13.79\%) & 702,417 (0.98\%) & 14.77\%\\
+\hline
+2 - cut14-208 repl1 & 64,182,487 (90.35\%) & 6,434,090 (9.06\%) & 418,747 (0.59\%)  & 9.65\%\\
+7 - cut14-208 repl2 & 68,386,532 (84.90\%) & 11,448,221 (14.21\%) & 711,815 (0.88\%) & 15.10\%\\
+12 - cut14-208 repl3 &  68,005,802 (84.83\%) & 11,448,867 (14.28\%) & 715,365 (0.89\%) & 15.17\%\\
+\hline
+3 - cut14-208  cdc15-118 repl1 & 67,642,419 (85.64\%) & 10,626,744 (13.45\%) & 715,568 (0.91\%) & 14.36\%\\
+8 - cut14-208  cdc15-118 repl2 & 61,630,532 (85.36\%) &  9,925,891 (13.75\%) & 644,385 (0.89\%) & 14.64\%\\
+13 - cut14-208  cdc15-118 repl3 &  71,964,476 (85.43\%) & 11,570,117 (13.73\%) & 705,923 (0.84\%) & 14.57\%\\
+\hline
+4 - cdc15-118 repl1 & 70,904,425 (91.07\%) & 6,451,721 (8.29\%) &   503,667 (0.65\%)& 8.93\%\\
+9 - cdc15-118 repl2 & 63,009,528 (87.66\%) & 826,0981 (11.49\%) & 609,730 (0.85\%) & 12.34\%\\
+14 - cdc15-118 repl3 &  73,149,383 (85.39\%) & 11,672,915 (13.63\%) & 838,913 (0.98\%)& 14.61\%\\
+\hline
+5 - rrp6D repl1 & 64,510,957 (83.99\%) & 11,626,695 (15.14\%) & 672,129 (0.88\%)  & 16.01\%\\
+10 - rrp6D repl2 & 79,218,230 (84.85\%) & 13,245,925 (14.19\%) & 899,484 (0.96\%) & 15.15\%\\
+15 - rrp6D repl3 & 71,484,515 (91.31\%) & 6,372,959 (8.14\%) & 430,835 (0.55\%) & 8.69\%\\
+\end{tabular}
+
+\textcolor{red}{These needed to be updated according to PSMN crash.}
+
+
+% ---------------------------------------
+\subsection{Assessment of unmapped reads}
+
+(For the most unmapped sample, I suggest to map against rRNA/tRNA)
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{DESeq2 analysis}
+
+In presence of condensine defects, 2 phenotypes are observed: 1) an overexpression of genes and 2) readthrough for some genes. 4 mutants are used to study direct and indirect effects of condensine defects (+ a WT strain):
+\begin[itemize}
+  \item cut14: condensine faulty
+  \item cdc15: no cytokinesis 
+  \item cdc15-cut14: double mutant, no daughter cell
+  \item rrp6
+\end{itemize}
+
+Several analysis need to be done:
+\begin{itemize}
+  \item cut14-208 vs wt: phenotype 1 observed
+  \item cdc15-118 vs wt: no more phenotype 1 observed: cdc15 suppresses effects of cut14.
+  \item cut14-208\_cdc15-118 vs wt: no more phenotype 1 observed: cdc15 suppresses effects of cut14.
+  \item cut14-208\_cdc15-118 vs cut14-208 / cut14-208\_cdc15-118 vs cdc15-118: should be equivalent if cdc15 suppresses effect of cut14.
+  \item rrp6D vs wt
+  \item rrp6D vs cut14-208
+\end{itemize}
+
+Each time, conditions are in triplicates.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Meeting 09.26.2017}
+
+\begin{itemize}
+  \item Validate on what we work for RNASeq (not clear for ncRNA and tRNA)
+  \item Do RNASeq analysis with adding missing replicates.
+  \item Validate comparisons to be done with rrp2 mutant.
+  \item Validate figures of density of up-regulated genes.
+  \item Validate distance between genes and tRNA + reformulate questions as regards the test wanted.
+  \item Readthrough: now we have the expressiong per gene, need to compute gene by gene profiles with different sizes of windows. 
+  
+\end{itemize}
+
+
+
+
+
+
+
+
+\end{document}
