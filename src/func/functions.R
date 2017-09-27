@@ -64,8 +64,9 @@ DistBetweenSamples <- function(rld_count, where, save) {
   print(p)
   dev.off()
   
+  pca <- plotPCA(rld_count, intgroup="condition")	
   pdf(paste(where, save.pref, "2.pdf", sep = ""))
-  plotPCA(rld_count, intgroup="condition")
+  print(pca)
   dev.off()
 }
 
@@ -73,7 +74,8 @@ DistBetweenSamples <- function(rld_count, where, save) {
 ##### PlotCountDen #####
 ########################
 PlotCountDen <- function(count_df, where, save) {
+  den <- ggplot(count_df, aes(log2(value+1), fill = samples, linetype=replicate)) + geom_density(alpha = 0.5) + xlab("") + ylab(expression("density"(log[10](count + 1))))
   pdf(paste(where, save, sep = ""))
-  ggplot(count_df, aes(log2(value+1), fill = samples, linetype=replicate)) + geom_density(alpha = 0.5) + xlab("") + ylab(expression("density"(log[10](count + 1))))
+  print(den)
   dev.off()  
 }
