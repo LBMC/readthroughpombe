@@ -21,7 +21,7 @@ PvalHist <- function(res_deseq, pval.thresh,where, save, title) {
   pdf(paste(where, save, sep = ""))
   hist(res_deseq$padj, breaks = 50, xlab = "pval", main = title )  
   nbupdown <- length(which(res_deseq$padj<=pval.thresh))
-  mtext(paste("nb diffp=", nbupdown, " on ", dim(res_deseq)[1], " genes", sep = ""), 3)
+  mtext(paste("nb diff=", nbupdown, " on ", dim(res_deseq)[1], " genes", sep = ""), 3)
   abline(v = pval.thresh, col = "red", lty = 2)     
   legend("topright", legend = paste("pval threshold=", pval.thresh, sep = ""), col = "red", lty = 2, cex =0.75, bty = "n")
   dev.off()
@@ -54,16 +54,6 @@ Heatmap100DE <- function(res_deseq, rld_count, pval.thresh, where, save, title) 
 ##############################
 DistBetweenSamples <- function(rld_count, where, save) {
   save.pref <- strsplit(save, ".", fixed = T)[[1]][1]
-  sampleDists <- dist(t(assay(rld_count)))
-  sampleDistMatrix <- as.matrix(sampleDists)/max(sampleDists)
-  rownames(sampleDistMatrix) <- rld_count$condition
-  colnames(sampleDistMatrix) <- NULL
-  #colors <- colorRampPalette( rev(brewer.pal(9, "Blues")) )(20)
-  p <- pheatmap(sampleDistMatrix, clustering_distance_rows=sampleDists, clustering_distance_cols=sampleDists)
-  pdf(paste(where, save.pref, "1.pdf", sep = ""))
-  print(p)
-  dev.off()
-  
   pca <- plotPCA(rld_count, intgroup="condition")	
   pdf(paste(where, save.pref, "2.pdf", sep = ""))
   print(pca)
