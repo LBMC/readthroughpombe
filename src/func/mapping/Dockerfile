@@ -72,4 +72,5 @@ RUN curl -k -L https://sourceforge.net/projects/samtools/files/samtools/${SAMTOO
   make install && \
   cd .. && rm -Rf samtools-${SAMTOOLS_VERSION}*
 
-COPY file_handle.py /usr/bin/local/file_handle.py
+RUN git clone https://github.com/LBMC/file_handle.git && \
+    cp file_handle/src/file_handle.py /usr/bin/file_handle.py
