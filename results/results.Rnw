@@ -60,17 +60,7 @@ getwd();
 
 We source here useful functions and load necessary packages and tools.
 
-<<load-pack-scripts>>=
-##### Packages #####
-require(DESeq2)
-require(tximport)
-require(ggplot2)
-require(reshape2)
-library("RColorBrewer")
-library("pheatmap")
-@
-
-\setkeys{Gin}{width = 0.2\textwidth}  
+\setkeys{Gin}{width = 0.8\textwidth}  
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Data pre-processing}
@@ -95,11 +85,11 @@ See doc directory for reports produced by IGBMC.
 \begin{itemize}
   \item adapter trimming. This was performed by IGBMC and not done, indeed there is no contamination in adapter as regards FASTQ reports. 
   \item quality of sequencing. It is good quality data as regards mean(QPhred)>30 whathever the position within the read on both ends. There is potential high level of library duplication for some samples (presence of observations in the last duplicate bin plot).
-  \item bp content. First 12 bp are biased in bp content probably due to experimental protocole (random hexamer fixation on RNA fragments), this does not required trimming. 3 samples (cut14 repl1, rrp6D repl3 and cdc15 repl1) displayed, raw and after trimming, 2 modes in GC\% distribution; this could reflect rRNA sequences after some BLAST attempts. Indeed according to https://www.pombase.org/status/statistics, rRNA contains 48\% of GC compared to protein coding genes (36\%). This could also reflects tRNA content (54\% of GC). These 3 samples also display a high content of overrepresented sequences. Note that cdc15 repl2 also displays a high content of overrepresented sequences. I did a BLAST and these are rRNAs. 
+  \item bp content. First 12 bp are biased in bp content probably due to experimental protocole (random hexamer fixation on RNA fragments), this does not required trimming. 3 samples (cut14 repl1, rrp6D repl3 and cdc15 repl1) display, as raw data and after trimming, 2 modes in GC\% distribution; this reflects rRNA sequences after some BLAST attempts. Indeed according to https://www.pombase.org/status/statistics, rRNA contains 48\% of GC compared to protein coding genes (36\%). This could also reflects tRNA content (54\% of GC). These 3 samples also display a high content of overrepresented sequences. Note that cdc15 repl2 also displays a high content of overrepresented sequences.  
 \end{itemize}
 
-\includegraphics{{results/quality_control/fastqc_per_sequence_gc_content_plot}.png}\\
-\includegraphics{{results/quality_control/fastqc_overrepresented_sequencesi_plot}.png}
+\includegraphics{{quality_control/fastqc_per_sequence_gc_content_plot}.png}\\
+\includegraphics{{quality_control/fastqc_overrepresented_sequencesi_plot}.png}
 
 
 % ------------------------
@@ -182,7 +172,7 @@ sample & aligned concordantly 0 times & exactly 1 time & > 1 time & \% mapped\\
 \section{DESeq2 analysis}
 
 In presence of condensine defects, 2 phenotypes are observed: 1) an overexpression of genes and 2) readthrough for some genes. 4 mutants are used to study direct and indirect effects of condensine defects (+ a WT strain):
-\begin[itemize}
+\begin{itemize}
   \item cut14: condensine faulty
   \item cdc15: no cytokinesis 
   \item cdc15-cut14: double mutant, no daughter cell
