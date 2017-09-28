@@ -32,4 +32,5 @@ RUN wget http://www.bioinformatics.babraham.ac.uk/projects/fastqc/fastqc_v0.11.5
   ln -s /opt/FastQC/fastqc /usr/local/bin/fastqc && \
   chmod +x /usr/local/bin/fastqc
 
-COPY file_handle.py /usr/bin/local/file_handle.py
+RUN git clone https://github.com/LBMC/file_handle.git && \
+    cp file_handle/src/file_handle.py /usr/bin/file_handle.py
