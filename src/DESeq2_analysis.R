@@ -13,17 +13,19 @@ pthresh <- 0.05; pref.date.counts <- "2017_09_20"
 
 ##### Code #####
 annotation <- read.table("./data/annotation.csv", sep = ";", h = T, stringsAsFactors = F) ##### annotation file 
-gtf <- fread("data/ReferenceGenomes/2017_09_19_schizosaccharomyces_pombe.chr.gtf2", sep = "\t", h = F)
+#gtf <- fread("data/ReferenceGenomes/2017_09_19_schizosaccharomyces_pombe.chr.gtf2", sep = "\t", h = F)
 gff <- fread("data/ReferenceGenomes/schizosaccharomyces_pombe.chr.gff3", sep = "\t", h = F)
 gff$deb <- apply(gff, 1, function(x) if (x[7] == "+"){x[4]}else{x[5]})
+gff$deb <- as.numeric(gff$deb)
 
-ind.transcripts <- which(gff$V2 == "PomBase" & gff$V3 == "transcript" & gff$V1 %in% c("I", "II", "III"))
+ind.transcripts <- which(gff$V2 == "PomBase" & gff$V3 %in% c("ncRNA_gene", "gene") & gff$V1 %in% c("I", "II", "III"))
 gff.transcripts <- gff[ind.transcripts, ]
 ind.tRNA <- which(gff$V2 == "PomBase" & gff$V3 == "tRNA_gene")
 gff.tRNA <- gff[ind.tRNA, ]
 
-keep.names <- unname(sapply(gff.transcripts$V9, function(x) strsplit(strsplit(x, "Parent=")[[1]][2], ";", fixed = T)[[1]][1]))
-analysis <- list(c("cut14-208", "wt"), c("cut14-208_cdc15-118", "wt"), c("cdc15-118", "wt"), c("cut14-208_cdc15-118", "cut14-208"), c("cut14-208_cdc15-118", "cdc15-118"), c("rrp6D", "wt"))
+keep.names <- unname(sapply(gff.transcripts$V9, function(x) strsplit(strsplit(x, "ID=")[[1]][2], ";", fixed = T)[[1]][1]))
+analysis <- list(c("cut14-208", "wt"), c("cut14-208_cdc15-118", "wt"), c("cdc15-118", "wt"), c("cut14-208_cdc15-118", "cut14-208"), c("cut14-208_cdc15-118", "cdc15-118"), c("rrp6D", "wt"), c("rrp6D","cut14-208"))
+ref.level <- c("wt", "wt", "wt", "cut14-208","cdc15-118", "wt", "cut14-208")
 
 for (i in seq_along(analysis)){
   analysis.tmp <- analysis[[i]]
@@ -53,13 +55,14 @@ for (i in seq_along(analysis)){
   # check to remove effective length
   ind.remove <- which(apply(txi.rsem$length, 1, function(x) length(which(x == 0)))>0)
   if(length(ind.remove)>0){
-    txi.rsem$counts <-txi.rsem$counts[-ind.remove, ]
+    txi.rsem$counts <- txi.rsem$counts[-ind.remove, ]
     txi.rsem$length <- txi.rsem$length[-ind.remove, ]
     txi.rsem$abundance <- txi.rsem$abundance[-ind.remove, ]
   }   
 
   ##### Input for DESeq analysis
   dds <- DESeqDataSetFromTximport(txi.rsem, sampleTable, ~condition)
+  dds$condition <- relevel(dds$condition, ref = ref.level[i])
   
   ##### DESeq analysis
   dds <- DESeq(dds)
@@ -70,8 +73,6 @@ for (i in seq_along(analysis)){
   resLFC <- resLFC[order(resLFC$padj),]
   write.csv(as.data.frame(resLFC), file = paste(save.path.dir, "/deseq2_shrinked_analysis_", save.dir, ".csv", sep = ""))
   
-  #res.signif <- results(dds, alpha=pthresh)
-
   ##### VolcanoPlot 
   VolcanoPlot(resLFC, pthresh, save.path.dir, paste("/volcano_", save.dir, ".pdf", sep = ""), save.dir) 
   
@@ -82,7 +83,7 @@ for (i in seq_along(analysis)){
   #If a row contains a sample with an extreme count outlier then the p value and adjusted p value will be set to NA. These outlier counts are detected by Cook’s distance. 
   #If a row is filtered by automatic independent filtering, for having a low mean normalized count, then only the adjusted p value will be set to NA. 
   
-  ##### Density of upregulated genes along chromosomes
+  ##### Density of up/downregulated genes along chromosomes
   ind.up.genes <- which(resLFC$padj<=pthresh & resLFC$log2FoldChange>0)
   up.genes <- rownames(resLFC)[ind.up.genes]
   l2fc <- sapply(up.genes, function(x) resLFC[which(rownames(resLFC) == x), ]$log2FoldChange)
@@ -96,7 +97,7 @@ for (i in seq_along(analysis)){
   chrom.down <- unique(info.down.genes$V1)
   
   chr.all <- unique(c(chrom.up, chrom.down))
-  
+
   pdf(paste(save.path.dir, "/density_up_down_reg_", save.dir, ".pdf", sep = ""), h = 4*length(chrom.up), w = 7)
   par(mfrow = c(length(chrom.up), 1))
   for (chr in chr.all) {
@@ -119,30 +120,37 @@ for (i in seq_along(analysis)){
   dev.off()
   
   #### Distance between upregulated genes and the next tRNA
-  gff.tRNA$deb <- as.numeric(gff.tRNA$deb)
-  info.up.genes$deb <- as.numeric(info.up.genes$deb)
   min.dist.up.tRNA <- sapply(1:dim(info.up.genes)[1], function(x) min(abs(gff.tRNA$deb[which(gff.tRNA$V1 == info.up.genes$V1[x])]-info.up.genes$deb[x])))
-  
-  info.down.genes$deb <- as.numeric(info.down.genes$deb)
   min.dist.down.tRNA <- sapply(1:dim(info.down.genes)[1], function(x) min(abs(gff.tRNA$deb[which(gff.tRNA$V1 == info.down.genes$V1[x])]-info.down.genes$deb[x])))
+  all.dist.min <- c(min.dist.down.tRNA, min.dist.up.tRNA)
   
-  all.but.up <- setdiff(rownames(txi.rsem$counts), info.up.genes$up.genes)
-  all <- gff.transcripts[sapply(all.but.up, function(x) which(keep.names == x)), c("V1", "V4", "V5", "V7", "deb")]
-  all$deb <- as.numeric(all$deb)
+  all <- setdiff(rownames(txi.rsem$counts), c(info.up.genes$up.genes, info.down.genes$up.genes))
+  all <- gff.transcripts[sapply(all, function(x) which(keep.names == x)), c("V1", "V4", "V5", "V7", "deb")]
   min.dist.all.tRNA <- sapply(1:dim(all)[1], function(x) min(abs(gff.tRNA$deb[which(gff.tRNA$V1 == all$V1[x])]-all$deb[x])))
-
+  
+  ##### Kolmogorv Smirnov unilateral test
+  kstest <- ks.test(min.dist.all.tRNA, all.dist.min, alternative = "less")
+  
   pdf(paste(save.path.dir, "/dist_next_tRNA_", save.dir, ".pdf", sep = ""))
   hup <- hist(min.dist.up.tRNA, breaks = 100, plot = F)
   hd <- hist(min.dist.down.tRNA, breaks = 100, plot = F)
-  ylim <- c(0, max(c(hup$counts, hd$counts)))
-  xlim <- c(0, max(c(hup$breaks, hd$breaks)))
-  hist(min.dist.up.tRNA, breaks = 100, main = paste("Min distance between genes and tRNA\nbreaks=100 - ", save.dir, sep = ""), ylim = ylim, xlim = xlim, col = adjustcolor("red", 0.5))
-  hist(min.dist.down.tRNA, breaks = 100, add = T, col = adjustcolor("blue", 0.5))
+  ha <- hist(min.dist.all.tRNA, breaks = 100, plot = F)
+  hdiff <- hist(all.dist.min, breaks = 100, plot = F)
+  ylim <- c(0, max(c(hdiff$counts, ha$counts)))
+  xlim <- c(0, max(c(hdiff$breaks, ha$breaks)))
+  hist(all.dist.min, breaks = 100, main = paste("Min distance between genes and tRNA promoters\nbreaks=100 - ", save.dir, sep = ""), xlab = "Distance in bp", ylim = ylim, xlim = xlim, col = adjustcolor("purple", 0.5))
   hist(min.dist.all.tRNA, breaks = 100, add = T, col = adjustcolor("black", 0.25))
-  legend("topright", c("up regulated", "down regulated", "all but up regulated"), fill = c("red", "blue", "black"), bty = "n")
+  points(hup$mids, hup$counts, col = "red", type = "l")
+  points(hd$mids, hd$counts, col = "blue", type = "l")
+  legend("topright", c("differentially expressed genes", "all but differentially expressed genes", paste("up regulated genes (ref=", ref.level[i], ")", sep = ""), paste("down regulated genes (ref=", ref.level[i], ")",sep = "")), col = c("purple", "black", "red", "blue"), lty = c(-1,-1,1,1), pch = c(15,15,-1,-1),bty = "n", cex = 0.75)
+  if (kstest$p.value<0.05) {
+    txt <- paste("At a risk of 5%, tRNA-gene distances are lower in differentially\nexpressed genes compared to equally expressed genes\n(pvalue=", format(kstest$p.value, scientific = T), " KS unilateral, less)", sep = "")
+  }else{
+    txt <- paste("At a risk of 5%, we cannot say tRNA-gene distances are lower in\ndifferentially expressed genes compared to equally expressed genes\n(pvalue=", format(kstest$p.value, scientific = T), ", KS unilateral test)", sep = "")
+  }
+  text(1.25*xlim[2]/2, ylim[2]/2, txt, cex = 0.75)
   dev.off()
-  # Which genes to pick? diff expressed only or all?
-  
+
   ##### MA plot
   MAplotBetween2Cn(resLFC, save.path.dir, paste("/MAplot_", save.dir, ".pdf", sep = ""), save.dir) 
   #idx <- identify(resLFC$baseMean, resLFC$log2FoldChange)
