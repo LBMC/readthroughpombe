@@ -37,55 +37,133 @@
 */
 
 // global variables
-rootDir = (baseDir =~ /(.*)src\/pipe/)[0][1]
+println baseDir
+rootDir = (baseDir =~ /(.*)src/)[0][1]
 results_path = rootDir + 'results'
 src_path = rootDir + '/src'
 
+
 // test software path
 class software_path {
-  def process_header = ""
-  def file_handle_path = ""
-  def file_handle_module = ""
-  def fastqc_module = ""
-  def multiqc_module = ""
-  def urqt_module = ""
-  def cutadapt_module = ""
-  def pigz_module = ""
-  def python2_unload_module = ""
-  def python3_unload_module = ""
+  def params
 
-  def call(params) {
+  def call(params, docker, src_path) {
     try{
-      switch(params.global_executor) {
-        case 'sge':
+      this.params =  params
+      if (this.params.global_executor ==  'sge') {
           println 'executor : sge'
-          process_header = params.pbs_header
-          this.file_handle_path = "file_handle.py"
-          this.file_handle_module = "module load file_handle/${params.file_handle_version}"
-          this.fastqc_module = "module load FastQC/${params.fastqc_version}"
-          this.multiqc_module = "module load python/${params.python2_version}"
-          this.urqt_module = "module load UrQt/${params.urqt_version}"
-          this.cutadapt_module = "module load python/${params.python2_version}"
-          this.pigz_module = "module load pigz/${params.pigz_version}"
-          this.python2_unload_module = "module unload python/${params.python2_version}"
-          this.python3_unload_module = "module unload python/${params.python3_version}"
-        break
-        case 'docker':
+          this.params.gz = params.pigz
+      } else {
+        if (docker){
           println 'executor : docker\n'
-          this.file_handle_path = "/usr/bin/local/file_handle.py"
-        break
-        default:
+          this.params.gz = params.pigz
+        } else {
           println 'executor : local\n'
-          this.file_handle_path = "${src_path}/file_handle/src/file_handle.py"
-        break
+          this.params.file_handle_path = "${src_path}/file_handle/src/file_handle.py"
+          this.test_pigz()
+        }
       }
+      this.params.process_header = params.pbs_header
     } catch (e) {
       println "error in software_path.call() ${e}"
+    }
+  }
+
+  def test_pigz() {
+    try{
+      if (file(params.pigz).exists()) {
+        this.params.gz = params.pigz
+      } else {
+        this.params.gz = params.gzip
+      }
+    } catch (e) {
+      println "error in software_path.test_pigz() ${e}"
+    }
+  }
+
+  def cmd_gz(cpu, file) {
+    try{
+      def cmd
+      if (this.params.gz ==~ /.*pigz$/) {
+        cmd = "${this.params.gz} -p ${cpu}"
+      }else{
+        cmd = "${this.params.gz}"
+      }
+      return "cat ${file} | ${cmd} -c > ${file}.gz"
+    } catch (e) {
+      println "error in software_path.cmd_gz() ${e}"
+    }
+  }
+
+  def cmd_date(file) {
+    try{
+      return "${this.params.file_handle} -c -e -r -f ${file}"
+    } catch (e) {
+      println "error in software_path.cmd_date() ${e}"
+    }
+  }
+
+  def cmd_unsalt_file(file) {
+    try{
+      file = (reads =~ /d(\d{4}_\d{2}_\d{2}_.*)/)[0][1]
+    } catch (e) {
+      println "error in software_path.cmd_unsalt_file() ${e}"
+    }
+  }
+
+  def test_fastq(file) {
+    try{
+      if (!(file ==~ /^.*\.fastq$/ || file ==~ /^.*\.fastq\.gz$/)) {
+        exit 1, "Can only work with fastq or fastq.gz files: ${file}"
+      }
+    } catch (e) {
+      println "error in software_path.test_fastq() ${e}"
+    }
+  }
+
+  def test_gz(file) {
+    try{
+      return file ==~ /^.*\.gz$/
+    } catch (e) {
+      println "error in software_path.test_gz() ${e}"
+    }
+  }
+
+  def test_single(file) {
+    try{
+      return file instanceof Path
+    } catch (e) {
+      println "error in software_path.test_single() ${e}"
     }
   }
 }
 
 path = new software_path()
-path(params)
+path(params, config.docker.enabled == true, src_path)
+config.docker.runOptions = "--cpus=\"${path.params.cpu}\" --memory=\"${path.params.memory}\""
 
-// template "${rootDir}src/func/evaluate_parameters.groovy"
+// load data
+fastq_files = Channel.fromFilePairs( params.fastq, size: -1)
+  .ifEmpty { exit 1, "Cannot find any fastq files matching: ${params.fastq}" }
+
+process get_fastq_name {
+  tag "${tagname}"
+  input:
+    set val(fastq_name), file(reads) from fastq_files
+  output:
+    file "d*.fastq.gz" into dated_fastq_files
+  script:
+    if (path.test_single(reads)) {
+      tagname = (reads =~ /(.*\/){0,1}(.*)\.fastq(\.gz){0,1}/)[0][2]
+      path.test_fastq(reads)
+      file_S = reads
+      template "${rootDir}src/func/get_file_name_single.sh"
+    } else {
+      tagname = (reads[0] =~ /(.*\/){0,1}(.*)_(R){0,1}[0,1]\.fastq(\.gz){0,1}/)[0][2]
+      path.test_fastq(reads[0])
+      path.test_fastq(reads[1])
+      file_R1 = reads[0]
+      file_R2 = reads[1]
+      template "${rootDir}src/func/get_file_name_paired.sh"
+    }
+}
