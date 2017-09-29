@@ -1,11 +1,11 @@
 ${path.params.process_header}
 
 ${path.params.pigz_module}
-${path.cmd_gz(task.cpus, file_S)}
+${path.cmd_gz(task.cpus, file)}
 
 ${path.params.file_handle_module}
-${path.cmd_date(file_S + ".gz")}
+${path.cmd_date("*.gz")}
 
-find . -type f -name "*.fastq.gz" | \
+find . -type f -name "*.gz" | \
 sed 's/^.\\///g' | \
 awk '{system("mv "\$0" d"\$0)}'
