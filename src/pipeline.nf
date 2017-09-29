@@ -1,4 +1,4 @@
-#!/usr/bin/env nextflowsrc_path = rootDir + '/src'
+#!/usr/bin/env nextflow
 
 /*
 * Copyright laurent modolo for the LBMC UMR 5239 ©.
@@ -38,9 +38,9 @@
 
 // global variables
 println baseDir
-rootDir = (baseDir =~ /(.*)src/)[0][1]
-results_path = rootDir + 'results'
-src_path = rootDir + '/src'
+root_path = (baseDir =~ /(.*)src/)[0][1]
+results_path = root_path + 'results'
+src_path = root_path + '/src'
 
 
 // test software path
@@ -48,7 +48,7 @@ class software_path {
   def params
 
   def call(params, docker, src_path) {
-    try{
+    try {
       this.params =  params
       if (this.params.global_executor ==  'sge') {
           println 'executor : sge'
@@ -70,7 +70,7 @@ class software_path {
   }
 
   def test_pigz() {
-    try{
+    try {
       if (file(params.pigz).exists()) {
         this.params.gz = params.pigz
       } else {
@@ -82,7 +82,7 @@ class software_path {
   }
 
   def cmd_gz(cpu, file) {
-    try{
+    try {
       def cmd
       if (this.params.gz ==~ /.*pigz$/) {
         cmd = "${this.params.gz} -p ${cpu}"
@@ -101,7 +101,7 @@ class software_path {
   }
 
   def cmd_date(file) {
-    try{
+    try {
       return "${this.params.file_handle} -c -e -r -f ${file}"
     } catch (e) {
       println "error in software_path.cmd_date() ${e}"
@@ -109,15 +109,28 @@ class software_path {
   }
 
   def cmd_unsalt_file(file) {
-    try{
+    try {
       file = (reads =~ /d(\d{4}_\d{2}_\d{2}_.*)/)[0][1]
     } catch (e) {
       println "error in software_path.cmd_unsalt_file() ${e}"
     }
   }
 
+  def cmd_fastqc(cpu, file){
+    try {
+      def cmd = "${this.params.fastqc} --quiet --threads ${cpu} --outdir ./"
+      if (this.test_single(file)) {
+        return "${cmd} ${file}"
+      } else {
+        return "${cmd} ${file[0]} ${file[1]}"
+      }
+    } catch (e) {
+      println "error in software_path.cmd_fastqc() ${e}"
+    }
+  }
+
   def test_exist_fastq(file) {
-    try{
+    try {
       if (!(file ==~ /^.*\.fastq$/ || file ==~ /^.*\.fastq\.gz$/)) {
         exit 1, "Can only work with fastq or fastq.gz files: ${file}"
       }
@@ -127,7 +140,7 @@ class software_path {
   }
 
   def test_fastq(file) {
-    try{
+    try {
       if (this.test_single(file)) {
         this.test_exist_fastq(file)
       } else {
@@ -140,11 +153,11 @@ class software_path {
   }
 
   def get_tagname(file){
-    try{
+    try {
       if (this.test_single(file)) {
-        return (file =~ /(.*\/){0,1}(.*)\.fastq(\.gz){0,1}/)[0][2]
+        return (file =~ /(.*\/){0,1}d{0,1}(.*)\.fastq(\.gz){0,1}/)[0][2]
       } else {
-        return (file[0] =~ /(.*\/){0,1}(.*)_(R){0,1}[0,1]\.fastq(\.gz){0,1}/)[0][2]
+        return (file[0] =~ /(.*\/){0,1}d{0,1}(.*)_(R){0,1}[0,1]\.fastq(\.gz){0,1}/)[0][2]
       }
     } catch (e) {
       println "error in software_path.get_tagname() ${e}"
@@ -152,7 +165,7 @@ class software_path {
   }
 
   def test_gz(file) {
-    try{
+    try {
       return file ==~ /^.*\.gz$/
     } catch (e) {
       println "error in software_path.test_gz() ${e}"
@@ -160,7 +173,7 @@ class software_path {
   }
 
   def test_single(file) {
-    try{
+    try {
       return file instanceof Path
     } catch (e) {
       println "error in software_path.test_single() ${e}"
@@ -194,38 +207,25 @@ process get_fastq_name {
     path.test_fastq(reads)
     tagname = path.get_tagname(reads)
     file = reads
-    template "${rootDir}src/func/get_file_name.sh"
+    template "${src_path}/func/get_file_name.sh"
 }
 
-//
-//
-// process fastqc {
-//   tag "${tagname}"
-//   publishDir "${fastqc_res_path}", mode: 'copy'
-//   input:
-//      file reads from fastqc_input
-//   output:
-//     file "*.{zip,html}" into fastqc_output
-//   script:
-//     cmd_date = "${file_handle_path} -c -f *.{zip,html}"
-//     single = reads instanceof Path
-//     if (single) {
-//       tagname = (reads =~ /(.*\/){0,1}(.*)\.fastq(\.gz){0,1}/)[0][2]
-// """
-// ${process_header}
-// ${fastqc_module}
-// ${params.fastqc} --quiet --outdir ./ ${reads}
-// ${file_handle_module}
-// ${cmd_date}
-// """
-//     } else {
-//       tagname = (reads[0] =~ /(.*\/){0,1}(.*)_(R){0,1}[0,1]\.fastq(\.gz){0,1}/)[0][2]
-// """
-// ${process_header}
-// ${fastqc_module}
-// ${params.fastqc} --quiet --threads ${task.cpus} --outdir ./ ${reads[0]} ${reads[1]}
-// ${file_handle_module}
-// ${cmd_date}
-// """
-//     }
-// }
+dated_fastq_files.into{
+  fastqc_raw_input;
+  adaptor_rm_input
+}
+
+// fastqc on raw fastq
+process fastqc_raw {
+  tag "${tagname}"
+  publishDir "${results_path}/quality_control/fastqc", mode: 'copy'
+  input:
+     file reads from fastqc_raw_input
+  output:
+    file "*.{zip,html}" into fastqc_output
+  script:
+    path.test_fastq(reads)
+    tagname = path.get_tagname(reads)
+    file = reads
+    template "${src_path}/func/quality_control/fastqc.sh"
+}
