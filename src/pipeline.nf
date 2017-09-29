@@ -89,7 +89,12 @@ class software_path {
       }else{
         cmd = "${this.params.gz}"
       }
-      return "cat ${file} | ${cmd} -c > ${file}.gz"
+      if (this.test_single(file)) {
+        return "cat ${file} | ${cmd} -c > ${file}.gz"
+      } else {
+        return "cat ${file[1]} | ${cmd} -c > ${file[0]}.gz && \
+        cat ${file[1]} | ${cmd} -c > ${file[1]}.gz"
+      }
     } catch (e) {
       println "error in software_path.cmd_gz() ${e}"
     }
@@ -111,13 +116,38 @@ class software_path {
     }
   }
 
-  def test_fastq(file) {
+  def test_exist_fastq(file) {
     try{
       if (!(file ==~ /^.*\.fastq$/ || file ==~ /^.*\.fastq\.gz$/)) {
         exit 1, "Can only work with fastq or fastq.gz files: ${file}"
       }
     } catch (e) {
+      println "error in software_path.test_exist_fastq() ${e}"
+    }
+  }
+
+  def test_fastq(file) {
+    try{
+      if (this.test_single(file)) {
+        this.test_exist_fastq(file)
+      } else {
+        this.test_exist_fastq(file[0])
+        this.test_exist_fastq(file[1])
+      }
+    } catch (e) {
       println "error in software_path.test_fastq() ${e}"
+    }
+  }
+
+  def get_tagname(file){
+    try{
+      if (this.test_single(file)) {
+        return (file =~ /(.*\/){0,1}(.*)\.fastq(\.gz){0,1}/)[0][2]
+      } else {
+        return (file[0] =~ /(.*\/){0,1}(.*)_(R){0,1}[0,1]\.fastq(\.gz){0,1}/)[0][2]
+      }
+    } catch (e) {
+      println "error in software_path.get_tagname() ${e}"
     }
   }
 
@@ -138,6 +168,14 @@ class software_path {
   }
 }
 
+class modularity {
+  def todo = [:]
+
+  def call(path) {
+    todo.list = split(path.params.list, '+')
+  }
+}
+
 path = new software_path()
 path(params, config.docker.enabled == true, src_path)
 config.docker.runOptions = "--cpus=\"${path.params.cpu}\" --memory=\"${path.params.memory}\""
@@ -153,17 +191,41 @@ process get_fastq_name {
   output:
     file "d*.fastq.gz" into dated_fastq_files
   script:
-    if (path.test_single(reads)) {
-      tagname = (reads =~ /(.*\/){0,1}(.*)\.fastq(\.gz){0,1}/)[0][2]
-      path.test_fastq(reads)
-      file_S = reads
-      template "${rootDir}src/func/get_file_name_single.sh"
-    } else {
-      tagname = (reads[0] =~ /(.*\/){0,1}(.*)_(R){0,1}[0,1]\.fastq(\.gz){0,1}/)[0][2]
-      path.test_fastq(reads[0])
-      path.test_fastq(reads[1])
-      file_R1 = reads[0]
-      file_R2 = reads[1]
-      template "${rootDir}src/func/get_file_name_paired.sh"
-    }
+    path.test_fastq(reads)
+    tagname = path.get_tagname(reads)
+    file = reads
+    template "${rootDir}src/func/get_file_name.sh"
 }
+
+//
+//
+// process fastqc {
+//   tag "${tagname}"
+//   publishDir "${fastqc_res_path}", mode: 'copy'
+//   input:
+//      file reads from fastqc_input
+//   output:
+//     file "*.{zip,html}" into fastqc_output
+//   script:
+//     cmd_date = "${file_handle_path} -c -f *.{zip,html}"
+//     single = reads instanceof Path
+//     if (single) {
+//       tagname = (reads =~ /(.*\/){0,1}(.*)\.fastq(\.gz){0,1}/)[0][2]
+// """
+// ${process_header}
+// ${fastqc_module}
+// ${params.fastqc} --quiet --outdir ./ ${reads}
+// ${file_handle_module}
+// ${cmd_date}
+// """
+//     } else {
+//       tagname = (reads[0] =~ /(.*\/){0,1}(.*)_(R){0,1}[0,1]\.fastq(\.gz){0,1}/)[0][2]
+// """
+// ${process_header}
+// ${fastqc_module}
+// ${params.fastqc} --quiet --threads ${task.cpus} --outdir ./ ${reads[0]} ${reads[1]}
+// ${file_handle_module}
+// ${cmd_date}
+// """
+//     }
+// }
