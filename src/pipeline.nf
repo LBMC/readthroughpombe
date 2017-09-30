@@ -116,8 +116,7 @@ class software_path {
     }
   }
 
-  def cmd_fastqc(cpu, file){
-    try {
+  def cmd_fastqc(cpu, file){ try {
       def cmd = "${this.params.fastqc} --quiet --threads ${cpu} --outdir ./"
       if (this.test_single(file)) {
         return "${cmd} ${file}"
@@ -128,6 +127,22 @@ class software_path {
       println "error in software_path.cmd_fastqc() ${e}"
     }
   }
+
+  def cmd_adaptor_removal(cpu, file){ try {
+      def cmd = "${params.cutadapt} ${params.adaptor_sequence}"
+      def tagname = this.get_tagname(file)
+      if (this.test_single(file)) {
+        return "${cmd}
+ -o ${tagname}_cut.fastq.gz ${file} > ${tagname}_report.txt
+"
+      } else {
+        return "${cmd} -o ${tagname}_cut_R1.fastq.gz -p ${tagname}_cut_R2.fastq.gz ${file[0]} ${file[1]} > ${tagname}_report.txt"
+      }
+    } catch (e) {
+      println "error in software_path.cmd_fastqc() ${e}"
+    }
+  }
+
 
   def test_exist_fastq(file) {
     try {
@@ -182,18 +197,69 @@ class software_path {
 }
 
 class modularity {
-  def todo = [:]
+  def todo = [
+    'fastqc_raw' : [true, 'fastqc'],
+    'adaptor_rm' : [true, 'cutadapt'],
+    'trimming' : [true, 'urqt'],
+    'fastqc_trim' : [true, 'fastqc'],
+    'multiqc_trim' : [true, 'multiqc'],
+    'mapping' : [true, 'bowtie2'],
+    'quantifying' : [true, 'htseq'],
+    'multiqc_mapping' : [true, 'multiqc']
+  ]
 
   def call(path) {
-    todo.list = split(path.params.list, '+')
+    this.todo['adaptor_rm'][1] = path.params.adaptor_removal
+    this.todo['trimming'][1] = path.params.trimmer
+    this.todo['mapping'][1] = path.params.mapper
+    this.todo['quantifying'][1] = path.params.quantifier
+
+    def todo_list = path.params.todo.replaceAll("\\s","").tokenize('+')
+    def job_number = 0
+    for (job in this.todo) {
+      if (!todo_list[job_number] == job.key[1]) {
+        this.todo[job.key][0] = false
+      } else {
+        job_number += 1
+      }
+    }
+  }
+
+  def fastqc_raw(){
+    return this.todo['fastqc_raw'][0]
+  }
+  def adaptor_rm(){
+    return this.todo['adaptor_rm'][0]
+  }
+  def trimming(){
+    return this.todo['trimming'][0]
+  }
+  def fastqc_trim(){
+    return this.todo['fastqc_trim'][0]
+  }
+  def multiqc_trim(){
+    return this.todo['multiqc_trim'][0]
+  }
+  def indexing(){
+    return this.todo['indexing'][0]
+  }
+  def mapping(){
+    return this.todo['mapping'][0]
+  }
+  def quantifying(){
+    return this.todo['quantifying'][0]
+  }
+  def multiqc_mapping(){
+    return this.todo['multiqc_mapping'][0]
   }
 }
 
 path = new software_path()
 path(params, config.docker.enabled == true, src_path)
+todo = new modularity(path)
 config.docker.runOptions = "--cpus=\"${path.params.cpu}\" --memory=\"${path.params.memory}\""
 
-// load data
+/////////////////////////////// load fastq /////////////////////////////////////
 fastq_files = Channel.fromFilePairs( params.fastq, size: -1)
   .ifEmpty { exit 1, "Cannot find any fastq files matching: ${params.fastq}" }
 
@@ -210,22 +276,52 @@ process get_fastq_name {
     template "${src_path}/func/get_file_name.sh"
 }
 
-dated_fastq_files.into{
-  fastqc_raw_input;
-  adaptor_rm_input
+/////////////////////////// fastqc on raw fastq ////////////////////////////////
+if (todo.fastqc_raw()) {
+  dated_fastq_files.into{
+    fastqc_raw_input;
+    fastq_file_1
+  }
+  process fastqc_raw {
+    tag "${tagname}"
+    publishDir "${results_path}/quality_control/fastqc", mode: 'copy'
+    input:
+       file reads from fastqc_raw_input
+    output:
+      file "*.{zip,html}" into fastqc_output
+    script:
+      path.test_fastq(reads)
+      tagname = path.get_tagname(reads)
+      file = reads
+      template "${src_path}/func/quality_control/fastqc.sh"
+  }
+} else {
+  dated_fastq_files.into{
+    fastq_file_1
+  }
 }
 
-// fastqc on raw fastq
-process fastqc_raw {
-  tag "${tagname}"
-  publishDir "${results_path}/quality_control/fastqc", mode: 'copy'
-  input:
-     file reads from fastqc_raw_input
-  output:
-    file "*.{zip,html}" into fastqc_output
-  script:
-    path.test_fastq(reads)
-    tagname = path.get_tagname(reads)
-    file = reads
-    template "${src_path}/func/quality_control/fastqc.sh"
+//////////////////////////////// adaptor_removal////////////////////////////////
+if (todo.adaptor_removal()) {
+  fastq_file_1.into{
+    adaptor_rm_input;
+  }
+  process adaptor_removal {
+    tag "${tagname}"
+    publishDir "${results_path}/quality_control/adaptor", mode: 'copy'
+    input:
+      file reads from adaptor_rm_input
+    output:
+      file "*_cut*.fastq.gz" into fastq_file_2
+      file "*_report.txt" into adaptor_rm_log
+    script:
+        path.test_fastq(reads)
+        tagname = path.get_tagname(reads)
+        file = reads
+        template "${src_path}/func/quality_control/adaptor_removal.sh"
+  }
+} else {
+  fastq_file_1.into{
+    fastq_file_2
+  }
 }
