@@ -324,6 +324,7 @@ if (todo.fastqc_raw()) {
   }
   process fastqc_raw {
     tag "${tagname}"
+    echo true
     publishDir "${results_path}/quality_control/fastqc", mode: 'copy'
     input:
        file reads from fastqc_raw_input
@@ -348,6 +349,7 @@ if (todo.adaptor_removal()) {
   }
   process adaptor_removal {
     tag "${tagname}"
+    echo true
     publishDir "${results_path}/quality_control/adaptor", mode: 'copy'
     input:
       file reads from adaptor_rm_input
