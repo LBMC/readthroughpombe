@@ -129,20 +129,59 @@ class software_path {
   }
 
   def cmd_adaptor_removal(cpu, file){ try {
-      def cmd = "${params.cutadapt} ${params.adaptor_sequence}"
+      def cmd = "${params.cutadapt}"
       def tagname = this.get_tagname(file)
       if (this.test_single(file)) {
-        return "${cmd}
- -o ${tagname}_cut.fastq.gz ${file} > ${tagname}_report.txt
-"
+        return "${cmd} ${params.adaptor_sequence_single} -o ${tagname}_cut.fastq.gz ${file} > ${tagname}_report.txt"
       } else {
-        return "${cmd} -o ${tagname}_cut_R1.fastq.gz -p ${tagname}_cut_R2.fastq.gz ${file[0]} ${file[1]} > ${tagname}_report.txt"
+        return "${cmd} ${params.adaptor_sequence_paired} -o ${tagname}_cut_R1.fastq.gz -p ${tagname}_cut_R2.fastq.gz ${file[0]} ${file[1]} > ${tagname}_report.txt"
       }
     } catch (e) {
       println "error in software_path.cmd_fastqc() ${e}"
     }
   }
 
+  def trimming_module(){
+    try {
+      switch(this.params.trimmer) {
+        case 'cutadapt':
+          return this.params.cutadapt_module
+        break
+        default:
+          return this.params.urqt_module
+        break
+      }
+    } catch (e) {
+      println "error in software_path.trimming_module() ${e}"
+    }
+  }
+
+  def cmd_trimming(cpu, file){
+    try {
+      def tagname = this.get_tagname(file)
+      if (this.test_single(file)) {
+        switch(this.params.trimmer) {
+          case 'cutadapt':
+            return "${this.params.cutadapt} -q ${this.params.quality_threshold},${this.params.quality_threshold} -o ${basename}_trim.fastq.gz ${file} > ${basename}_cutadapt_report.txt"
+          break
+          default:
+            return "${this.params.urqt} --m ${cpu} --t ${this.params.quality_threshold} --gz --in ${file} --out ${basename}_trim.fastq.gz > ${basename}_UrQt_report.txt"
+          break
+        }
+      } else {
+        switch(this.params.trimmer) {
+          case 'cutadapt':
+            return "${this.params.cutadapt} -q ${this.params.quality_threshold},${this.params.quality_threshold} -o ${tagname}_trim_R1.fastq.gz -p ${tagname}_trim_R2.fastq.gz ${file[0]} ${file[1]} > ${tagname}_cutadapt_report.txt"
+          break
+          default:
+            return "${this.params.urqt} --m ${cpu} --t ${this.params.quality_threshold} --gz --in ${file[0]} --inpair ${file[1]} --out ${tagname}_trim_R1.fastq.gz --outpair ${tagname}_trim_R2.fastq.gz > ${tagname}_UrQt_report.txt"
+          break
+        }
+      }
+    } catch (e) {
+      println "error in software_path.cmd_trimming() ${e}"
+    }
+  }
 
   def test_exist_fastq(file) {
     try {
@@ -228,7 +267,7 @@ class modularity {
   def fastqc_raw(){
     return this.todo['fastqc_raw'][0]
   }
-  def adaptor_rm(){
+  def adaptor_removal(){
     return this.todo['adaptor_rm'][0]
   }
   def trimming(){
@@ -256,7 +295,8 @@ class modularity {
 
 path = new software_path()
 path(params, config.docker.enabled == true, src_path)
-todo = new modularity(path)
+todo = new modularity()
+todo(path)
 config.docker.runOptions = "--cpus=\"${path.params.cpu}\" --memory=\"${path.params.memory}\""
 
 /////////////////////////////// load fastq /////////////////////////////////////
@@ -296,14 +336,14 @@ if (todo.fastqc_raw()) {
       template "${src_path}/func/quality_control/fastqc.sh"
   }
 } else {
-  dated_fastq_files.into{
+  dated_fastq_files.set{
     fastq_file_1
   }
 }
 
 //////////////////////////////// adaptor_removal////////////////////////////////
 if (todo.adaptor_removal()) {
-  fastq_file_1.into{
+  fastq_file_1.set{
     adaptor_rm_input;
   }
   process adaptor_removal {
@@ -321,7 +361,32 @@ if (todo.adaptor_removal()) {
         template "${src_path}/func/quality_control/adaptor_removal.sh"
   }
 } else {
-  fastq_file_1.into{
+  fastq_file_1.set{
     fastq_file_2
+  }
+}
+
+//////////////////////////////// trimming //////////////////////////////////////
+if (todo.adaptor_removal()) {
+  fastq_file_2.set{
+    trimming_input;
+  }
+  process trimming {
+    tag "${tagname}"
+    publishDir "${results_path}/quality_control/trimming", mode: 'copy'
+    input:
+      file reads from trimming_input
+    output:
+      file "*_trimming*.fastq.gz" into fastq_file_3
+      file "*_report.txt" into trimming_log
+    script:
+        path.test_fastq(reads)
+        tagname = path.get_tagname(reads)
+        file = reads
+        template "${src_path}/func/quality_control/trimming.sh"
+  }
+} else {
+  fastq_file_2.set{
+    fastq_file_3
   }
 }
