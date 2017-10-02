@@ -9,23 +9,34 @@ require(data.table)
 source("src/func/functions.R")
 
 ##### parameters to set by user #####
-pthresh <- 0.05; pref.date.counts <- "2017_09_20"
+pthresh <- 0.05
+pref.date.counts <- "2017_09_20"
+analysis <- list(c("cut14-208", "wt"), c("cut14-208_cdc15-118", "wt"), c("cdc15-118", "wt"), c("cut14-208_cdc15-118", "cut14-208"), c("cut14-208_cdc15-118", "cdc15-118"), c("rrp6D", "wt"), c("rrp6D","cut14-208"))
+ref.level <- c("wt", "wt", "wt", "cut14-208","cdc15-118", "wt", "cut14-208")
+
 
 ##### Code #####
+
+##### Read annotation file
 annotation <- read.table("./data/annotation.csv", sep = ";", h = T, stringsAsFactors = F) ##### annotation file 
 #gtf <- fread("data/ReferenceGenomes/2017_09_19_schizosaccharomyces_pombe.chr.gtf2", sep = "\t", h = F)
 gff <- fread("data/ReferenceGenomes/schizosaccharomyces_pombe.chr.gff3", sep = "\t", h = F)
 gff$deb <- apply(gff, 1, function(x) if (x[7] == "+"){x[4]}else{x[5]})
 gff$deb <- as.numeric(gff$deb)
 
-ind.transcripts <- which(gff$V2 == "PomBase" & gff$V3 %in% c("ncRNA_gene", "gene") & gff$V1 %in% c("I", "II", "III"))
+##### Pick genes of interest to quantify
+ind.transcripts <- which(gff$V2 == "PomBase" & gff$V3 %in% c("ncRNA_gene", "gene", "tRNA_gene") & gff$V1 %in% c("I", "II", "III"))
 gff.transcripts <- gff[ind.transcripts, ]
-ind.tRNA <- which(gff$V2 == "PomBase" & gff$V3 == "tRNA_gene")
+size <- abs(gff.transcripts$V5-gff.transcripts$V4)
+
+##### Pick tRNA names
+ind.tRNA <- which(gff$V2 == "PomBase" & gff$V3 == "tRNA_gene" & gff$V1 %in% c("I", "II", "III"))
 gff.tRNA <- gff[ind.tRNA, ]
 
 keep.names <- unname(sapply(gff.transcripts$V9, function(x) strsplit(strsplit(x, "ID=")[[1]][2], ";", fixed = T)[[1]][1]))
-analysis <- list(c("cut14-208", "wt"), c("cut14-208_cdc15-118", "wt"), c("cdc15-118", "wt"), c("cut14-208_cdc15-118", "cut14-208"), c("cut14-208_cdc15-118", "cdc15-118"), c("rrp6D", "wt"), c("rrp6D","cut14-208"))
-ref.level <- c("wt", "wt", "wt", "cut14-208","cdc15-118", "wt", "cut14-208")
+
+##### Sizes of chromosomes
+sizes <- matrix( c(5579133, 4539804, 2452883), nrow = 1, dimnames = list(NULL, c("I", "II", "III")))
 
 for (i in seq_along(analysis)){
   analysis.tmp <- analysis[[i]]
@@ -97,7 +108,62 @@ for (i in seq_along(analysis)){
   chrom.down <- unique(info.down.genes$V1)
   
   chr.all <- unique(c(chrom.up, chrom.down))
-
+  
+  ##### Pick annotation of equally expressed genes 
+  all <- setdiff(rownames(txi.rsem$counts), c(info.up.genes$up.genes, info.down.genes$up.genes))
+  all <- gff.transcripts[sapply(all, function(x) which(keep.names == x)), c("V1", "V4", "V5", "V7", "deb")]
+  all <- all[order(all$deb), ]
+  
+  ##### Implementation of tests to compare densities
+  # Try on first chromosome
+  chr <- "I"
+  bin <- round(sizes[i]/2^11)
+  w <- seq(1, sizes[i], by = bin)
+  tmp.up <- info.up.genes[which(info.up.genes$V1 == chr), ]
+  nb.to.sample <- dim(tmp.up)[1]
+  pos.genes.up <- tmp.up$deb
+  counts.up <- c()
+  for (i in 1:(length(w)-1)) {
+    counts.up <- c(counts.up, length(which(tmp.up>= w[i] & tmp.up<w[i+1])))
+  }
+  tmp <- gff.transcripts$deb
+  counts.null <- list()
+  for (i in 1:10000) {
+    counts <- c()
+    tmp.test <- tmp[sample(1:dim(gff.transcripts)[1], nb.to.sample)]
+    for (i in 1:(length(w)-1)) {
+      counts <- c(counts, length(which(tmp.test>= w[i] & tmp.test<w[i+1])))
+    }
+    counts.null <- c(counts.null, list(counts))
+  }
+  counts.null.df <- do.call(rbind, counts.null)
+  pval <- sapply(seq_along(counts.up), function(x) length(which(counts.null.df[, i]>=counts.up[x]))/10000)
+  
+  # Test with distance to neighbours
+  dist.diff <- c();
+  dist.all <- c()
+  for (chr in chr.all) {
+    
+    tmp.up <- info.up.genes[which(info.up.genes$V1 == chr), ]$deb; 
+    tmp.down <- info.down.genes[which(info.down.genes$V1 == chr), ]$deb; 
+    tmp.diff <- c(tmp.up, tmp.down); tmp.diff <- tmp.diff[order(tmp.diff)]
+    tmp.all <- all[which(all$V1 == chr), ]$deb; tmp.all <- tmp.all[order(tmp.all)]
+    dist.diff <- c(dist.diff, tmp.diff[2:length(tmp.diff)]-tmp.diff[1:(length(tmp.diff)-1)])
+    dist.all <- c(dist.all, tmp.all[2:length(tmp.all)]-tmp.all[1:(length(tmp.all)-1)])
+  }
+  
+  ###### Distance to tRNA histogramm
+  xlim <- c(0, max(c(dist.diff, dist.all)))
+  h1 <- hist(dist.diff, breaks = 100)
+  h2 <- hist(dist.all, breaks = 100)
+  ylim <- c(0, max(c(h1$counts, h2$counts)))
+  
+  pdf(paste(save.path.dir, "/hist_dist_2to2_", save.dir, ".pdf", sep = ""))
+  hist(dist.diff, breaks = 100, main = paste("Distance between consecutive genes\nbreaks=100 - ", save.dir, sep = ""), xlab = "Distance in bp", ylim = ylim, xlim = xlim, col = adjustcolor("purple", 0.5))
+  hist(dist.all, breaks = 100, col = adjustcolor("black", 0.5), add = T)
+  legend("topright", c("differentially expressed genes", "all but differentially expressed genes"), col = c("purple", "black"), lty = c(-1,-1), pch = c(15,15),bty = "n", cex = 0.75)
+  dev.off()
+  
   pdf(paste(save.path.dir, "/density_up_down_reg_", save.dir, ".pdf", sep = ""), h = 4*length(chrom.up), w = 7)
   par(mfrow = c(length(chrom.up), 1))
   for (chr in chr.all) {
@@ -122,33 +188,40 @@ for (i in seq_along(analysis)){
   #### Distance between upregulated genes and the next tRNA
   min.dist.up.tRNA <- sapply(1:dim(info.up.genes)[1], function(x) min(abs(gff.tRNA$deb[which(gff.tRNA$V1 == info.up.genes$V1[x])]-info.up.genes$deb[x])))
   min.dist.down.tRNA <- sapply(1:dim(info.down.genes)[1], function(x) min(abs(gff.tRNA$deb[which(gff.tRNA$V1 == info.down.genes$V1[x])]-info.down.genes$deb[x])))
-  all.dist.min <- c(min.dist.down.tRNA, min.dist.up.tRNA)
-  
-  all <- setdiff(rownames(txi.rsem$counts), c(info.up.genes$up.genes, info.down.genes$up.genes))
-  all <- gff.transcripts[sapply(all, function(x) which(keep.names == x)), c("V1", "V4", "V5", "V7", "deb")]
-  min.dist.all.tRNA <- sapply(1:dim(all)[1], function(x) min(abs(gff.tRNA$deb[which(gff.tRNA$V1 == all$V1[x])]-all$deb[x])))
+  min.dist.up.down.tRNA <- c(min.dist.down.tRNA, min.dist.up.tRNA)
+  min.dist.equal.tRNA <- sapply(1:dim(all)[1], function(x) min(abs(gff.tRNA$deb[which(gff.tRNA$V1 == all$V1[x])]-all$deb[x])))
   
   ##### Kolmogorv Smirnov unilateral test
-  kstest <- ks.test(min.dist.all.tRNA, all.dist.min, alternative = "less")
+  kstest <- ks.test(min.dist.equal.tRNA,  min.dist.up.down.tRNA, alternative = "greater")
+  cdf1 <- ecdf(min.dist.equal.tRNA)
+  cdf2 <- ecdf(min.dist.up.down.tRNA)
+  minMax <- seq(min(min.dist.equal.tRNA, min.dist.up.down.tRNA), max(min.dist.equal.tRNA, min.dist.up.down.tRNA), length.out=length(min.dist.up.down.tRNA)) 
+  x0 <- minMax[which( abs(cdf1(minMax) - cdf2(minMax)) == max(abs(cdf1(minMax) - cdf2(minMax))) )] 
+  
+  ##### Model test
+  df.dist.tRNA <- data.frame(group = c(rep("equally.regulated", length(min.dist.equal.tRNA)), rep("up.down.regulated", length(min.dist.up.down.tRNA))), distance.tRNA = c(min.dist.equal.tRNA, min.dist.up.down.tRNA))
+  glm.test <- glm(distance.tRNA ~ group, family = "quasipoisson", data = df.dist.tRNA)
   
   pdf(paste(save.path.dir, "/dist_next_tRNA_", save.dir, ".pdf", sep = ""))
-  hup <- hist(min.dist.up.tRNA, breaks = 100, plot = F)
-  hd <- hist(min.dist.down.tRNA, breaks = 100, plot = F)
-  ha <- hist(min.dist.all.tRNA, breaks = 100, plot = F)
-  hdiff <- hist(all.dist.min, breaks = 100, plot = F)
+  par(mfrow = c(1,2))
+  ha <- hist(min.dist.equal.tRNA, breaks = 100, plot = F)
+  hdiff <- hist(min.dist.up.down.tRNA, breaks = 100, plot = F)
   ylim <- c(0, max(c(hdiff$counts, ha$counts)))
   xlim <- c(0, max(c(hdiff$breaks, ha$breaks)))
-  hist(all.dist.min, breaks = 100, main = paste("Min distance between genes and tRNA promoters\nbreaks=100 - ", save.dir, sep = ""), xlab = "Distance in bp", ylim = ylim, xlim = xlim, col = adjustcolor("purple", 0.5))
-  hist(min.dist.all.tRNA, breaks = 100, add = T, col = adjustcolor("black", 0.25))
-  points(hup$mids, hup$counts, col = "red", type = "l")
-  points(hd$mids, hd$counts, col = "blue", type = "l")
-  legend("topright", c("differentially expressed genes", "all but differentially expressed genes", paste("up regulated genes (ref=", ref.level[i], ")", sep = ""), paste("down regulated genes (ref=", ref.level[i], ")",sep = "")), col = c("purple", "black", "red", "blue"), lty = c(-1,-1,1,1), pch = c(15,15,-1,-1),bty = "n", cex = 0.75)
+  hist(min.dist.up.down.tRNA, breaks = 100, main = paste("Min distance between diff. expressed genes and tRNA promoters\nbreaks=100 - ", save.dir, sep = ""), xlab = "Distance in bp", ylim = ylim, xlim = xlim, col = adjustcolor("purple", 0.5))
+  hist(min.dist.equal.tRNA, breaks = 100, add = T, col = adjustcolor("black", 0.25))
+  legend("topright", c("differentially expressed genes", "all but differentially expressed genes"), col = c("purple", "black"), lty = c(-1,-1), pch = c(15,15),bty = "n", cex = 0.75)
   if (kstest$p.value<0.05) {
-    txt <- paste("At a risk of 5%, tRNA-gene distances are lower in differentially\nexpressed genes compared to equally expressed genes\n(pvalue=", format(kstest$p.value, scientific = T), " KS unilateral, less)", sep = "")
+    txt <- paste("At a risk of 5%, tRNA-gene distances are lower in differentially\nexpressed genes compared to equally expressed genes\n(pvalue=", format(kstest$p.value, scientific = T), " KS unilateral, greater)", sep = "")
   }else{
     txt <- paste("At a risk of 5%, we cannot say tRNA-gene distances are lower in\ndifferentially expressed genes compared to equally expressed genes\n(pvalue=", format(kstest$p.value, scientific = T), ", KS unilateral test)", sep = "")
   }
   text(1.25*xlim[2]/2, ylim[2]/2, txt, cex = 0.75)
+  abline(v = x0, col = "red")
+  
+  plot(ecdf(min.dist.up.down.tRNA), col = "purple", verticals = T)
+  plot(ecdf(min.dist.all.tRNA), add = T, verticals = T)
+  abline(v = x0, col = "red")
   dev.off()
 
   ##### MA plot
@@ -160,7 +233,7 @@ for (i in seq_along(analysis)){
 
   ##### Heatmap of 100 Best DE genes based on pval
   rld <- rlog(dds, blind=FALSE)
-  Heatmap100DE(resLFC, rld, pthresh, save.path.dir, paste("/Heatmap100DE_", save.dir, ".pdf", sep = ""), save.dir) 
+  HeatmapDE(resLFC, rld, pthresh, save.path.dir, paste("/Heatmap100DE_", save.dir, ".pdf", sep = ""), save.dir) 
 
   ##### Distance between samples 
   DistBetweenSamples(rld, save.path.dir, paste("/DistSamples_", save.dir, ".pdf", sep = "")) 
