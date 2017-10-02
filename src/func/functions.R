@@ -36,13 +36,13 @@ MAplotBetween2Cn <- function(res_deseq, where, save, title) {
   dev.off()
 }
 
-########################
-##### Heatmap100DE #####
-########################
-Heatmap100DE <- function(res_deseq, rld_count, pval.thresh, where, save, title) {
+#####################
+##### HeatmapDE #####
+#####################
+HeatmapDE <- function(res_deseq, rld_count, pval.thresh, where, save, title) {
   ind.ord.pval <- order(res_deseq$padj)
   ind.signif <- which(res_deseq$padj[ind.ord.pval] <pval.thresh & is.na(res_deseq$padj[ind.ord.pval]) == F)
-  de <- ind.ord.pval[1:min(c(100, length(ind.signif)))]
+  de <- ind.ord.pval
   de.to.clust <-t(assay(rld_count)[de, ])
   pdf(paste(where, save, sep = ""))
   heatmap(de.to.clust, xlab = "Genes", ylab = "Samples", margin = c(8, 8), cexRow = 0.9, cex.main = 0.9, main = title)
