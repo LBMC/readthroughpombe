@@ -130,6 +130,10 @@ sample & initial & after adapter removal by IGBMC & \% bases over 30 & after cle
 
 S. pombe ASM294v2.30 fasta and gff3 were downloaded resp. with wget from \texttt{ftp://ftp.ebi.ac.uk/pub/databases/pombase/pombe/Chromosome\_Dumps/Schizosaccharomyces\_pombe.ASM294v2.30.dna.genome.fa.gz} and \texttt{ftp://ftp.ebi.ac.uk/pub/databases/pombase/pombe/Chromosome\_Dumps/gff3/schizosaccharomyces\_pombe.chr.gff3} on 9th August 2017.
 
+I: 5579133bp\\
+II: 4539804bp\\
+III: 2452883bp
+
 % ------------------------------------------------------------------
 \subsection{Mapping to S. pombe reference genome and quantification}
 
