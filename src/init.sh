@@ -6,15 +6,9 @@ cd bin
 wget -qO- get.nextflow.io | bash
 
 ################################## Docker ######################################
-# provide Docker with file_handle
-cp src/file_handle/src/file_handle.py src/pipe/quality_control/
-# build docker image for quality_control.nf
-docker build src/pipe/quality_control -t 'quality_control:0.0.1'
+# build docker image
 
-# provide Docker with file_handle
-cp src/file_handle/src/file_handle.py src/pipe/mapping/
-# build docker image for mapping.nf
-docker build src/pipe/mapping -t 'mapping:0.0.1'
+docker build src/func/docker -t 'pipeline:0.0.1'
 
 ################################### PSMN #######################################
 # echo $SHELL must return /bin/bash for this to work
