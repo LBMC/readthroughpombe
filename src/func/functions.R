@@ -69,3 +69,13 @@ PlotCountDen <- function(count_df, where, save) {
   print(den)
   dev.off()  
 }
+
+#############################
+##### ComputeDistKSTest #####
+#############################
+ComputeDistKSTest <- function(dist1 = dist.diff, dist2 = dist.all) {
+  cdf1 <- ecdf(dist1);  cdf2 <- ecdf(dist2)
+  minMax <- seq(min(dist1, dist2), max(dist1, dist2), length.out=length(dist1)) 
+  x0 <- minMax[which( abs(cdf1(minMax) - cdf2(minMax)) == max(abs(cdf1(minMax) - cdf2(minMax))) )] 
+  return(x0)
+}
