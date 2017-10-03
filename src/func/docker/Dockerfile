@@ -3,7 +3,6 @@ MAINTAINER Laurent Modolo
 
 ENV FILE_HANDLE_VERSION 0.1.1
 ENV FASTQC_VERSION 0.11.5
-ENV SALMON_VERSION 0.8.2
 ENV KALLISTO_VERSION 0.43.1
 ENV BOWTIE2_VERSION 2.3.2
 ENV SAMTOOLS_VERSION 1.5
@@ -61,15 +60,6 @@ RUN curl -k -L http://www.bioinformatics.babraham.ac.uk/projects/fastqc/fastqc_v
   mv FastQC /opt/FastQC && \
   ln -s /opt/FastQC/fastqc /usr/local/bin/fastqc && \
   chmod +x /usr/local/bin/fastqc
-
-# install salmon
-RUN curl -k -L https://github.com/COMBINE-lab/salmon/archive/v${SALMON_VERSION}.tar.gz -o salmon-v${SALMON_VERSION}.tar.gz && \
-    tar xzf salmon-v${SALMON_VERSION}.tar.gz && \
-    cd salmon-${SALMON_VERSION} && \
-    mkdir build && \
-    cd build && \
-    sh ../scripts/fetchRapMap.sh && \
-    cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local && make && make install
 
 # install kallisto
 RUN  curl -k -L https://github.com/pachterlab/kallisto/releases/download/v${KALLISTO_VERSION}/kallisto_linux-v${KALLISTO_VERSION}.tar.gz -o kallisto_linux-v${KALLISTO_VERSION}.tar.gz && \
