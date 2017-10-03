@@ -10,7 +10,7 @@ source("src/func/functions.R")
 
 ##### parameters to set by user #####
 pthresh <- 0.05
-pref.date.counts <- "2017_09_20"
+pref.date.counts <- "2017_09_27"
 analysis <- list(c("cut14-208", "wt"), c("cut14-208_cdc15-118", "wt"), c("cdc15-118", "wt"), c("cut14-208_cdc15-118", "cut14-208"), c("cut14-208_cdc15-118", "cdc15-118"), c("rrp6D", "wt"), c("rrp6D","cut14-208"))
 ref.level <- c("wt", "wt", "wt", "cut14-208","cdc15-118", "wt", "cut14-208")
 
@@ -25,7 +25,7 @@ gff$deb <- apply(gff, 1, function(x) if (x[7] == "+"){x[4]}else{x[5]})
 gff$deb <- as.numeric(gff$deb)
 
 ##### Pick genes of interest to quantify
-ind.transcripts <- which(gff$V2 == "PomBase" & gff$V3 %in% c("ncRNA_gene", "gene", "tRNA_gene") & gff$V1 %in% c("I", "II", "III"))
+ind.transcripts <- which(gff$V2 == "PomBase" & gff$V3 %in% c("ncRNA_gene", "pseudogene", "gene", "snoRNA_gene", "snRNA_gene") & gff$V1 %in% c("I", "II", "III"))
 gff.transcripts <- gff[ind.transcripts, ]
 size <- abs(gff.transcripts$V5-gff.transcripts$V4)
 
@@ -94,7 +94,7 @@ for (i in seq_along(analysis)){
   #If a row contains a sample with an extreme count outlier then the p value and adjusted p value will be set to NA. These outlier counts are detected by Cook’s distance. 
   #If a row is filtered by automatic independent filtering, for having a low mean normalized count, then only the adjusted p value will be set to NA. 
   
-  ##### Density of up/downregulated genes along chromosomes
+  # Pick data on up/downregulated genes along chromosomes
   ind.up.genes <- which(resLFC$padj<=pthresh & resLFC$log2FoldChange>0)
   up.genes <- rownames(resLFC)[ind.up.genes]
   l2fc <- sapply(up.genes, function(x) resLFC[which(rownames(resLFC) == x), ]$log2FoldChange)
@@ -115,35 +115,34 @@ for (i in seq_along(analysis)){
   all <- all[order(all$deb), ]
   
   ##### Implementation of tests to compare densities
-  # Try on first chromosome
-  chr <- "I"
-  bin <- round(sizes[i]/2^11)
-  w <- seq(1, sizes[i], by = bin)
-  tmp.up <- info.up.genes[which(info.up.genes$V1 == chr), ]
-  nb.to.sample <- dim(tmp.up)[1]
-  pos.genes.up <- tmp.up$deb
-  counts.up <- c()
-  for (i in 1:(length(w)-1)) {
-    counts.up <- c(counts.up, length(which(tmp.up>= w[i] & tmp.up<w[i+1])))
-  }
-  tmp <- gff.transcripts$deb
-  counts.null <- list()
-  for (i in 1:10000) {
-    counts <- c()
-    tmp.test <- tmp[sample(1:dim(gff.transcripts)[1], nb.to.sample)]
-    for (i in 1:(length(w)-1)) {
-      counts <- c(counts, length(which(tmp.test>= w[i] & tmp.test<w[i+1])))
-    }
-    counts.null <- c(counts.null, list(counts))
-  }
-  counts.null.df <- do.call(rbind, counts.null)
-  pval <- sapply(seq_along(counts.up), function(x) length(which(counts.null.df[, i]>=counts.up[x]))/10000)
+  # 1/ Try binning strategy on first chromosome
+  #chr <- "I"
+  #bin <- round(sizes[i]/2^11)
+  #w <- seq(1, sizes[i], by = bin)
+  #tmp.up <- info.up.genes[which(info.up.genes$V1 == chr), ]
+  #nb.to.sample <- dim(tmp.up)[1]
+  #pos.genes.up <- tmp.up$deb
+  #counts.up <- c()
+  #for (i in 1:(length(w)-1)) {
+  #  counts.up <- c(counts.up, length(which(tmp.up>= w[i] & tmp.up<w[i+1])))
+  #}
+  #tmp <- gff.transcripts$deb
+  #counts.null <- list()
+  #for (i in 1:10000) {
+  #  counts <- c()
+  #  tmp.test <- tmp[sample(1:dim(gff.transcripts)[1], nb.to.sample)]
+  #  for (i in 1:(length(w)-1)) {
+  #    counts <- c(counts, length(which(tmp.test>= w[i] & tmp.test<w[i+1])))
+  #  }
+  #  counts.null <- c(counts.null, list(counts))
+  #}
+  #counts.null.df <- do.call(rbind, counts.null)
+  #pval <- sapply(seq_along(counts.up), function(x) length(which(counts.null.df[, i]>=counts.up[x]))/10000)
   
-  # Test with distance to neighbours
-  dist.diff <- c();
-  dist.all <- c()
+  # 2/ Compare distance to consecutive features in differentially expressed genes compared to equally expressed genes
+  # Compute distance
+  dist.diff <- c(); dist.all <- c()
   for (chr in chr.all) {
-    
     tmp.up <- info.up.genes[which(info.up.genes$V1 == chr), ]$deb; 
     tmp.down <- info.down.genes[which(info.down.genes$V1 == chr), ]$deb; 
     tmp.diff <- c(tmp.up, tmp.down); tmp.diff <- tmp.diff[order(tmp.diff)]
@@ -151,19 +150,46 @@ for (i in seq_along(analysis)){
     dist.diff <- c(dist.diff, tmp.diff[2:length(tmp.diff)]-tmp.diff[1:(length(tmp.diff)-1)])
     dist.all <- c(dist.all, tmp.all[2:length(tmp.all)]-tmp.all[1:(length(tmp.all)-1)])
   }
-  
-  ###### Distance to tRNA histogramm
   xlim <- c(0, max(c(dist.diff, dist.all)))
-  h1 <- hist(dist.diff, breaks = 100)
-  h2 <- hist(dist.all, breaks = 100)
+  h1 <- hist(dist.diff, breaks = 100); h2 <- hist(dist.all, breaks = 100)
   ylim <- c(0, max(c(h1$counts, h2$counts)))
   
-  pdf(paste(save.path.dir, "/hist_dist_2to2_", save.dir, ".pdf", sep = ""))
+  # Fit GLM
+  df.dist.2to2 <- data.frame(group = c(rep("equally.regulated", length(dist.all)), rep("up.down.regulated", length(dist.diff))), distance.2to2 = c(dist.all, dist.diff))
+  glm.test.dist.2to2 <- glm(distance.2to2 ~ group, family = "poisson", data = df.dist.2to2)
+  glm.test2.dist.2to2<- glm(distance.2to2 ~ group, family = "quasipoisson", data = df.dist.2to2)
+  p.value.group.dist.2to2 <- coef(summary(glm.test2.dist.2to2))[,4][2]
+  
+  # KS test bilateral and maximum distance between Fn (repartition function)
+  kstest.2to2 <- ks.test(dist.diff, dist.all)
+  x0.2to2 <- ComputeDistKSTest(dist1 = dist.diff, dist2 = dist.all) 
+  
+  # Histograms of distance to consecutives features and Fn
+  pdf(paste(save.path.dir, "/hist_dist_2to2_", save.dir, ".pdf", sep = ""), w = 10, h = 5)
+  par(mfrow = c(1,2))
   hist(dist.diff, breaks = 100, main = paste("Distance between consecutive genes\nbreaks=100 - ", save.dir, sep = ""), xlab = "Distance in bp", ylim = ylim, xlim = xlim, col = adjustcolor("purple", 0.5))
   hist(dist.all, breaks = 100, col = adjustcolor("black", 0.5), add = T)
+  if (kstest.2to2$p.value<0.05) {
+    txt <- paste( "At a risk of 5%, distances between differentially expressed genes are different than equally expressed genes\n(pvalue=", format(kstest.2to2$p.value, scientific = T), ", KS bilateral)", sep = "")
+  }else{
+    txt <- paste( "At a risk of 5%, distances between differentially expressed genes are not different than equally expressed genes\n(pvalue=", format(kstest.2to2$p.value, scientific = T), ", KS bilateral)", sep = "")
+  }
+  if (p.value.group.dist.2to2<0.05) {
+    txt <- paste(txt, "\n\nAt a risk of 5%, distances between differentially expressed genes are different than equally expressed genes\n(pvalue=", format(p.value.group.dist.2to2, scientific = T), ", GLM quasiPoisson)", sep = "")
+  }else{
+    txt <- paste(txt, "\n\nAt a risk of 5%, distances between differentially expressed genes are not different than equally expressed genes\n(pvalue=", format(p.value.group.dist.2to2, scientific = T), ", GLM quasiPoisson)", sep = "")
+  }
+  text(1.25*xlim[2]/2, ylim[2]/2, txt, cex = 0.6)
+  abline(v = x0.2to2, col = "red")
   legend("topright", c("differentially expressed genes", "all but differentially expressed genes"), col = c("purple", "black"), lty = c(-1,-1), pch = c(15,15),bty = "n", cex = 0.75)
+  
+  plot(ecdf(dist.diff), main = "Repartition fonctions Fn", col = "purple", cex.main = 0.8, verticals = T, xlab = "Distance in bp")
+  plot(ecdf(dist.all), add = T, verticals = T)
+  abline(v = x0.2to2, col = "red")
+  legend("bottomright", c("differentially expressed genes", "all but differentially expressed genes", "Distance where the 2 Fn are the most different (KS statistics)"), col = c("purple", "black", "red"), lty = c(-1,-1, 1), pch = c(15,15,-1),bty = "n", cex = 0.6)
   dev.off()
   
+  # Density along chromosomes
   pdf(paste(save.path.dir, "/density_up_down_reg_", save.dir, ".pdf", sep = ""), h = 4*length(chrom.up), w = 7)
   par(mfrow = c(length(chrom.up), 1))
   for (chr in chr.all) {
@@ -191,37 +217,43 @@ for (i in seq_along(analysis)){
   min.dist.up.down.tRNA <- c(min.dist.down.tRNA, min.dist.up.tRNA)
   min.dist.equal.tRNA <- sapply(1:dim(all)[1], function(x) min(abs(gff.tRNA$deb[which(gff.tRNA$V1 == all$V1[x])]-all$deb[x])))
   
-  ##### Kolmogorv Smirnov unilateral test
+  # KS test unilateral and maximum distance between Fn 
   kstest <- ks.test(min.dist.equal.tRNA,  min.dist.up.down.tRNA, alternative = "greater")
-  cdf1 <- ecdf(min.dist.equal.tRNA)
-  cdf2 <- ecdf(min.dist.up.down.tRNA)
-  minMax <- seq(min(min.dist.equal.tRNA, min.dist.up.down.tRNA), max(min.dist.equal.tRNA, min.dist.up.down.tRNA), length.out=length(min.dist.up.down.tRNA)) 
-  x0 <- minMax[which( abs(cdf1(minMax) - cdf2(minMax)) == max(abs(cdf1(minMax) - cdf2(minMax))) )] 
+  cdf1 <- ecdf(min.dist.equal.tRNA); cdf2 <- ecdf(min.dist.up.down.tRNA)
+  x0 <- ComputeDistKSTest(dist1 = min.dist.equal.tRNA, dist2 = min.dist.up.down.tRNA) 
   
-  ##### Model test
+  # Fit GLM
   df.dist.tRNA <- data.frame(group = c(rep("equally.regulated", length(min.dist.equal.tRNA)), rep("up.down.regulated", length(min.dist.up.down.tRNA))), distance.tRNA = c(min.dist.equal.tRNA, min.dist.up.down.tRNA))
-  glm.test <- glm(distance.tRNA ~ group, family = "quasipoisson", data = df.dist.tRNA)
+  glm.test.dist.tRNA <- glm(distance.tRNA ~ group, family = "poisson", data = df.dist.tRNA)
+  glm.test2.dist.tRNA <- glm(distance.tRNA ~ group, family = "quasipoisson", data = df.dist.tRNA)
+  p.value.group.dist.tRNA <- coef(summary(glm.test2.dist.tRNA))[,4][2]
   
-  pdf(paste(save.path.dir, "/dist_next_tRNA_", save.dir, ".pdf", sep = ""))
+  pdf(paste(save.path.dir, "/dist_next_tRNA_", save.dir, ".pdf", sep = ""), w = 10, h = 5)
   par(mfrow = c(1,2))
   ha <- hist(min.dist.equal.tRNA, breaks = 100, plot = F)
   hdiff <- hist(min.dist.up.down.tRNA, breaks = 100, plot = F)
   ylim <- c(0, max(c(hdiff$counts, ha$counts)))
   xlim <- c(0, max(c(hdiff$breaks, ha$breaks)))
-  hist(min.dist.up.down.tRNA, breaks = 100, main = paste("Min distance between diff. expressed genes and tRNA promoters\nbreaks=100 - ", save.dir, sep = ""), xlab = "Distance in bp", ylim = ylim, xlim = xlim, col = adjustcolor("purple", 0.5))
+  hist(min.dist.up.down.tRNA, breaks = 100, main = paste("Min distance between diff. expressed genes and tRNA promoters\nbreaks=100 - ", save.dir, sep = ""), cex.main = 0.8, xlab = "Distance in bp", ylim = ylim, xlim = xlim, col = adjustcolor("purple", 0.5))
   hist(min.dist.equal.tRNA, breaks = 100, add = T, col = adjustcolor("black", 0.25))
-  legend("topright", c("differentially expressed genes", "all but differentially expressed genes"), col = c("purple", "black"), lty = c(-1,-1), pch = c(15,15),bty = "n", cex = 0.75)
+  legend("topright", c("differentially expressed genes", "all but differentially expressed genes"), col = c("purple", "black"), lty = c(-1,-1), pch = c(15,15),bty = "n", cex = 0.6)
   if (kstest$p.value<0.05) {
-    txt <- paste("At a risk of 5%, tRNA-gene distances are lower in differentially\nexpressed genes compared to equally expressed genes\n(pvalue=", format(kstest$p.value, scientific = T), " KS unilateral, greater)", sep = "")
+    txt <- paste("At a risk of 5%, tRNA-gene distances are lower in differentially\nexpressed genes compared to equally expressed genes\n(pvalue=", format(kstest$p.value, scientific = T), ", KS unilateral, greater)", sep = "")
   }else{
-    txt <- paste("At a risk of 5%, we cannot say tRNA-gene distances are lower in\ndifferentially expressed genes compared to equally expressed genes\n(pvalue=", format(kstest$p.value, scientific = T), ", KS unilateral test)", sep = "")
+    txt <- paste("At a risk of 5%, we cannot say tRNA-gene distances are lower in\ndifferentially expressed genes compared to equally expressed genes\n(pvalue=", format(kstest$p.value, scientific = T), ", KS unilateral, greater)", sep = "")
   }
-  text(1.25*xlim[2]/2, ylim[2]/2, txt, cex = 0.75)
+  if (p.value.group.dist.tRNA<0.05) {
+    txt <- paste(txt, "\n\nAt a risk of 5%, tRNA-gene distances are lower in differentially\nexpressed genes compared to equally expressed genes\n(pvalue=", format(p.value.group.dist.tRNA, scientific = T), ", GLM quasiPoisson)", sep = "")
+  }else{
+    txt <- paste(txt, "\n\nAt a risk of 5%, we cannot say tRNA-gene distances are lower in\ndifferentially expressed genes compared to equally expressed genes\n(pvalue=", format(p.value.group.dist.tRNA, scientific = T), ", GLM quasiPoisson)", sep = "")
+  }
+  text(1.25*xlim[2]/2, ylim[2]/2, txt, cex = 0.6)
   abline(v = x0, col = "red")
   
-  plot(ecdf(min.dist.up.down.tRNA), col = "purple", verticals = T)
+  plot(ecdf(min.dist.up.down.tRNA), main = "Repartition fonctions Fn", col = "purple", cex.main = 0.8, verticals = T, xlab = "Distance in bp")
   plot(ecdf(min.dist.all.tRNA), add = T, verticals = T)
   abline(v = x0, col = "red")
+  legend("bottomright", c("differentially expressed genes", "all but differentially expressed genes", "Distance where the 2 Fn arethe most different (KS statistics)"), col = c("purple", "black", "red"), lty = c(-1,-1, 1), pch = c(15,15,-1),bty = "n", cex = 0.6)
   dev.off()
 
   ##### MA plot
@@ -252,8 +284,5 @@ for (i in seq_along(analysis)){
   
   PlotCountDen(count, save.path.dir, paste("/Raw_Count_", save.dir, ".pdf", sep = ""))
   PlotCountDen(count.norm, save.path.dir, paste("/Norm_Count_", save.dir, ".pdf", sep = ""))
-  
-  #library("IHW")
-  #resIHW <- results(dds, filterFun=ihw)
-  #summary(resIHW)
+
 }
