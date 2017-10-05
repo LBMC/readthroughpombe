@@ -117,21 +117,21 @@ class software_path {
           file[1] ==~ /^d\d{4}_\d{2}_\d{2}_.*/
       }
     } catch (e) {
-      println "error in software_path.cmd_unsalt_file() ${e}"
+      println "error in software_path.test_unsalt() ${e}"
     }
   }
 
   def unsalt_file_name(file){
     try {
       if (this.test_single(file)) {
-        file = (file =~ /^d(\d{4}_\d{2}_\d{2}_.*)/)[0][1]
+        file = (file =~ /^d{0,1}(\d{4}_\d{2}_\d{2}_.*)/)[0][1]
       } else {
-        file[0] = (file[0] =~ /^d(\d{4}_\d{2}_\d{2}_.*)/)[0][1]
-        file[1] = (file[1] =~ /^d(\d{4}_\d{2}_\d{2}_.*)/)[0][1]
+        file[0] = (file[0] =~ /^d{0,1}(\d{4}_\d{2}_\d{2}_.*)/)[0][1]
+        file[1] = (file[1] =~ /^d{0,1}(\d{4}_\d{2}_\d{2}_.*)/)[0][1]
       }
       return file
     } catch (e) {
-      println "error in software_path.cmd_unsalt_file() ${e}"
+      println "error in software_path.unsalt_file_name() ${e}"
     }
   }
 
@@ -175,50 +175,36 @@ awk '{system("mv d"\$0" "\$0)}'
         return "${cmd} ${params.adaptor_sequence_paired} -o ${tagname}_cut_R1.fastq.gz -p ${tagname}_cut_R2.fastq.gz ${file[0]} ${file[1]} > ${tagname}_report.txt"
       }
     } catch (e) {
-      println "error in software_path.cmd_fastqc() ${e}"
+      println "error in software_path.cmd_adaptor_removal() ${e}"
     }
   }
 
-  def trimming_module(){
-    try {
-      switch(this.params.trimmer) {
-        case 'cutadapt':
-          return this.params.cutadapt_module
-        break
-        default:
-          return this.params.urqt_module
-        break
-      }
-    } catch (e) {
-      println "error in software_path.trimming_module() ${e}"
-    }
-  }
-
-  def cmd_trimming(cpu, file){
+  def cmd_cutadapt(cpu, file){
     try {
       file = this.unsalt_file_name(file)
       def tagname = this.get_tagname(file)
       if (this.test_single(file)) {
-        switch(this.params.trimmer) {
-          case 'cutadapt':
-            return "${this.params.cutadapt} -q ${this.params.quality_threshold},${this.params.quality_threshold} -o ${basename}_trim.fastq.gz ${file} > ${basename}_cutadapt_report.txt"
-          break
-          default:
-            return "${this.params.urqt} --m ${cpu} --t ${this.params.quality_threshold} --gz --in ${file} --out ${basename}_trim.fastq.gz > ${basename}_UrQt_report.txt"
-          break
-        }
+        return "${this.params.cutadapt} -q ${this.params.quality_threshold},${this.params.quality_threshold} -o ${tagname}_trim.fastq.gz ${file} > ${tagname}_cutadapt_report.txt"
       } else {
-        switch(this.params.trimmer) {
-          case 'cutadapt':
-            return "${this.params.cutadapt} -q ${this.params.quality_threshold},${this.params.quality_threshold} -o ${tagname}_trim_R1.fastq.gz -p ${tagname}_trim_R2.fastq.gz ${file[0]} ${file[1]} > ${tagname}_cutadapt_report.txt"
-          break
-          default:
-            return "${this.params.urqt} --m ${cpu} --t ${this.params.quality_threshold} --gz --in ${file[0]} --inpair ${file[1]} --out ${tagname}_trim_R1.fastq.gz --outpair ${tagname}_trim_R2.fastq.gz > ${tagname}_UrQt_report.txt"
-          break
-        }
+        return "${this.params.cutadapt} -q ${this.params.quality_threshold},${this.params.quality_threshold} -o ${tagname}_trim_R1.fastq.gz -p ${tagname}_trim_R2.fastq.gz ${file[0]} ${file[1]} > ${tagname}_cutadapt_report.txt"
       }
     } catch (e) {
-      println "error in software_path.cmd_trimming() ${e}"
+      println "error in software_path.cmd_cutadapt() ${e}"
+    }
+  }
+
+
+  def cmd_urqt(cpu, file){
+    try {
+      file = this.unsalt_file_name(file)
+      def tagname = this.get_tagname(file)
+      if (this.test_single(file)) {
+        return "${this.params.urqt} --m ${cpu} --t ${this.params.quality_threshold} --gz --in ${file} --out ${tagname}_trim.fastq.gz > ${tagname}_UrQt_report.txt"
+      } else {
+        return "${this.params.urqt} --m ${cpu} --t ${this.params.quality_threshold} --gz --in ${file[0]} --inpair ${file[1]} --out ${tagname}_trim_R1.fastq.gz --outpair ${tagname}_trim_R2.fastq.gz > ${tagname}_UrQt_report.txt"
+      }
+    } catch (e) {
+      println "error in software_path.cmd_urqt() ${e}"
     }
   }
 
@@ -420,13 +406,13 @@ if (todo.trimming()) {
     input:
       file reads from trimming_input
     output:
-      file "*_trimming*.fastq.gz" into fastq_file_3
+      file "*_trim*.fastq.gz" into fastq_file_3
       file "*_report.txt" into trimming_log
     script:
         path.test_fastq(reads)
         tagname = path.get_tagname(reads)
         file = reads
-        template "${src_path}/func/quality_control/trimming.sh"
+        template "${src_path}/func/quality_control/${path.params.trimmer}.sh"
   }
 } else {
   fastq_file_2.set{
