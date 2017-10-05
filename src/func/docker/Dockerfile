@@ -37,7 +37,7 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends ${PACKAGES} && \
     apt-get clean
 
-RUN pip3 install --system argparse==1.4.0
+RUN pip3 install --system argparse==1.4.0 cutadapt==1.14
 RUN pip install --system numpy==1.12.1 setuptools==36.0.1 && \
     pip install --system multiqc==0.9 htseq==0.8.0
 

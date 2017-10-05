@@ -108,15 +108,52 @@ class software_path {
     }
   }
 
-  def cmd_unsalt_file(file) {
+  def test_unsalt(file){
     try {
-      file = (reads =~ /d(\d{4}_\d{2}_\d{2}_.*)/)[0][1]
+      if (this.test_single(file)) {
+        return file ==~ /^d\d{4}_\d{2}_\d{2}_.*/
+      } else {
+        return file[0] ==~ /^d\d{4}_\d{2}_\d{2}_.*/ ||
+          file[1] ==~ /^d\d{4}_\d{2}_\d{2}_.*/
+      }
     } catch (e) {
       println "error in software_path.cmd_unsalt_file() ${e}"
     }
   }
 
-  def cmd_fastqc(cpu, file){ try {
+  def unsalt_file_name(file){
+    try {
+      if (this.test_single(file)) {
+        file = (file =~ /^d(\d{4}_\d{2}_\d{2}_.*)/)[0][1]
+      } else {
+        file[0] = (file[0] =~ /^d(\d{4}_\d{2}_\d{2}_.*)/)[0][1]
+        file[1] = (file[1] =~ /^d(\d{4}_\d{2}_\d{2}_.*)/)[0][1]
+      }
+      return file
+    } catch (e) {
+      println "error in software_path.cmd_unsalt_file() ${e}"
+    }
+  }
+
+  def cmd_unsalt_file(file) {
+    try {
+      if (this.test_unsalt(file)) {
+        return """
+find . -type f -name "d*" | \
+sed 's/^.\\/d//g' | \
+awk '{system("mv d"\$0" "\$0)}'
+"""
+      } else {
+        return ""
+      }
+    } catch (e) {
+      println "error in software_path.cmd_unsalt_file() ${e}"
+    }
+  }
+
+  def cmd_fastqc(cpu, file){
+    try {
+      file = this.unsalt_file_name(file)
       def cmd = "${this.params.fastqc} --quiet --threads ${cpu} --outdir ./"
       if (this.test_single(file)) {
         return "${cmd} ${file}"
@@ -129,6 +166,7 @@ class software_path {
   }
 
   def cmd_adaptor_removal(cpu, file){ try {
+      file = this.unsalt_file_name(file)
       def cmd = "${params.cutadapt}"
       def tagname = this.get_tagname(file)
       if (this.test_single(file)) {
@@ -158,6 +196,7 @@ class software_path {
 
   def cmd_trimming(cpu, file){
     try {
+      file = this.unsalt_file_name(file)
       def tagname = this.get_tagname(file)
       if (this.test_single(file)) {
         switch(this.params.trimmer) {
@@ -369,7 +408,7 @@ if (todo.adaptor_removal()) {
 }
 
 //////////////////////////////// trimming //////////////////////////////////////
-if (todo.adaptor_removal()) {
+if (todo.trimming()) {
   fastq_file_2.set{
     trimming_input;
   }
