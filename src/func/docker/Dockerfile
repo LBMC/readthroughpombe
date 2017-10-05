@@ -8,7 +8,7 @@ ENV BOWTIE2_VERSION 2.3.2
 ENV SAMTOOLS_VERSION 1.5
 
 ENV PACKAGES curl=7.47.0-1ubuntu2.2 \
-    git=1:2.7.4-0ubuntu1.2 \
+    git=1:2.7.4-0ubuntu1 \
     unzip=6.0-20ubuntu1 \
     pigz=2.3.1-2 \
     ca-certificates=20160104ubuntu1 \
