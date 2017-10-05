@@ -74,7 +74,7 @@ sudo make install
 rm -Rf /tmp/rsem
 
 #install fastqc
-RUN wget http://www.bioinformatics.babraham.ac.uk/projects/fastqc/fastqc_v0.11.5.zip && \
+wget http://www.bioinformatics.babraham.ac.uk/projects/fastqc/fastqc_v0.11.5.zip && \
   unzip fastqc_v0.11.5.zip && \
   mv FastQC /opt/FastQC && \
   ln -s /opt/FastQC/fastqc /usr/local/bin/fastqc && \
