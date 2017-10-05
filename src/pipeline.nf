@@ -325,7 +325,7 @@ todo(path)
 config.docker.runOptions = "--cpus=\"${path.params.cpu}\" --memory=\"${path.params.memory}\""
 
 /////////////////////////////// load fastq /////////////////////////////////////
-fastq_files = Channel.fromFilePairs( params.fastq, size: -1)
+fastq_files = Channel.fromFilePairs(params.fastq, size: -1)
   .ifEmpty { exit 1, "Cannot find any fastq files matching: ${params.fastq}" }
 
 process get_fastq_name {
