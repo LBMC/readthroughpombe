@@ -1,9 +1,8 @@
 ${path.params.process_header}
 
-find . -type f -name "d*" | \
-sed 's/^.\\/d//g' | \
-awk '{system("mv d"\$0" "\$0)}'
+env
 
+${path.cmd_unsalt_file(file)}
 ${path.params.cutadapt_module}
 ${path.cmd_adaptor_removal(task.cpu, file)}
 ${path.params.python2_unload_module}
