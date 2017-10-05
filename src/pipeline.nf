@@ -139,7 +139,7 @@ class software_path {
     try {
       if (this.test_unsalt(file)) {
         return """
-find . -type f -name "d*" | \
+find . -name "d*" | \
 sed 's/^.\\/d//g' | \
 awk '{system("mv d"\$0" "\$0)}'
 """
@@ -267,7 +267,7 @@ awk '{system("mv d"\$0" "\$0)}'
 
   def test_single(file) {
     try {
-      return file instanceof Path
+      return file instanceof Path || !(file instanceof List)
     } catch (e) {
       println "error in software_path.test_single() ${e}"
     }
@@ -352,6 +352,7 @@ process get_fastq_name {
   script:
     path.test_fastq(reads)
     tagname = path.get_tagname(reads)
+    file = reads
     template "${src_path}/func/get_file_name.sh"
 }
 
