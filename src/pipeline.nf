@@ -344,6 +344,7 @@ fastq_files = Channel.fromFilePairs( params.fastq, size: -1)
 
 process get_fastq_name {
   tag "${tagname}"
+  echo path.params.verbose
   input:
     set val(fastq_name), file(reads) from fastq_files
   output:
@@ -351,7 +352,6 @@ process get_fastq_name {
   script:
     path.test_fastq(reads)
     tagname = path.get_tagname(reads)
-    file = reads
     template "${src_path}/func/get_file_name.sh"
 }
 
@@ -363,7 +363,7 @@ if (todo.fastqc_raw()) {
   }
   process fastqc_raw {
     tag "${tagname}"
-    echo true
+    echo path.params.verbose
     publishDir "${results_path}/quality_control/fastqc", mode: 'copy'
     input:
        file reads from fastqc_raw_input
@@ -388,7 +388,7 @@ if (todo.adaptor_removal()) {
   }
   process adaptor_removal {
     tag "${tagname}"
-    echo true
+    echo path.params.verbose
     publishDir "${results_path}/quality_control/adaptor", mode: 'copy'
     input:
       file reads from adaptor_rm_input
@@ -414,6 +414,7 @@ if (todo.trimming()) {
   }
   process trimming {
     tag "${tagname}"
+    echo path.params.verbose
     publishDir "${results_path}/quality_control/trimming", mode: 'copy'
     input:
       file reads from trimming_input
