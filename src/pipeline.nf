@@ -102,7 +102,7 @@ class software_path {
 
   def cmd_date(file) {
     try {
-      return "${this.params.file_handle} -c -e -r -f ${file}"
+      return "${this.params.file_handle} -e -r -f ${file}"
     } catch (e) {
       println "error in software_path.cmd_date() ${e}"
     }
@@ -333,6 +333,7 @@ config.docker.runOptions = "--cpus=\"${path.params.cpu}\" --memory=\"${path.para
 /////////////////////////////// load fastq /////////////////////////////////////
 fastq_files = Channel.fromFilePairs(params.fastq, size: -1)
   .ifEmpty { exit 1, "Cannot find any fastq files matching: ${params.fastq}" }
+fastqc_output = Channel.create()
 
 process get_fastq_name {
   tag "${tagname}"
@@ -448,7 +449,7 @@ if (todo.fastqc_trim()) {
       template "${src_path}/func/quality_control/fastqc.sh"
   }
 } else {
-  fastq_file_3.into{
+  fastq_file_3.set{
     fastqc_trim_output;
     fastq_file_4
   }
@@ -456,28 +457,30 @@ if (todo.fastqc_trim()) {
 
 //////////////////////////////// multiqc on QC /////////////////////////////////
 if (todo.multiqc_qc()) {
-  fastq_file_4.into{
-    multiqc_qc_input;
-    fastq_file_5
+  fastqc_raw_output.into{
+    multiqc_qc_input_raw;
+    multiqc_mapping_input_raw
+  }
+  fastqc_trim_output.into{
+    multiqc_qc_input_trim;
+    multiqc_mapping_input_trim
   }
   process multiqc_qc {
-    tag "${tagname}"
     echo path.params.verbose
-    publishDir "${results_path}/quality_control/fastqc", mode: 'copy'
+    publishDir "${results_path}/quality_control/multiqc_qc", mode: 'copy'
     input:
-       file reads from multiqc_qc_input
-       file_fastqc_raw from fastqc_raw_output
-       file_fastqc_trim from fastqc_trim_output
+       file file_fastqc_raw from multiqc_qc_input_raw.collect()
+       file file_fastqc_trim from multiqc_qc_input_trim.collect()
     output:
-      file "*.{zip,html}" into multiqc_qc_output
+      file "*multiqc_*" into multiqc_report
     script:
-      path.test_fastq(reads)
-      tagname = path.get_tagname(reads)
-      file = reads
-      template "${src_path}/func/quality_control/fastqc.sh"
+      template "${src_path}/func/quality_control/multiqc.sh"
   }
 } else {
-  fastq_file_4.set{
-    fastq_file_5
+  fastqc_raw_output.set{
+    multiqc_mapping_input_raw
+  }
+  fastqc_trim_output.set{
+    multiqc_mapping_input_trim
   }
 }
