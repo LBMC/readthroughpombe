@@ -253,7 +253,11 @@ awk '{system("mv d"\$0" "\$0)}'
 
   def test_single(file) {
     try {
-      return file instanceof Path || !(file instanceof List)
+      if ( file in nextflow.util.BlankSeparatedList ) {
+        return false
+      } else {
+        return true
+      }
     } catch (e) {
       println "error in software_path.test_single() ${e}"
     }
