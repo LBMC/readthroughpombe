@@ -277,12 +277,6 @@ class modularity {
   ]
 
   def call(path) {
-    this.todo['adaptor_rm'][1] = path.params.adaptor_removal
-    this.todo['trimming'][1] = path.params.trimmer
-    this.todo['mapping'][1] = path.params.mapper
-    this.todo['quantifying'][1] = path.params.quantifier
-
-    println "todo list: ${path.params.todo}"
     def todo_list = path.params.todo.replaceAll("\\s","").tokenize('+')
     def job_number = 0
     for (job in this.todo) {
@@ -294,7 +288,11 @@ class modularity {
         this.todo[job.key] = 'none'
       }
     }
-    println "$job_number tasks to do."
+    if (job_number > 0) {
+      println "${job_number} tasks to do."
+    } else {
+      println "error: no task found for ${todo_list}"
+    }
   }
 
   def fastqc_raw(){
@@ -371,7 +369,8 @@ if (todo.fastqc_raw()) {
       template "${src_path}/func/quality_control/fastqc.sh"
   }
 } else {
-  dated_fastq_files.set{
+  dated_fastq_files.into{
+    fastqc_raw_output;
     fastq_file_1
   }
 }
@@ -420,7 +419,7 @@ if (todo.trimming()) {
         path.test_fastq(reads)
         tagname = path.get_tagname(reads)
         file = reads
-        template "${src_path}/func/quality_control/${path.params.trimmer}.sh"
+        template "${src_path}/func/quality_control/${todo.todo.trimming}.sh"
   }
 } else {
   fastq_file_2.set{
@@ -449,7 +448,36 @@ if (todo.fastqc_trim()) {
       template "${src_path}/func/quality_control/fastqc.sh"
   }
 } else {
-  dated_fastq_files.set{
+  fastq_file_3.into{
+    fastqc_trim_output;
     fastq_file_4
+  }
+}
+
+//////////////////////////////// multiqc on QC /////////////////////////////////
+if (todo.multiqc_qc()) {
+  fastq_file_4.into{
+    multiqc_qc_input;
+    fastq_file_5
+  }
+  process multiqc_qc {
+    tag "${tagname}"
+    echo path.params.verbose
+    publishDir "${results_path}/quality_control/fastqc", mode: 'copy'
+    input:
+       file reads from multiqc_qc_input
+       file_fastqc_raw from fastqc_raw_output
+       file_fastqc_trim from fastqc_trim_output
+    output:
+      file "*.{zip,html}" into multiqc_qc_output
+    script:
+      path.test_fastq(reads)
+      tagname = path.get_tagname(reads)
+      file = reads
+      template "${src_path}/func/quality_control/fastqc.sh"
+  }
+} else {
+  fastq_file_4.set{
+    fastq_file_5
   }
 }
