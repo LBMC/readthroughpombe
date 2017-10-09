@@ -231,6 +231,28 @@ awk '{system("mv d"\$0" "\$0)}'
     }
   }
 
+  def test_exist_fasta(file) {
+    try {
+      if (!(file ==~ /^.*\.fasta$/ || file ==~ /^.*\.fasta\.gz$/)) {
+        exit 1, "Can only work with fasta or fasta.gz files: ${file}"
+      }
+    } catch (e) {
+      println "error in software_path.test_exist_fasta() ${e}"
+    }
+  }
+
+  def test_fasta(file) {
+    try {
+      if (this.test_single(file)) {
+        this.test_exist_fasta(file)
+      } else {
+        return false
+      }
+    } catch (e) {
+      println "error in software_path.test_fasta() ${e}"
+    }
+  }
+
   def get_tagname(file){
     try {
       if (this.test_single(file)) {
@@ -275,8 +297,10 @@ class modularity {
     'quantifying' : ['htseq', 'rsem'],
     'multiqc_mapping' : ['multiqc']
   ]
+  def path = List
 
   def call(path) {
+    this.path = path
     def todo_list = path.params.todo.replaceAll("\\s","").tokenize('+')
     def job_number = 0
     for (job in this.todo) {
@@ -310,17 +334,32 @@ class modularity {
   def multiqc_qc(){
     return this.todo['multiqc_qc'] != 'none'
   }
+  def reference(){
+    return this.path.params.fasta != ""
+  }
   def indexing(){
-    return this.todo['indexing'] != 'none'
+    if (this.reference) {
+      return this.todo['indexing'] != 'none'
+    }
+    return false
   }
   def mapping(){
-    return this.todo['mapping'] != 'none'
+    if (this.reference) {
+      return this.todo['mapping'] != 'none'
+    }
+    return false
   }
   def quantifying(){
-    return this.todo['quantifying'] != 'none'
+    if (this.reference) {
+      return this.todo['quantifying'] != 'none'
+    }
+    return false
   }
   def multiqc_mapping(){
-    return this.todo['multiqc_mapping'] != 'none'
+    if (this.reference) {
+      return this.todo['multiqc_mapping'] != 'none'
+    }
+    return false
   }
 }
 
@@ -330,10 +369,12 @@ todo = new modularity()
 todo(path)
 config.docker.runOptions = "--cpus=\"${path.params.cpu}\" --memory=\"${path.params.memory}\""
 
-/////////////////////////////// load fastq /////////////////////////////////////
+fastqc_output = Channel.create()
+////////////////////////////////// load fastq //////////////////////////////////
+if(params.fastq == ""){exit 1, "missing params \"--fastq\""}
+log.info "fastq files : ${params.fastq}"
 fastq_files = Channel.fromFilePairs(params.fastq, size: -1)
   .ifEmpty { exit 1, "Cannot find any fastq files matching: ${params.fastq}" }
-fastqc_output = Channel.create()
 
 process get_fastq_name {
   tag "${tagname}"
@@ -347,6 +388,25 @@ process get_fastq_name {
     tagname = path.get_tagname(reads)
     file = reads
     template "${src_path}/func/get_file_name.sh"
+}
+
+////////////////////////////////// load fasta //////////////////////////////////
+log.info "reference files : ${params.fasta}"
+if (todo.reference()) {
+  fasta_files = Channel.fromPath( params.fasta )
+  process get_fasta_name {
+    tag "${tagname}"
+    echo path.params.verbose
+    input:
+      file reference from fasta_files
+    output:
+      file "d*.fasta.gz" into dated_fasta_files
+    script:
+      path.test_fasta(reference)
+      tagname = reference
+      file = reference
+      template "${src_path}/func/get_file_name.sh"
+  }
 }
 
 /////////////////////////// fastqc on raw fastq ////////////////////////////////
