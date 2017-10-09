@@ -253,6 +253,28 @@ awk '{system("mv d"\$0" "\$0)}'
     }
   }
 
+  def test_exist_annot(file) {
+    try {
+      if (!(file ==~ /^.*\.gff$/ || file ==~ /^.*\.gtf$/ || file ==~ /^.*\.gff3$/)) {
+        exit 1, "Can only work with gff(3) or gtf files: ${file}"
+      }
+    } catch (e) {
+      println "error in software_path.test_exist_annot() ${e}"
+    }
+  }
+
+  def test_annot(file) {
+    try {
+      if (this.test_single(file)) {
+        this.test_exist_annot(file)
+      } else {
+        return false
+      }
+    } catch (e) {
+      println "error in software_path.test_annot() ${e}"
+    }
+  }
+
   def get_tagname(file){
     try {
       if (this.test_single(file)) {
@@ -337,6 +359,9 @@ class modularity {
   def reference(){
     return this.path.params.fasta != ""
   }
+  def annotation(){
+    return this.path.params.annot != ""
+  }
   def indexing(){
     if (this.reference) {
       return this.todo['indexing'] != 'none'
@@ -405,6 +430,25 @@ if (todo.reference()) {
       path.test_fasta(reference)
       tagname = reference
       file = reference
+      template "${src_path}/func/get_file_name.sh"
+  }
+}
+
+////////////////////////////////// load annot //////////////////////////////////
+log.info "annotation files : ${params.annot}"
+if (todo.annotation()) {
+  annot_files = Channel.fromPath( params.annot )
+  process get_fasta_name {
+    tag "${tagname}"
+    echo path.params.verbose
+    input:
+      file annotation from annot_files
+    output:
+      file "d*" into dated_annot_files
+    script:
+      path.test_annot(annotation)
+      tagname = annotation
+      file = annotation
       template "${src_path}/func/get_file_name.sh"
   }
 }
@@ -543,4 +587,9 @@ if (todo.multiqc_qc()) {
   fastqc_trim_output.set{
     multiqc_mapping_input_trim
   }
+}
+
+///////////////////////////////// split ref ////////////////////////////////////
+if (todo.reference() && todo.annotation()) {
+
 }
