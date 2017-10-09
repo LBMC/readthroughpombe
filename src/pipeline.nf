@@ -266,14 +266,14 @@ awk '{system("mv d"\$0" "\$0)}'
 
 class modularity {
   def todo = [
-    'fastqc_raw' : [true, 'fastqc'],
-    'adaptor_rm' : [true, 'cutadapt'],
-    'trimming' : [true, 'urqt'],
-    'fastqc_trim' : [true, 'fastqc'],
-    'multiqc_trim' : [true, 'multiqc'],
-    'mapping' : [true, 'bowtie2'],
-    'quantifying' : [true, 'htseq'],
-    'multiqc_mapping' : [true, 'multiqc']
+    'fastqc_raw' : ['fastqc'],
+    'adaptor_rm' : ['cutadapt'],
+    'trimming' : ['urqt', 'cutadapt'],
+    'fastqc_trim' : ['fastqc'],
+    'multiqc_qc' : ['multiqc'],
+    'mapping' : ['bowtie2', 'kallisto'],
+    'quantifying' : ['htseq', 'rsem'],
+    'multiqc_mapping' : ['multiqc']
   ]
 
   def call(path) {
@@ -282,43 +282,47 @@ class modularity {
     this.todo['mapping'][1] = path.params.mapper
     this.todo['quantifying'][1] = path.params.quantifier
 
+    println "todo list: ${path.params.todo}"
     def todo_list = path.params.todo.replaceAll("\\s","").tokenize('+')
     def job_number = 0
     for (job in this.todo) {
-      if (!todo_list[job_number] == job.key[1]) {
-        this.todo[job.key][0] = false
-      } else {
+      if (todo_list[job_number] in this.todo[job.key]) {
+        this.todo[job.key] = todo_list[job_number]
+        println "${job.key} : ${this.todo[job.key]}"
         job_number += 1
+      } else {
+        this.todo[job.key] = 'none'
       }
     }
+    println "$job_number tasks to do."
   }
 
   def fastqc_raw(){
-    return this.todo['fastqc_raw'][0]
+    return this.todo['fastqc_raw'] != 'none'
   }
   def adaptor_removal(){
-    return this.todo['adaptor_rm'][0]
+    return this.todo['adaptor_rm'] != 'none'
   }
   def trimming(){
-    return this.todo['trimming'][0]
+    return this.todo['trimming'] != 'none'
   }
   def fastqc_trim(){
-    return this.todo['fastqc_trim'][0]
+    return this.todo['fastqc_trim'] != 'none'
   }
-  def multiqc_trim(){
-    return this.todo['multiqc_trim'][0]
+  def multiqc_qc(){
+    return this.todo['multiqc_qc'] != 'none'
   }
   def indexing(){
-    return this.todo['indexing'][0]
+    return this.todo['indexing'] != 'none'
   }
   def mapping(){
-    return this.todo['mapping'][0]
+    return this.todo['mapping'] != 'none'
   }
   def quantifying(){
-    return this.todo['quantifying'][0]
+    return this.todo['quantifying'] != 'none'
   }
   def multiqc_mapping(){
-    return this.todo['multiqc_mapping'][0]
+    return this.todo['multiqc_mapping'] != 'none'
   }
 }
 
