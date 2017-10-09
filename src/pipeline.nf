@@ -359,7 +359,7 @@ if (todo.fastqc_raw()) {
     input:
        file reads from fastqc_raw_input
     output:
-      file "*.{zip,html}" into fastqc_output
+      file "*.{zip,html}" into fastqc_raw_output
     script:
       path.test_fastq(reads)
       tagname = path.get_tagname(reads)
@@ -421,5 +421,31 @@ if (todo.trimming()) {
 } else {
   fastq_file_2.set{
     fastq_file_3
+  }
+}
+
+/////////////////////////// fastqc on trim fastq ////////////////////////////////
+if (todo.fastqc_trim()) {
+  fastq_file_3.into{
+    fastqc_trim_input;
+    fastq_file_4
+  }
+  process fastqc_trim {
+    tag "${tagname}"
+    echo path.params.verbose
+    publishDir "${results_path}/quality_control/fastqc", mode: 'copy'
+    input:
+       file reads from fastqc_trim_input
+    output:
+      file "*.{zip,html}" into fastqc_trim_output
+    script:
+      path.test_fastq(reads)
+      tagname = path.get_tagname(reads)
+      file = reads
+      template "${src_path}/func/quality_control/fastqc.sh"
+  }
+} else {
+  dated_fastq_files.set{
+    fastq_file_4
   }
 }
