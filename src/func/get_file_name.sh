@@ -1,7 +1,7 @@
 ${path.params.process_header}
 
 env
-
+ls -l
 ${path.params.pigz_module}
 ${path.cmd_gz(task.cpus, file)}
 
@@ -11,3 +11,4 @@ ${path.cmd_date("*.gz")}
 find . -type f -name "*.gz" | \
 sed 's/^.\\///g' | \
 awk '{system("mv "\$0" d"\$0)}'
+ls -l
