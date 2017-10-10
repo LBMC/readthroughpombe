@@ -100,6 +100,49 @@ class software_path {
     }
   }
 
+  def cmd_gz(cpu) {
+    try {
+      def cmd
+      if (this.params.gz ==~ /.*pigz$/) {
+        cmd = "${this.params.gz} -p ${cpu}"
+      }else{
+        cmd = "${this.params.gz}"
+      }
+      return "${cmd} -c"
+    } catch (e) {
+      println "error in software_path.cmd_gz() ${e}"
+    }
+  }
+
+  def cmd_ungz(cpu, file) {
+    try {
+      def cmd
+      file = this.unsalt_file_name(file)
+      if (this.params.gz ==~ /.*pigz$/) {
+        cmd = "${this.params.gz} -p ${cpu}"
+      }else{
+        cmd = "${this.params.gz}"
+      }
+      return "cat ${file} | ${cmd} -d -c"
+    } catch (e) {
+      println "error in software_path.cmd_gz() ${e}"
+    }
+  }
+
+  def cmd_ungz(cpu) {
+    try {
+      def cmd
+      if (this.params.gz ==~ /.*pigz$/) {
+        cmd = "${this.params.gz} -p ${cpu}"
+      }else{
+        cmd = "${this.params.gz}"
+      }
+      return "${cmd} -d -c"
+    } catch (e) {
+      println "error in software_path.cmd_gz() ${e}"
+    }
+  }
+
   def cmd_date(file) {
     try {
       return "${this.params.file_handle} -e -r -f ${file}"
@@ -118,6 +161,21 @@ class software_path {
       }
     } catch (e) {
       println "error in software_path.test_unsalt() ${e}"
+    }
+  }
+
+  def ungz_file_name(file){
+    try {
+      file = this.unsalt_file_name(file)
+      if (this.test_single(file)) {
+        file = (file =~ /^(.*)\.gz$/)[0][1]
+      } else {
+        file[0] = (file[0] =~ /^(.*)\.gz$/)[0][1]
+        file[1] = (file[1] =~ /^(.*)\.gz$/)[0][1]
+      }
+      return file
+    } catch (e) {
+      println "error in software_path.ungz_file_name() ${e}"
     }
   }
 
@@ -255,7 +313,9 @@ awk '{system("mv d"\$0" "\$0)}'
 
   def test_exist_annot(file) {
     try {
-      if (!(file ==~ /^.*\.gff$/ || file ==~ /^.*\.gtf$/ || file ==~ /^.*\.gff3$/)) {
+      if (!(file ==~ /^.*\.gff(.gz){0,1}$/ || \
+        file ==~ /^.*\.gtf(.gz){0,1}$/ || \
+        file ==~ /^.*\.gff3(.gz){0,1}$/)) {
         exit 1, "Can only work with gff(3) or gtf files: ${file}"
       }
     } catch (e) {
@@ -278,7 +338,7 @@ awk '{system("mv d"\$0" "\$0)}'
   def get_tagname(file){
     try {
       if (this.test_single(file)) {
-        return (file =~ /(.*\/){0,1}d{0,1}(.*)\.fastq(\.gz){0,1}/)[0][2]
+        return (file =~ /(.*\/){0,1}d{0,1}(.*)\.fast[aq](\.gz){0,1}/)[0][2]
       } else {
         return (file[0] =~ /(.*\/){0,1}d{0,1}(.*)_(R){0,1}[0,1]\.fastq(\.gz){0,1}/)[0][2]
       }
@@ -315,6 +375,8 @@ class modularity {
     'trimming' : ['urqt', 'cutadapt'],
     'fastqc_trim' : ['fastqc'],
     'multiqc_qc' : ['multiqc'],
+    'split_ref' : ['split_ref'],
+    'indexing' : ['none'],
     'mapping' : ['bowtie2', 'kallisto'],
     'quantifying' : ['htseq', 'rsem'],
     'multiqc_mapping' : ['multiqc']
@@ -339,6 +401,22 @@ class modularity {
     } else {
       println "error: no task found for ${todo_list}"
     }
+    this.do_split_ref()
+    this.do_indexing_ref()
+  }
+
+  def do_split_ref(){
+    if (this.reference() && this.annotation()) {
+      if (this.todo['mapping'] in ['kallisto']){
+        this.todo['split_ref'] = 'split_ref'
+      }
+    }
+  }
+
+  def do_indexing_ref(){
+    if (this.reference() && this.mapping()){
+      this.todo['indexing'] = this.todo['mapping']
+    }
   }
 
   def fastqc_raw(){
@@ -362,6 +440,9 @@ class modularity {
   def annotation(){
     return this.path.params.annot != ""
   }
+  def split_ref(){
+    return this.todo['split_ref'] != 'none'
+  }
   def indexing(){
     if (this.reference) {
       return this.todo['indexing'] != 'none'
@@ -369,13 +450,13 @@ class modularity {
     return false
   }
   def mapping(){
-    if (this.reference) {
+    if (this.reference()) {
       return this.todo['mapping'] != 'none'
     }
     return false
   }
   def quantifying(){
-    if (this.reference) {
+    if (this.reference()) {
       return this.todo['quantifying'] != 'none'
     }
     return false
@@ -553,7 +634,7 @@ if (todo.fastqc_trim()) {
       template "${src_path}/func/quality_control/fastqc.sh"
   }
 } else {
-  fastq_file_3.set{
+  fastq_file_3.into{
     fastqc_trim_output;
     fastq_file_4
   }
@@ -590,6 +671,24 @@ if (todo.multiqc_qc()) {
 }
 
 ///////////////////////////////// split ref ////////////////////////////////////
-if (todo.reference() && todo.annotation()) {
-
+if (todo.split_ref()) {
+  process split_ref {
+    tag "${tagname}"
+    echo path.params.verbose
+    publishDir "${results_path}/mapping/split_fasta", mode: 'copy'
+    input:
+       file reference from dated_fasta_files
+       file annotation from dated_annot_files
+    output:
+      file "*_split.fasta.gz" into fasta_file_1
+    script:
+      path.test_fasta(reference)
+      path.test_annot(annotation)
+      tagname = path.get_tagname(reference)
+      template "${src_path}/func/mapping/split_fasta.sh"
+  }
+} else {
+  dated_fasta_files.set{
+    fasta_file_1
+  }
 }
