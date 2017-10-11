@@ -83,17 +83,21 @@ class software_path {
 
   def cmd_gz(cpu, file) {
     try {
-      def cmd
-      if (this.params.gz ==~ /.*pigz$/) {
-        cmd = "${this.params.gz} -p ${cpu}"
-      }else{
-        cmd = "${this.params.gz}"
-      }
-      if (this.test_single(file)) {
-        return "cat ${file} | ${cmd} -c > ${file}.gz"
+      def cmd = ""
+      if (this.test_gz(file)) {
+        return cmd
       } else {
-        return "cat ${file[1]} | ${cmd} -c > ${file[0]}.gz && \
-        cat ${file[1]} | ${cmd} -c > ${file[1]}.gz"
+        if (this.params.gz ==~ /.*pigz$/) {
+          cmd = "${this.params.gz} -p ${cpu}"
+        }else{
+          cmd = "${this.params.gz}"
+        }
+        if (this.test_single(file)) {
+          return "cat ${file} | ${cmd} -c > ${file}.gz"
+        } else {
+          return "cat ${file[1]} | ${cmd} -c > ${file[0]}.gz && \
+          cat ${file[1]} | ${cmd} -c > ${file[1]}.gz"
+        }
       }
     } catch (e) {
       println "error in software_path.cmd_gz() ${e}"
