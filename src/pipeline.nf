@@ -277,7 +277,7 @@ awk '{system("mv d"\$0" "\$0)}'
       def tagname = this.get_tagname(fastq)
       def basename_index = (index =~ /^(.*\.index).*$/)[0][1]
       if (this.test_single(fastq)) {
-        return "${this.params.kallisto} quant -i ${basename_index} -t ${cpu} --single ${this.params.kallisto_parameters} -o ./ ${fastq} &> ${tagname}_report.txt"
+        return "${this.params.kallisto} quant -i ${basename_index} -t ${cpu} --single ${this.params.kallisto_parameters} -l ${this.params.mean} -s ${this.params.sd} -o ./ ${fastq} &> ${tagname}_kallisto_report.txt"
       } else {
         return "${this.params.kallisto} quant -i ${basename_index} -t ${cpu} ${this.params.kallisto_parameters} -o ./ ${fastq[0]} ${fastq[1]} &> ${tagname}_kallisto_report.txt"
       }
