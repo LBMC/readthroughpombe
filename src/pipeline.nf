@@ -95,7 +95,7 @@ class software_path {
         if (this.test_single(file)) {
           return "cat ${file} | ${cmd} -c > ${file}.gz"
         } else {
-          return "cat ${file[1]} | ${cmd} -c > ${file[0]}.gz && \
+          return "cat ${file[0]} | ${cmd} -c > ${file[0]}.gz && \
           cat ${file[1]} | ${cmd} -c > ${file[1]}.gz"
         }
       }
