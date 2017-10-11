@@ -1,11 +1,17 @@
-${process_header}
-${kallisto_module}
-${params.kallisto} quant -i ${basename_index} -t ${task.cpus} ${params.kallisto_parameters} -o ./ ${fastq_name[0]} ${fastq_name[1]} &> ${name}_kallisto_report.txt
-mv abundance.tsv ${name}.counts
-mv run_info.json ${name}_info.json
-mv abundance.h5 ${name}.h5
-if grep -q "Error" ${name}_kallisto_report.txt; then
+${path.params.process_header}
+
+ls -l
+${path.cmd_unsalt_file(index)}
+${path.cmd_unsalt_file(reads)}
+ls -l
+
+${path.params.kallisto_module}
+${path.cmd_kallisto(task.cpus, index, reads)}
+
+if grep -q "Error" ${tagname}_kallisto_report.txt; then
   exit 1
 fi
-${file_handle_module}
-${cmd_date} *_report.txt *.counts *.json *.h5
+
+${path.params.file_handle_module}
+${path.cmd_date('*')}
+ls -l

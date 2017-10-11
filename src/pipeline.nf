@@ -270,6 +270,22 @@ awk '{system("mv d"\$0" "\$0)}'
     }
   }
 
+  def cmd_kallisto(cpu, index, fastq){
+    try {
+      fastq = this.unsalt_file_name(fastq)
+      index = this.unsalt_file_name(index)
+      def tagname = this.get_tagname(fastq)
+      def basename_index = (index =~ /^(.*\.index).*$/)[0][1]
+      if (this.test_single(fastq)) {
+        return "${this.params.kallisto} quant -i ${basename_index} -t ${cpu} --single ${this.params.kallisto_parameters} -o ./ ${fastq} &> ${tagname}_report.txt"
+      } else {
+        return "${this.params.kallisto} quant -i ${basename_index} -t ${cpu} ${this.params.kallisto_parameters} -o ./ ${fastq[0]} ${fastq[1]} &> ${tagname}_kallisto_report.txt"
+      }
+    } catch (e) {
+      println "error in software_path.cmd_kallisto() ${e}"
+    }
+  }
+
   def test_exist_fastq(file) {
     try {
       if (!(file ==~ /^.*\.fastq$/ || file ==~ /^.*\.fastq\.gz$/)) {
@@ -382,7 +398,7 @@ class modularity {
     'split_ref' : ['split_ref'],
     'indexing' : ['none'],
     'mapping' : ['bowtie2', 'kallisto'],
-    'quantifying' : ['htseq', 'rsem'],
+    'quantification' : ['htseq', 'rsem'],
     'multiqc_mapping' : ['multiqc']
   ]
   def path = List
@@ -394,32 +410,45 @@ class modularity {
     for (job in this.todo) {
       if (todo_list[job_number] in this.todo[job.key]) {
         this.todo[job.key] = todo_list[job_number]
-        println "${job.key} : ${this.todo[job.key]}"
         job_number += 1
       } else {
         this.todo[job.key] = 'none'
       }
     }
-    if (job_number > 0) {
-      println "${job_number} tasks to do."
-    } else {
-      println "error: no task found for ${todo_list}"
-    }
     this.do_split_ref()
     this.do_indexing_ref()
+    this.display_task()
   }
 
   def do_split_ref(){
     if (this.reference() && this.annotation()) {
       if (this.todo['mapping'] in ['kallisto']){
         this.todo['split_ref'] = 'split_ref'
+        this.todo['quantification'] = 'kallisto'
       }
     }
   }
 
   def do_indexing_ref(){
-    if (this.reference() && this.mapping()){
+    if (this.reference() && (this.mapping() || this.pseudomapping())){
       this.todo['indexing'] = this.todo['mapping']
+    } else {
+      this.todo['indexing'] = 'none'
+    }
+  }
+
+  def display_task(){
+    def job_number = 0
+    for (job in this.todo) {
+      if (this.todo[job.key] != "none") {
+        println "${job.key} : ${this.todo[job.key]}"
+        job_number += 1
+      }
+    }
+    if (job_number > 0) {
+      println "${job_number} tasks to do."
+    } else {
+      println "error: no task found for ${todo_list}"
     }
   }
 
@@ -462,9 +491,15 @@ class modularity {
     }
     return false
   }
-  def quantifying(){
+  def pseudomapping(){
     if (this.reference()) {
-      return this.todo['quantifying'] != 'none'
+      return this.todo['mapping'] == 'kallisto'
+    }
+    return false
+  }
+  def quantification(){
+    if (this.reference()) {
+      return !(this.todo['quantification'] in ['none', 'kallisto'])
     }
     return false
   }
@@ -737,3 +772,56 @@ if (todo.indexing()) {
   }
 }
 
+/////////////////////////////// pseudomapping //////////////////////////////////
+if (todo.pseudomapping()) {
+  process pseudomapping {
+    tag "${tagname}"
+    echo path.params.verbose
+    publishDir "${results_path}/mapping/quantification", mode: 'copy'
+    input:
+       file index from index_file_1
+       file reads from fastq_file_4
+    output:
+      file "*" into quantification_file_1
+    script:
+      path.test_fastq(reads)
+      tagname = path.get_tagname(reads)
+      template "${src_path}/func/mapping/${todo.todo.mapping}.sh"
+  }
+}
+
+/////////////////////////////////// mapping ////////////////////////////////////
+if (todo.mapping()) {
+  process indexing {
+    tag "${tagname}"
+    echo path.params.verbose
+    publishDir "${results_path}/mapping/mapping", mode: 'copy'
+    input:
+       file index from index_file_1
+       file reads from fastq_file_4
+    output:
+      file "*.bam" into mapping_file_1
+      file "*_report.txt" into mapping_report
+    script:
+      path.test_fastq(reads)
+      tagname = path.get_tagname(reads)
+      template "${src_path}/func/mapping/${todo.todo.mapping}.sh"
+  }
+}
+
+/////////////////////////////// quantification /////////////////////////////////
+if (todo.quantification()) {
+  process indexing {
+    tag "${tagname}"
+    echo path.params.verbose
+    publishDir "${results_path}/mapping/quantification", mode: 'copy'
+    input:
+       file index from mapping_file_1
+    output:
+      file "*" into quantification_file_1
+    script:
+      path.test_fastq(reads)
+      tagname = path.get_tagname(reads)
+      template "${src_path}/func/mapping/${todo.todo.quantification}.sh"
+  }
+}
