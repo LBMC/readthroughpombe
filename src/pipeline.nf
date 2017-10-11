@@ -878,7 +878,22 @@ if (todo.mapping()) {
       tagname = path.get_tagname(reads)
       template "${src_path}/func/mapping/${todo.todo.mapping}.sh"
   }
+
+  process sort_bam {
+    tag "${tagname}"
+    echo path.params.verbose
+    publishDir "${results_path}/mapping/mapping", mode: 'copy'
+    input:
+      file bam from mapping_file_1
+    output:
+      file "*_sorted.bam" into mapping_file_2
+    script:
+      path.test_bam(bam)
+      tagname = path.get_tagname(bam)
+      template "${src_path}/func/mapping/sort_bam.sh"
+  }
 }
+
 
 /////////////////////////////// quantification /////////////////////////////////
 if (todo.quantification()) {
@@ -887,7 +902,7 @@ if (todo.quantification()) {
     echo path.params.verbose
     publishDir "${results_path}/mapping/quantification", mode: 'copy'
     input:
-       file bam from mapping_file_1
+       file bam from mapping_file_2
        file annotation from annot_file_1
     output:
       file "*" into quantification_file_1
