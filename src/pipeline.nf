@@ -448,14 +448,17 @@ class modularity {
     return this.todo['split_ref'] != 'none'
   }
   def indexing(){
-    if (this.reference) {
+    if (this.reference()) {
       return this.todo['indexing'] != 'none'
     }
     return false
   }
+  def load_index(){
+    return this.path.params.index != ""
+  }
   def mapping(){
     if (this.reference()) {
-      return this.todo['mapping'] != 'none'
+      return !(this.todo['mapping'] in ['none', 'kallisto'])
     }
     return false
   }
@@ -535,6 +538,25 @@ if (todo.annotation()) {
       tagname = annotation
       file = annotation
       template "${src_path}/func/get_file_name.sh"
+  }
+}
+
+////////////////////////////////// load index //////////////////////////////////
+if (todo.load_index()) {
+  log.info "index files : ${params.index}"
+  index_files = Channel.fromPath( params.index )
+  process get_fasta_name {
+    tag "${tagname}"
+    echo path.params.verbose
+    input:
+      file index from index_files
+    output:
+      file "d*" into index_file_1
+    script:
+      path.test_annot(index)
+      tagname = index
+      file = index
+      template "${src_path}/func/get_file_name_nogz.sh"
   }
 }
 
@@ -696,3 +718,22 @@ if (todo.split_ref()) {
     fasta_file_1
   }
 }
+
+////////////////////////////////// indexing ////////////////////////////////////
+if (todo.indexing()) {
+  process indexing {
+    tag "${tagname}"
+    echo path.params.verbose
+    publishDir "${results_path}/mapping/indexing", mode: 'copy'
+    input:
+       file reference from fasta_file_1
+    output:
+      file "*index*" into index_file_1
+      file "*_report.txt" into index_report
+    script:
+      path.test_fasta(reference)
+      tagname = path.get_tagname(reference)
+      template "${src_path}/func/mapping/${todo.todo.indexing}_index.sh"
+  }
+}
+
