@@ -868,7 +868,7 @@ if (todo.mapping()) {
     echo path.params.verbose
     publishDir "${results_path}/mapping/mapping", mode: 'copy'
     input:
-      file index from index_file_1
+      file index from index_file_1.first()
       file reads from fastq_file_4
     output:
       file "*.bam" into mapping_file_1
@@ -886,7 +886,7 @@ if (todo.mapping()) {
     input:
       file bam from mapping_file_1
     output:
-      file "*_sorted.bam" into mapping_file_2
+      file "*_sort.bam" into mapping_file_2
     script:
       path.test_bam(bam)
       tagname = path.get_tagname(bam)
@@ -903,7 +903,7 @@ if (todo.quantification()) {
     publishDir "${results_path}/mapping/quantification", mode: 'copy'
     input:
        file bam from mapping_file_2
-       file annotation from annot_file_1
+       file annotation from annot_file_1.first()
     output:
       file "*" into quantification_file_1
     script:
