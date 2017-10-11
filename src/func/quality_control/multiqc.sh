@@ -1,5 +1,5 @@
 ${path.params.process_header}
-
+echo "MultiQC"
 
 ${path.params.multiqc_module}
 ls -l

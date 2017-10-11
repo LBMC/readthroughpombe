@@ -1,4 +1,5 @@
 ${path.params.process_header}
+echo "split fasta"
 
 ${path.cmd_unsalt_file(reference)}
 ${path.cmd_unsalt_file(annotation)}
