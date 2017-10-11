@@ -1,9 +1,9 @@
 ${path.params.process_header}
 
-env
 ls -l
 ${path.params.pigz_module}
 ${path.cmd_gz(task.cpus, file)}
+ls -l
 
 ${path.params.file_handle_module}
 ${path.cmd_date("*.gz")}
