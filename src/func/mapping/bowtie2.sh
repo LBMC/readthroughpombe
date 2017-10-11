@@ -6,7 +6,7 @@ ${path.cmd_unsalt_file(reads)}
 ls -l
 
 ${path.params.bowtie2_module}
-${path.cmd_bowtie2(task.cpus, index, reads)}
+${path.cmd_bowtie2(task.cpus, index, reads, todo)}
 
 if grep -q "Error" ${tagname}_bowtie2_report.txt; then
   exit 1
