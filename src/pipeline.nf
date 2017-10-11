@@ -337,6 +337,30 @@ awk '{system("mv d"\$0" "\$0)}'
     }
   }
 
+  def test_exist_bam(file) {
+    try {
+      if (!(file ==~ /^.*\.bam$/)) {
+        exit 1, "Can only work with fastq or fastq.gz files: ${file}"
+      }
+    } catch (e) {
+      println "error in software_path.test_exist_bam() ${e}"
+    }
+  }
+
+  def test_bam(file) {
+    try {
+      if (this.test_single(file)) {
+        this.test_exist_bam(file)
+      } else {
+        for (bam in file){
+          this.test_exist_bam(bam)
+        }
+      }
+    } catch (e) {
+      println "error in software_path.test_fastq() ${e}"
+    }
+  }
+
   def test_exist_fasta(file) {
     try {
       if (!(file ==~ /^.*\.fasta$/ || file ==~ /^.*\.fasta\.gz$/)) {
@@ -352,7 +376,9 @@ awk '{system("mv d"\$0" "\$0)}'
       if (this.test_single(file)) {
         this.test_exist_fasta(file)
       } else {
-        return false
+        for (fasta in file){
+          this.test_exist_fasta(fasta)
+        }
       }
     } catch (e) {
       println "error in software_path.test_fasta() ${e}"
@@ -386,10 +412,19 @@ awk '{system("mv d"\$0" "\$0)}'
   def get_tagname(file){
     try {
       if (this.test_single(file)) {
-        return (file =~ /(.*\/){0,1}d{0,1}(.*)\.fast[aq](\.gz){0,1}/)[0][2]
+        if (file ==~ /^.*\.fastq$/ || file ==~ /^.*\.fastq\.gz$/) {
+          return (file =~ /(.*\/){0,1}d{0,1}(.*)\.fast[aq](\.gz){0,1}/)[0][2]
+        }
+        if (file ==~ /^.*\.bam$/) {
+          return (file =~ /(.*\/){0,1}d{0,1}(.*)\.bam/)[0][2]
+        }
+        if (file ==~ /^.*\.fasta$/ || file ==~ /^.*\.fasta\.gz$/) {
+          return (file =~ /(.*\/){0,1}d{0,1}(.*)\.fasta(\.gz){0,1}/)[0][2]
+        }
       } else {
         return (file[0] =~ /(.*\/){0,1}d{0,1}(.*)_(R){0,1}[0,1]\.fastq(\.gz){0,1}/)[0][2]
       }
+      return file
     } catch (e) {
       println "error in software_path.get_tagname() ${e}"
     }
@@ -529,6 +564,7 @@ class modularity {
     if (this.reference()) {
       return !(this.todo['quantification'] in ['none', 'kallisto'])
     }
+    println "warning: no fasta provided skipping quantification"
     return false
   }
   def multiqc_mapping(){
@@ -761,13 +797,17 @@ if (todo.multiqc_qc()) {
 
 ///////////////////////////////// split ref ////////////////////////////////////
 if (todo.split_ref()) {
+  dated_annot_files.into{
+    split_ref_annot;
+    annot_file_1
+  }
   process split_ref {
     tag "${tagname}"
     echo path.params.verbose
     publishDir "${results_path}/mapping/split_fasta", mode: 'copy'
     input:
        file reference from dated_fasta_files
-       file annotation from dated_annot_files
+       file annotation from split_ref_annot
     output:
       file "*_split.fasta.gz" into fasta_file_1
     script:
@@ -779,6 +819,9 @@ if (todo.split_ref()) {
 } else {
   dated_fasta_files.set{
     fasta_file_1
+  }
+  dated_annot_files.set{
+    annot_file_1
   }
 }
 
@@ -839,17 +882,19 @@ if (todo.mapping()) {
 
 /////////////////////////////// quantification /////////////////////////////////
 if (todo.quantification()) {
-  process indexing {
+  process quantification {
     tag "${tagname}"
     echo path.params.verbose
     publishDir "${results_path}/mapping/quantification", mode: 'copy'
     input:
-       file index from mapping_file_1
+       file bam from mapping_file_1
+       file annotation from annot_file_1
     output:
       file "*" into quantification_file_1
     script:
-      path.test_fastq(reads)
-      tagname = path.get_tagname(reads)
+      path.test_bam(bam)
+      path.test_annot(annotation)
+      tagname = path.get_tagname(bam)
       template "${src_path}/func/mapping/${todo.todo.quantification}.sh"
   }
 }
