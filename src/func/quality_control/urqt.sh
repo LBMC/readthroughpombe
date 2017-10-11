@@ -3,6 +3,7 @@ ${path.params.process_header}
 env
 
 ${path.cmd_unsalt_file(file)}
+ls -l
 ${path.params.urqt_module}
 ${path.cmd_urqt(task.cpus, file)}
 
