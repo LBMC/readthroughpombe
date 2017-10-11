@@ -1,4 +1,5 @@
 ${path.params.process_header}
+echo "FastQC"
 
 ${path.cmd_unsalt_file(file)}
 ls -l
