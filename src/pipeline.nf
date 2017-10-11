@@ -270,12 +270,24 @@ awk '{system("mv d"\$0" "\$0)}'
     }
   }
 
+  def basename_index(file){
+    try {
+      if ( file in nextflow.util.BlankSeparatedList ) {
+        return (file[0] =~ /^(.*\.index).*$/)[0][1]
+      } else {
+        return (file =~ /^(.*\.index).*$/)[0][1]
+      }
+    } catch (e) {
+      println "error in software_path.basename_index() ${e}"
+    }
+  }
+
   def cmd_kallisto(cpu, index, fastq){
     try {
       fastq = this.unsalt_file_name(fastq)
       index = this.unsalt_file_name(index)
       def tagname = this.get_tagname(fastq)
-      def basename_index = (index =~ /^(.*\.index).*$/)[0][1]
+      def basename_index = this.basename_index(index)
       if (this.test_single(fastq)) {
         return "${this.params.kallisto} quant -i ${basename_index} -t ${cpu} --single ${this.params.kallisto_parameters} -l ${this.params.mean} -s ${this.params.sd} -o ./ ${fastq} &> ${tagname}_kallisto_report.txt"
       } else {
@@ -283,6 +295,22 @@ awk '{system("mv d"\$0" "\$0)}'
       }
     } catch (e) {
       println "error in software_path.cmd_kallisto() ${e}"
+    }
+  }
+
+  def cmd_bowtie2(cpu, index, fastq){
+    try {
+      fastq = this.unsalt_file_name(fastq)
+      index = this.unsalt_file_name(index)
+      def tagname = this.get_tagname(fastq)
+      def basename_index = this.basename_index(index)
+      if (this.test_single(fastq)) {
+        return "${this.params.bowtie2} ${this.params.bowtie2_parameters} -p ${cpu} -x ${basename_index} -U ${fastq} 2> ${tagname}_bowtie2_report.txt | samtools view -Sb - > ${tagname}.bam"
+      } else {
+        return "${this.params.bowtie2} ${this.params.bowtie2_parameters} -p ${cpu} -x ${basename_index} -1 ${fastq[0]} -2 ${fastq[1]} 2> ${tagname}_bowtie2_report.txt | samtools view -Sb - > ${tagname}.bam"
+      }
+    } catch (e) {
+      println "error in software_path.cmd_bowtie2() ${e}"
     }
   }
 
@@ -792,13 +820,13 @@ if (todo.pseudomapping()) {
 
 /////////////////////////////////// mapping ////////////////////////////////////
 if (todo.mapping()) {
-  process indexing {
+  process mapping {
     tag "${tagname}"
     echo path.params.verbose
     publishDir "${results_path}/mapping/mapping", mode: 'copy'
     input:
-       file index from index_file_1
-       file reads from fastq_file_4
+      file index from index_file_1
+      file reads from fastq_file_4
     output:
       file "*.bam" into mapping_file_1
       file "*_report.txt" into mapping_report
