@@ -46,6 +46,7 @@ src_path = root_path + '/src'
 // test software path
 class software_path {
   def params
+  def single
 
   def call(params, docker, src_path) {
     try {
@@ -64,6 +65,7 @@ class software_path {
         }
       }
       this.params.process_header = params.pbs_header
+      this.single = false
     } catch (e) {
       println "error in software_path.call() ${e}"
     }
@@ -298,7 +300,7 @@ awk '{system("mv d"\$0" "\$0)}'
     }
   }
 
-  def cmd_bowtie2(cpu, index, fastq){
+  def cmd_bowtie2(cpu, index, fastq, todo){
     try {
       fastq = this.unsalt_file_name(fastq)
       index = this.unsalt_file_name(index)
@@ -311,6 +313,43 @@ awk '{system("mv d"\$0" "\$0)}'
       }
     } catch (e) {
       println "error in software_path.cmd_bowtie2() ${e}"
+    }
+  }
+
+  def cmd_rsem_bowtie2_index(cpu, reference, annotation){
+    try {
+      annotation = this.unsalt_file_name(annotation)
+      reference = this.unsalt_file_name(reference)
+      def tagname = this.get_tagname(reference)
+      def bowtie2_path = '$(which ' + this.params.bowtie2 + ' | sed \'s/bowtie2$//g\')'
+      def cmd = "${this.params.rsem}-prepare-reference -p ${cpu} --bowtie2 --bowtie2-path ${bowtie2_path}"
+      if (this.params.rsem_parameters_indexing != "") {
+        cmd = "${cmd} ${this.params.rsem_parameters_indexing} "
+      }
+      def cmd_annotation = "--gff3 ${annotation}"
+      if(annotation ==~ /.*\.gtf$/){
+        cmd_annotation = "--gtf ${annotation}"
+      }
+      return "${cmd} ${cmd_annotation} ${reference} ${tagname}.index > ${tagname}_rsem_bowtie2_report.txt"
+    } catch (e) {
+      println "error in software_path.cmd_rsem_bowtie2_index() ${e}"
+    }
+  }
+
+  def cmd_rsem_bowtie2(cpu, fastq, index){
+    try {
+      fastq = this.unsalt_file_name(fastq)
+      index = this.unsalt_file_name(index)
+      def tagname = this.get_tagname(fastq)
+      def basename_index = this.basename_index(index)
+      def bowtie2_path = '$(which ' + this.params.bowtie2 + ' | sed \'s/bowtie2$//g\')'
+      if (this.single) {
+        return "${this.params.rsem}-calculate-expression --bowtie2 --bowtie2-path ${bowtie2_path} ${this.params.rsem_parameters_quantif} -p ${cpu} ${fastq} ${basename_index} ${tagname} > ${tagname}_rsem_bowtie2_report.txt"
+      } else {
+        return "${this.params.rsem}-calculate-expression --bowtie2 --bowtie2-path ${bowtie2_path} --bowtie2-sensitivity-level \"very_sensitive\" ${this.params.rsem_parameters_quantif} -p ${cpu} --paired-end ${fastq[0]} ${fastq[1]} ${basename_index} ${tagname} > ${tagname}_rsem_bowtie2_report.txt"
+      }
+    } catch (e) {
+      println "error in software_path.cmd_rsem_bowtie2() ${e}"
     }
   }
 
@@ -485,9 +524,14 @@ class modularity {
 
   def do_split_ref(){
     if (this.reference() && this.annotation()) {
-      if (this.todo['mapping'] in ['kallisto']){
-        this.todo['split_ref'] = 'split_ref'
+      if (this.todo['mapping'] in ['kallisto']) {
+        this.todo['split_ref'] = 'split_fasta'
         this.todo['quantification'] = 'kallisto'
+      }
+      if (this.todo['mapping'] in ['bowtie2'] && this.todo['quantification'] in ['rsem']) {
+        this.todo['split_ref'] = 'none'
+        this.todo['mapping'] = 'rsem_bowtie2'
+        this.todo['quantification'] = 'rsem_bowtie2'
       }
     }
   }
@@ -550,19 +594,19 @@ class modularity {
   }
   def mapping(){
     if (this.reference()) {
-      return !(this.todo['mapping'] in ['none', 'kallisto'])
+      return !(this.todo['mapping'] in ['none', 'kallisto', 'rsem_bowtie2'])
     }
     return false
   }
   def pseudomapping(){
     if (this.reference()) {
-      return this.todo['mapping'] == 'kallisto'
+      return this.todo['mapping'] in ['kallisto', 'rsem_bowtie2']
     }
     return false
   }
   def quantification(){
     if (this.reference()) {
-      return !(this.todo['quantification'] in ['none', 'kallisto'])
+      return !(this.todo['quantification'] in ['none', 'kallisto', 'rsem_bowtie2'])
     }
     println "warning: no fasta provided skipping quantification"
     return false
@@ -827,12 +871,17 @@ if (todo.split_ref()) {
 
 ////////////////////////////////// indexing ////////////////////////////////////
 if (todo.indexing()) {
+  annot_file_1.into {
+    indexing_annot_file;
+    annot_file_2
+  }
   process indexing {
     tag "${tagname}"
     echo path.params.verbose
     publishDir "${results_path}/mapping/indexing", mode: 'copy'
     input:
        file reference from fasta_file_1
+       file annotation from indexing_annot_file
     output:
       file "*index*" into index_file_1
       file "*_report.txt" into index_report
@@ -840,6 +889,10 @@ if (todo.indexing()) {
       path.test_fasta(reference)
       tagname = path.get_tagname(reference)
       template "${src_path}/func/mapping/${todo.todo.indexing}_index.sh"
+  }
+}else{
+  annot_file_1.set {
+    annot_file_2
   }
 }
 
@@ -850,7 +903,7 @@ if (todo.pseudomapping()) {
     echo path.params.verbose
     publishDir "${results_path}/mapping/quantification", mode: 'copy'
     input:
-       file index from index_file_1
+       file index from index_file_1.first()
        file reads from fastq_file_4
     output:
       file "*" into quantification_file_1
@@ -894,7 +947,6 @@ if (todo.mapping()) {
   }
 }
 
-
 /////////////////////////////// quantification /////////////////////////////////
 if (todo.quantification()) {
   process quantification {
@@ -903,7 +955,7 @@ if (todo.quantification()) {
     publishDir "${results_path}/mapping/quantification", mode: 'copy'
     input:
        file bam from mapping_file_2
-       file annotation from annot_file_1.first()
+       file annotation from annot_file_2.first()
     output:
       file "*" into quantification_file_1
     script:

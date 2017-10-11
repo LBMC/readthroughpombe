@@ -1,5 +1,5 @@
-
 ${path.params.process_header}
+echo "HTSeq"
 
 ${path.cmd_unsalt_file(bam)}
 ${path.cmd_unsalt_file(annotation)}
