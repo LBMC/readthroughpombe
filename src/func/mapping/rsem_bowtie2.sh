@@ -1,5 +1,5 @@
 ${path.params.process_header}
-echo "rsem"
+echo "rsem+bowtie2"
 
 ${path.cmd_unsalt_file(reads)}
 ${path.cmd_unsalt_file(index)}
