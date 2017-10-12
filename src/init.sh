@@ -2,12 +2,13 @@
 
 ################################### all ########################################
 # install nextflow
+mkdir bin
 cd bin
 wget -qO- get.nextflow.io | bash
+cd ..
 
 ################################## Docker ######################################
 # build docker image
-
 docker build src/func/docker -t 'pipeline:0.0.1'
 
 ################################### PSMN #######################################
