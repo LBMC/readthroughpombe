@@ -48,6 +48,12 @@ class software_path {
       if (this.params.global_executor ==  'sge') {
           println 'executor : sge\n'
           this.params.gz = params.pigz
+          for (param in params) {
+            if (param.key ==~ /^.*_module$/) {
+              program_name = (param.key =~ /^(.*)_module$/)[0][1]
+              this.params[params.key] = this.params[params.key]+this.params["${program_name}_version"]
+            }
+          }
       } else {
         if (docker){
           println 'executor : docker\n'
