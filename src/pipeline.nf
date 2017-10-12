@@ -677,7 +677,7 @@ if (todo.reference()) {
 log.info "annotation files : ${path.params.annot}"
 if (todo.annotation()) {
   annot_files = Channel.fromPath( path.params.annot )
-  process get_fasta_name {
+  process get_annot_name {
     tag "${tagname}"
     echo path.params.verbose
     input:
