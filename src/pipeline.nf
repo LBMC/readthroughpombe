@@ -48,6 +48,7 @@ class software_path {
       if (this.params.global_executor ==  'sge') {
           println 'executor : sge\n'
           this.params.gz = params.pigz
+          def program_name
           for (param in params) {
             if (param.key ==~ /^.*_module$/) {
               program_name = (param.key =~ /^(.*)_module$/)[0][1]
