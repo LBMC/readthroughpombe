@@ -36,23 +36,17 @@
 * knowledge of the CeCILL license and that you accept its terms.
 */
 
-// global variables
-println baseDir
-root_path = (baseDir =~ /(.*)src/)[0][1]
-results_path = root_path + 'results'
-src_path = root_path + '/src'
-
-
 // test software path
 class software_path {
-  def params
-  def single
+  def params = [:]
 
   def call(params, docker, src_path) {
     try {
-      this.params =  params
+      for (param in params){
+        this.params[param.key] = param.value
+      }
       if (this.params.global_executor ==  'sge') {
-          println 'executor : sge'
+          println 'executor : sge\n'
           this.params.gz = params.pigz
       } else {
         if (docker){
@@ -60,12 +54,15 @@ class software_path {
           this.params.gz = params.pigz
         } else {
           println 'executor : local\n'
-          this.params.file_handle_path = "${src_path}/file_handle/src/file_handle.py"
+          println "path : ${src_path}"
+          println "target : ${src_path}/file_handle/src/file_handle.py"
+          println this.params.file_handle
+          this.params.file_handle = "${src_path}/file_handle/src/file_handle.py"
+          println this.params.file_handle
           this.test_pigz()
         }
       }
       this.params.process_header = params.pbs_header
-      this.single = false
     } catch (e) {
       println "error in software_path.call() ${e}"
     }
@@ -73,10 +70,10 @@ class software_path {
 
   def test_pigz() {
     try {
-      if (file(params.pigz).exists()) {
-        this.params.gz = params.pigz
+      if (file(this.params.pigz).exists()) {
+        this.params.gz = this.params.pigz
       } else {
-        this.params.gz = params.gzip
+        this.params.gz = this.params.gzip
       }
     } catch (e) {
       println "error in software_path.test_pigz() ${e}"
@@ -231,12 +228,12 @@ awk '{system("mv d"\$0" "\$0)}'
 
   def cmd_adaptor_removal(cpu, file){ try {
       file = this.unsalt_file_name(file)
-      def cmd = "${params.cutadapt}"
+      def cmd = "${this.params.cutadapt}"
       def tagname = this.get_tagname(file)
       if (this.test_single(file)) {
-        return "${cmd} ${params.adaptor_sequence_single} -o ${tagname}_cut.fastq.gz ${file} > ${tagname}_report.txt"
+        return "${cmd} ${this.params.adaptor_sequence_single} -o ${tagname}_cut.fastq.gz ${file} > ${tagname}_report.txt"
       } else {
-        return "${cmd} ${params.adaptor_sequence_paired} -o ${tagname}_cut_R1.fastq.gz -p ${tagname}_cut_R2.fastq.gz ${file[0]} ${file[1]} > ${tagname}_report.txt"
+        return "${cmd} ${this.params.adaptor_sequence_paired} -o ${tagname}_cut_R1.fastq.gz -p ${tagname}_cut_R2.fastq.gz ${file[0]} ${file[1]} > ${tagname}_report.txt"
       }
     } catch (e) {
       println "error in software_path.cmd_adaptor_removal() ${e}"
@@ -619,6 +616,10 @@ class modularity {
   }
 }
 
+// global variables
+root_path = (baseDir =~ /(.*)src/)[0][1]
+results_path = root_path + 'results'
+src_path = root_path + 'src'
 path = new software_path()
 path(params, config.docker.enabled == true, src_path)
 todo = new modularity()
@@ -627,10 +628,10 @@ config.docker.runOptions = "--cpus=\"${path.params.cpu}\" --memory=\"${path.para
 
 fastqc_output = Channel.create()
 ////////////////////////////////// load fastq //////////////////////////////////
-if(params.fastq == ""){exit 1, "missing params \"--fastq\""}
-log.info "fastq files : ${params.fastq}"
-fastq_files = Channel.fromFilePairs(params.fastq, size: -1)
-  .ifEmpty { exit 1, "Cannot find any fastq files matching: ${params.fastq}" }
+if(path.params.fastq == ""){exit 1, "missing params \"--fastq\""}
+log.info "fastq files : ${path.params.fastq}"
+fastq_files = Channel.fromFilePairs(path.params.fastq, size: -1)
+  .ifEmpty { exit 1, "Cannot find any fastq files matching: ${path.params.fastq}" }
 
 process get_fastq_name {
   tag "${tagname}"
@@ -647,9 +648,9 @@ process get_fastq_name {
 }
 
 ////////////////////////////////// load fasta //////////////////////////////////
-log.info "reference files : ${params.fasta}"
+log.info "reference files : ${path.params.fasta}"
 if (todo.reference()) {
-  fasta_files = Channel.fromPath( params.fasta )
+  fasta_files = Channel.fromPath( path.params.fasta )
   process get_fasta_name {
     tag "${tagname}"
     echo path.params.verbose
@@ -666,9 +667,9 @@ if (todo.reference()) {
 }
 
 ////////////////////////////////// load annot //////////////////////////////////
-log.info "annotation files : ${params.annot}"
+log.info "annotation files : ${path.params.annot}"
 if (todo.annotation()) {
-  annot_files = Channel.fromPath( params.annot )
+  annot_files = Channel.fromPath( path.params.annot )
   process get_fasta_name {
     tag "${tagname}"
     echo path.params.verbose
@@ -686,8 +687,8 @@ if (todo.annotation()) {
 
 ////////////////////////////////// load index //////////////////////////////////
 if (todo.load_index()) {
-  log.info "index files : ${params.index}"
-  index_files = Channel.fromPath( params.index )
+  log.info "index files : ${path.params.index}"
+  index_files = Channel.fromPath( path.params.index )
   process get_fasta_name {
     tag "${tagname}"
     echo path.params.verbose
