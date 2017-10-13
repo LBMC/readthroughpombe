@@ -52,6 +52,9 @@ class software_path {
           for (param in params) {
             if (param.key ==~ /^.*_module$/) {
               program_name = (param.key =~ /^(.*)_module$/)[0][1]
+              if(program_name ==~ /^.*_unload$/) {
+                program_name = (program_name =~ /^(.*)_unload$/)[0][1]
+              }
               this.params[param.key] = param.value+this.params["${program_name}_version"]
             }
           }
