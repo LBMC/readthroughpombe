@@ -532,7 +532,6 @@ class modularity {
   def do_split_ref(){
     if (this.reference() && this.annotation()) {
       if (this.todo['mapping'] in ['kallisto']) {
-        this.todo['split_ref'] = 'split_fasta'
         this.todo['quantification'] = 'kallisto'
       }
       if (this.todo['mapping'] in ['bowtie2'] && this.todo['quantification'] in ['rsem']) {
