@@ -21,20 +21,16 @@ cp data/fastq_original/PLBD14.fastq.gz	data/fastq/2017_04_14_PLBD14_cdc15_118_R3
 cp data/fastq_original/PLBD15.fastq.gz	data/fastq/2017_04_14_PLBD15_rrp6D_R3.fastq.gz
 
 ################################### all ########################################
+
 # install nextflow
+mkdir bin
 cd bin
 wget -qO- get.nextflow.io | bash
+cd ..
 
 ################################## Docker ######################################
-# provide Docker with file_handle
-cp src/file_handle/src/file_handle.py src/pipe/quality_control/
-# build docker image for quality_control.nf
-docker build src/pipe/quality_control -t 'quality_control:0.0.1'
-
-# provide Docker with file_handle
-cp src/file_handle/src/file_handle.py src/pipe/mapping/
-# build docker image for mapping.nf
-docker build src/pipe/mapping -t 'mapping:0.0.1'
+# build docker image
+docker build src/func/docker -t 'pipeline:0.0.1'
 
 ################################### PSMN #######################################
 # echo $SHELL must return /bin/bash for this to work
@@ -100,7 +96,7 @@ sudo make install
 rm -Rf /tmp/rsem
 
 #install fastqc
-RUN wget http://www.bioinformatics.babraham.ac.uk/projects/fastqc/fastqc_v0.11.5.zip && \
+wget http://www.bioinformatics.babraham.ac.uk/projects/fastqc/fastqc_v0.11.5.zip && \
   unzip fastqc_v0.11.5.zip && \
   mv FastQC /opt/FastQC && \
   ln -s /opt/FastQC/fastqc /usr/local/bin/fastqc && \
