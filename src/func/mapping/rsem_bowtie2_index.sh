@@ -15,6 +15,7 @@ if grep -q "Error" ${tagname}_rsem_bowtie2_report.txt; then
   cat ${tagname}_rsem_bowtie2_report.txt
   exit 1
 fi
+${path.params.python2_unload_module}
 
 ${path.params.file_handle_module}
 ${path.cmd_date('*')}
