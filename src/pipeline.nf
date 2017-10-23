@@ -530,7 +530,7 @@ class modularity {
   }
 
   def do_split_ref(){
-    if (this.reference() && this.annotation()) {
+    if ((this.reference() || this.index()) && this.annotation()) {
       if (this.todo['mapping'] in ['kallisto']) {
         this.todo['quantification'] = 'kallisto'
       }
@@ -595,26 +595,26 @@ class modularity {
     }
     return false
   }
-  def load_index(){
+  def index(){
     return this.path.params.index != ""
   }
   def mapping(){
-    if (this.reference()) {
+    if (this.reference() || this.index()) {
       return !(this.todo['mapping'] in ['none', 'kallisto', 'rsem_bowtie2'])
     }
     return false
   }
   def pseudomapping(){
-    if (this.reference()) {
+    if (this.reference() || this.index()) {
       return this.todo['mapping'] in ['kallisto', 'rsem_bowtie2']
     }
     return false
   }
   def quantification(){
-    if (this.reference()) {
+    if (this.reference() || this.index()) {
       return !(this.todo['quantification'] in ['none', 'kallisto', 'rsem_bowtie2'])
     }
-    println "warning: no fasta provided skipping quantification"
+    println "warning: no fasta nor index provided, skipping quantification"
     return false
   }
   def multiqc_mapping(){
@@ -695,19 +695,19 @@ if (todo.annotation()) {
 }
 
 ////////////////////////////////// load index //////////////////////////////////
-if (todo.load_index()) {
+if (todo.index()) {
   log.info "index files : ${path.params.index}"
   index_files = Channel.fromPath( path.params.index )
-  process get_fasta_name {
+  process get_index_name {
     tag "${tagname}"
     echo path.params.verbose
     input:
-      file index from index_files
+      file index from index_files.collect()
     output:
       file "d*" into index_file_1
     script:
       path.test_annot(index)
-      tagname = index
+      tagname = index[0]
       file = index
       template "${src_path}/func/get_file_name_nogz.sh"
   }
@@ -924,12 +924,12 @@ if (todo.indexing()) {
 
 /////////////////////////////// pseudomapping //////////////////////////////////
 if (todo.pseudomapping()) {
-  process pseudomapping {
+  process mapping_quantification {
     tag "${tagname}"
     echo path.params.verbose
     publishDir "${results_path}/mapping/quantification", mode: 'copy'
     input:
-       file index from index_file_1.first()
+       file index from index_file_1.collect()
        file reads from fastq_file_4
     output:
       file "*" into quantification_file_1
@@ -947,7 +947,7 @@ if (todo.mapping()) {
     echo path.params.verbose
     publishDir "${results_path}/mapping/mapping", mode: 'copy'
     input:
-      file index from index_file_1.first()
+      file index from index_file_1.collect().first()
       file reads from fastq_file_4
     output:
       file "*.bam" into mapping_file_1
