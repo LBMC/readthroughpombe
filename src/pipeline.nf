@@ -532,7 +532,6 @@ class modularity {
   def do_split_ref(){
     if (this.reference() && this.annotation()) {
       if (this.todo['mapping'] in ['kallisto']) {
-        this.todo['split_ref'] = 'split_fasta'
         this.todo['quantification'] = 'kallisto'
       }
       if (this.todo['mapping'] in ['bowtie2'] && this.todo['quantification'] in ['rsem']) {
@@ -588,7 +587,7 @@ class modularity {
     return this.path.params.annot != ""
   }
   def split_ref(){
-    return this.todo['split_ref'] != 'none'
+    return this.todo['split_ref'] != 'none' && this.annotation() && this.reference()
   }
   def indexing(){
     if (this.reference()) {
@@ -658,8 +657,8 @@ process get_fastq_name {
 }
 
 ////////////////////////////////// load fasta //////////////////////////////////
-log.info "reference files : ${path.params.fasta}"
 if (todo.reference()) {
+  log.info "reference files : ${path.params.fasta}"
   fasta_files = Channel.fromPath( path.params.fasta )
   process get_fasta_name {
     tag "${tagname}"
@@ -677,8 +676,8 @@ if (todo.reference()) {
 }
 
 ////////////////////////////////// load annot //////////////////////////////////
-log.info "annotation files : ${path.params.annot}"
 if (todo.annotation()) {
+  log.info "annotation files : ${path.params.annot}"
   annot_files = Channel.fromPath( path.params.annot )
   process get_annot_name {
     tag "${tagname}"
@@ -872,26 +871,40 @@ if (todo.split_ref()) {
       template "${src_path}/func/mapping/split_fasta.sh"
   }
 } else {
-  dated_fasta_files.set{
-    fasta_file_1
+  if (todo.reference()) {
+    dated_fasta_files.set{
+      fasta_file_1
+    }
   }
-  dated_annot_files.set{
-    annot_file_1
+  if (todo.annotation()) {
+    dated_annot_files.set{
+      annot_file_1
+    }
   }
 }
 
 ////////////////////////////////// indexing ////////////////////////////////////
 if (todo.indexing()) {
-  annot_file_1.into {
-    indexing_annot_file;
-    annot_file_2
+  if (todo.annotation()) {
+    annot_file_1.into {
+      indexing_annot_file;
+      annot_file_2
+    }
+    fasta_file_1.set{
+      fasta_file_2
+    }
+  } else {
+    fasta_file_1.into{
+      indexing_annot_file;
+      fasta_file_2
+    }
   }
   process indexing {
     tag "${tagname}"
     echo path.params.verbose
     publishDir "${results_path}/mapping/indexing", mode: 'copy'
     input:
-       file reference from fasta_file_1
+       file reference from fasta_file_2
        file annotation from indexing_annot_file
     output:
       file "*index*" into index_file_1
@@ -902,8 +915,10 @@ if (todo.indexing()) {
       template "${src_path}/func/mapping/${todo.todo.indexing}_index.sh"
   }
 }else{
-  annot_file_1.set {
-    annot_file_2
+  if (todo.annotation()) {
+    annot_file_1.set {
+      annot_file_2
+    }
   }
 }
 

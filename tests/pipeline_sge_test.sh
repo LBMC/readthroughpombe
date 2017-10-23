@@ -21,4 +21,7 @@ nextflow src/pipeline.nf -c src/pipeline.config -profile sge --fastq "data/examp
 nextflow src/pipeline.nf -c src/pipeline.config -profile sge --fastq "data/examples/tiny_dataset/fastq/*tiny_S.fastq" --fasta "data/examples/tiny_dataset/fasta/tiny_v2.fasta" --annot "data/examples/tiny_dataset/annot/tiny.gff" --todo "fastqc+cutadapt+cutadapt+fastqc+multiqc+bowtie2+rsem"
 nextflow src/pipeline.nf -c src/pipeline.config -profile sge --fastq "data/examples/tiny_dataset/fastq/*tiny_R{1,2}.fastq" --fasta "data/examples/tiny_dataset/fasta/tiny_v2.fasta" --annot "data/examples/tiny_dataset/annot/tiny.gff" --todo "fastqc+cutadapt+cutadapt+fastqc+multiqc+bowtie2+rsem"
 
+nextflow src/pipeline.nf -c src/pipeline.config -profile sge --fastq "data/examples/tiny_dataset/fastq/*tiny_S.fastq" --fasta "data/examples/tiny_dataset/fasta/tiny_v2.fasta" --annot "data/examples/tiny_dataset/annot/tiny.gff" --todo "fastqc+cutadapt+cutadapt+fastqc+multiqc+kallisto"
+nextflow src/pipeline.nf -c src/pipeline.config -profile sge --fastq "data/examples/tiny_dataset/fastq/*tiny_R{1,2}.fastq" --fasta "data/examples/tiny_dataset/fasta/tiny_v2.fasta" --annot "data/examples/tiny_dataset/annot/tiny.gff" --todo "fastqc+cutadapt+cutadapt+fastqc+multiqc+kallisto"
+
 git checkout src/pipe/conf/pipeline_sge.config
