@@ -351,7 +351,7 @@ awk '{system("mv d"\$0" "\$0)}'
       def basename_index = this.basename_index(index)
       def bowtie2_path = '$(which ' + this.params.bowtie2 + ' | sed \'s/bowtie2$//g\')'
       if (this.test_single(fastq)) {
-        return "${this.params.rsem}-calculate-expression --bowtie2 --bowtie2-path ${bowtie2_path} ${this.params.rsem_parameters_quantif} -p ${cpu} ${fastq} ${basename_index} ${tagname} > ${tagname}_rsem_bowtie2_report.txt"
+        return "${this.params.rsem}-calculate-expression --bowtie2 --bowtie2-path ${bowtie2_path} --bowtie2-sensitivity-level \"very_sensitive\" ${this.params.rsem_parameters_quantif} -p ${cpu} ${fastq} ${basename_index} ${tagname} > ${tagname}_rsem_bowtie2_report.txt"
       } else {
         return "${this.params.rsem}-calculate-expression --bowtie2 --bowtie2-path ${bowtie2_path} --bowtie2-sensitivity-level \"very_sensitive\" ${this.params.rsem_parameters_quantif} -p ${cpu} --paired-end ${fastq[0]} ${fastq[1]} ${basename_index} ${tagname} > ${tagname}_rsem_bowtie2_report.txt"
       }
