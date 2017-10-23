@@ -14,3 +14,5 @@ bin/nextflow src/pipeline.nf -c src/pipeline.config -profile docker --fastq "dat
 bin/nextflow src/pipeline.nf -c src/pipeline.config -profile docker --fastq "data/examples/tiny_dataset/fastq/*tiny_R{1,2}.fastq" --fasta "data/examples/tiny_dataset/fasta/tiny_v2.fasta" --annot "data/examples/tiny_dataset/annot/tiny.gff" --todo "fastqc+cutadapt+cutadapt+fastqc+multiqc+bowtie2+rsem" && \
 bin/nextflow src/pipeline.nf -c src/pipeline.config -profile docker --fastq "data/examples/tiny_dataset/fastq/*tiny_S.fastq" --fasta "data/examples/tiny_dataset/fasta/tiny_v2.fasta" --todo "fastqc+cutadapt+cutadapt+fastqc+multiqc+kallisto" && \
 bin/nextflow src/pipeline.nf -c src/pipeline.config -profile docker --fastq "data/examples/tiny_dataset/fastq/*tiny_R{1,2}.fastq" --fasta "data/examples/tiny_dataset/fasta/tiny_v2.fasta" --todo "fastqc+cutadapt+cutadapt+fastqc+multiqc+kallisto"
+
+bin/nextflow src/pipeline.nf -c src/pipeline.config -profile docker --fastq "data/examples/tiny_dataset/fastq/*tiny_R{1,2}.fastq" --index "2017_10_16_tiny_v2_split.index*" --annot "data/examples/tiny_dataset/annot/tiny.gff" --todo "bowtie2+rsem"
