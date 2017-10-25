@@ -310,7 +310,16 @@ for (i in seq_along(analysis)){
   PlotCountDen(count, save.path.dir, paste("/Raw_Count_", save.dir, ".pdf", sep = ""))
   PlotCountDen(count.norm, save.path.dir, paste("/Norm_Count_", save.dir, ".pdf", sep = ""))
   
-
+  ##### Plot log2(nom counts +1) vs condition per chromosome for differentially expressed genes
+  all.diff <- rbind(info.up.genes, info.down.genes)
+  count.norm.comp <- count.norm[which(count.norm$Var1 %in% all.diff$genes), ]
+  count.norm.comp$chromosome <- sapply(count.norm.comp$Var1, function(x) all.diff[which(all.diff$genes == x), ]$V1)
+  
+  p <- ggplot(count.norm.comp, aes(factor(samples), log2(value+1))) + geom_violin() + geom_jitter(height = 0, width = 0.2) + facet_grid(~chromosome)+ylab("log2(normalized count + 1)")
+  
+  pdf(paste(save.path.dir, "/log2count_diff_expressed_genes_", save.dir, ".pdf", sep = ""))
+  print(p)
+  dev.off()
   
   ##### Date results file
   system(paste("bash src/date.sh ./results/DESeq2_analysis/", save.dir, sep = ""))
