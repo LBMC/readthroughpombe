@@ -189,9 +189,9 @@ for (i in seq_along(analysis)){
   }
   
   ##### Density along chromosomes
-  pdf(paste(save.path.dir, "/density_up_down_reg_", save.dir, ".pdf", sep = ""), w = 7*length(chr.diff.all), h = 7)# 12)
-  #par(mfrow = c(2,1))
-  den.d <- NULL; pos.d <- NULL; den.nd <- NULL; pos.nd <- NULL; ud <- c(); equ <- c(); den.diff <- NULL; pos.diff <- NULL; up <- c(); dw <- c()
+  pdf(paste(save.path.dir, "/density_up_down_reg_", save.dir, ".pdf", sep = ""), w = 7*length(chr.diff.all), h = 10)# 12)
+  par(mfrow = c(2,1))
+  den.d <- NULL; pos.d <- NULL; den.nd <- NULL; pos.nd <- NULL; ud <- c(); equ <- c(); den.diffa <- c(); pos.diff <- list(); up <- c(); dw <- c()
   for (chr in chr.diff.all) {
     tmp.up <- info.up.genes[which(info.up.genes$V1 == chr), ]; pos.genes.up <- unlist(apply(tmp.up, 1, function(x) x[3]:x[4]))
     tmp.down <- info.down.genes[which(info.down.genes$V1 == chr), ]; pos.genes.down <- unlist(apply(tmp.down, 1, function(x) x[3]:x[4]))
@@ -206,7 +206,8 @@ for (i in seq_along(analysis)){
     equ <- c(equ, dim(tmp.equ)[1])
     tmp.den.diff <- density(c(pos.genes.up, pos.genes.down), from= xlim[1], to=xlim[2], width = 10000 )
     tmp.den.equ <- density(pos.genes.not.diff,  from= xlim[1], to=xlim[2], width = 10000 )
-    den.diff <- c(den.diff, tmp.den.diff$y- tmp.den.equ$y)
+    tmp <- tmp.den.diff$y/max(tmp.den.diff$y) - tmp.den.equ$y/max(tmp.den.equ$y)
+    den.diffa <- c(den.diffa, unlist(tmp))#list(tmp))
     pos.diff <- c(pos.diff, list( tmp.den.diff$x))
   }
   offset <- sizes[1, chr.diff.all]; offset <- c(0, cumsum(offset)[1:length(offset)])
@@ -214,17 +215,22 @@ for (i in seq_along(analysis)){
   posnd <- unlist(lapply(1:length(pos.nd), function(x) pos.nd[[x]]+offset[x]))
   posdiff <-  unlist(lapply(1:length(pos.diff), function(x) pos.diff[[x]]+offset[x]))
   
-  plot(posd, unlist(den.d), type = "l", main = paste("Density of features - Chromosomes ", paste(chr.diff.all, collapse = " "), " - ", save.dir, "\n window=10kb - pthresh=", pthresh, sep = ""), xlab = "Position", ylab = "Normalized density", 
-       xlim = c(0, max(offset)), ylim = c(-1, 1), yaxt = "n", col = "purple")
-  points(posnd, -unlist(den.nd), type = "l", col = 1)
-  abline(h=0, col = "gray")
-  text(offset[2:length(offset)], rep(1, length(offset)-1), paste(ud, " up (", up, ")\n/downregulated (", dw, ")", sep = ""), col = "darkorchid4", cex =0.8)
-  text(offset[2:length(offset)], rep(-1, length(offset)-1), paste(equ, " equally expressed", sep = ""), cex = 0.8)
+  plot(posd, unlist(den.d)+1, type = "l", main = paste("Density of features - Chromosomes ", paste(chr.diff.all, collapse = " "), " - ", save.dir, "\n window=10kb - pthresh=", pthresh, sep = ""), xlab = "Position", ylab = "Normalized density", 
+       xlim = c(0, max(offset)), ylim = c(0, 2), yaxt = "n", col = "purple")
+  axis(2, c(0,1), c(0,1), col = "black")
+  axis(4, c(1,2), c(0,1), col = "purple", col.ticks = "purple", col.axis = "purple")
   
-  #plot(posdiff, unlist(den.diff), type = "l", main = paste("Density of features - Chromosomes ", paste(chr.diff.all, collapse = " "), " - ", save.dir, "\n window=10kb - pthresh=", pthresh, sep = ""), xlab = "Position", ylab = "Normalized density", 
-  #     xlim = c(0, max(offset)), ylim = c(-1, 1), yaxt = "n", col = "purple")
-  #points(posnd, -unlist(den.nd), type = "l", col = 1)
+  points(posnd, unlist(den.nd), type = "l", col = 1)
+  abline(h=1, col = "gray")
+  u <- par("usr")
+  arrows(u[1], u[3], u[1], u[4], code = 2, xpd = TRUE)
+  text(offset[2:length(offset)], rep(1.9, length(offset)-1), paste(ud, " up (", up, ")\n/downregulated (", dw, ")", sep = ""), col = "darkorchid4", cex =0.8)
+  text(offset[2:length(offset)], rep(0.9, length(offset)-1), paste(equ, " equally expressed", sep = ""), cex = 0.8)
+  abline(v=offset, col = "darkgray", lwd = 1.5, lty = 2)
   
+  plot(posdiff, den.diffa, type = "l", main = paste("Delta normalized density of diff.expressed - equ expressed features - Chromosomes ", paste(chr.diff.all, collapse = " "), " - ", save.dir, "\n window=10kb - pthresh=", pthresh, sep = ""), 
+       xlab = "Position", xlim = c(0, max(offset)), ylim = c(-1, 1), col = "darkgray", ylab = "Delta normalized density")
+  abline(h=0, col = "gray", lty = 2)
   abline(v=offset, col = "darkgray", lwd = 1.5, lty = 2)
   dev.off()
   
