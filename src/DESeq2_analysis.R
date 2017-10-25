@@ -16,6 +16,7 @@ pref.date.counts <- "2017_09_27"
 analysis <- list(c("cut14-208", "wt"), c("cut14-208_cdc15-118", "wt"), c("cdc15-118", "wt"), c("cut14-208_cdc15-118", "cut14-208"), c("cut14-208_cdc15-118", "cdc15-118"), c("rrp6D", "wt"), c("rrp6D","cut14-208"))
 ref.level <- c("wt", "wt", "wt", "cut14-208","cdc15-118", "wt", "cut14-208")
 do.perm.dist.tRNA <- F
+threshLFC <- log2(1.5)
 
 ##### Code #####
 
@@ -45,7 +46,7 @@ sizes <- matrix( c(5579133, 4539804, 2452883), nrow = 1, dimnames = list(NULL, c
 size <- abs(gff.transcripts$V5-gff.transcripts$V4)
 
 ##### Loop to perform each analysis
-for (i in 1:5){#seq_along(analysis)){
+for (i in seq_along(analysis)){
   analysis.tmp <- analysis[[i]]
   save.dir <- paste(analysis.tmp[1], "_vs_", analysis.tmp[2], sep = "")
   ##### Create one results dir per analysis
@@ -84,14 +85,37 @@ for (i in 1:5){#seq_along(analysis)){
   dds <- DESeqDataSetFromTximport(txi.rsem.keep.notnull, sampleTable, ~condition)
   dds$condition <- relevel(dds$condition, ref = ref.level[i])
   
-  ##### DESeq analysis
-  dds <- DESeq(dds)
-  res <- results(dds) ##### Log2FC are not shrinked, see below function to get shrinked estimates
-  resLFC <- lfcShrink(dds, coef=2, res=res)
+  ##### DESeq analysis: are there differentially expressed genes?
+  #dds <- DESeq(dds)
+  #res <- results(dds) ##### Log2FC are not shrinked, see below function to get shrinked estimates
+  dds2 <- DESeq(dds, betaPrior = T)
+  res2 <- results(dds2, addMLE = T)
+ 
+  res.threshLFC <- results(dds2, lfcThreshold=threshLFC, altHypothesis="greater", addMLE = T)
+  resLFC <- results(dds2, lfcThreshold=.5, altHypothesis="greaterAbs", addMLE = T)
+  res3.threshLFC <- results(dds2, lfcThreshold=.5, altHypothesis="greater", addMLE = T)
   
+  nb.diff.res <- length(which(res2$padj<pthresh))
+  nb.diff.res.threshLFC <- length(which(res.threshLFC$padj<pthresh))
+  nb.diff.res2.threshLFC <- length(which(resLFC$padj<pthresh))
+  nb.diff.res3.threshLFC <- length(which(res3.threshLFC$padj<pthresh))
+
+    
+  pdf("scale_thresholdLFC_signif.pdf", width = 11, height = 4.5)
+  par(mfrow = c(1,4))
+  plotMA(res2, main = paste("nb diff. expressed features\n in classic analysis is ", nb.diff.res, sep = ""), alpha = pthresh, ylim = c(-3,3))
+  abline(h=0,col="dodgerblue",lwd=2)
+  plotMA(res.threshLFC, main = paste("nb diff. expressed features with LFC\nthreshold at log2(1.5)=0.58 is ", nb.diff.res.threshLFC, sep = ""), alpha = pthresh, ylim = c(-3,3))
+  abline(h=c(-threshLFC, threshLFC),col="dodgerblue",lwd=2)
+  plotMA(res3.threshLFC, main = paste("nb up features with LFC\nthreshold at .5 ", nb.diff.res3.threshLFC, sep = ""), alpha = pthresh, ylim = c(-3,3))
+  abline(h=c(-.5, .5),col="dodgerblue",lwd=2)
+  plotMA(resLFC, main = paste("nb diff. expressed features with LFC\nthreshold at .5 is ", nb.diff.res2.threshLFC, sep = ""), alpha = pthresh, ylim = c(-3,3))
+  abline(h=.5,col="dodgerblue",lwd=2)
+  dev.off()
+
   ##### Write results to txt files
-  resLFC <- resLFC[order(resLFC$padj),]
-  write.table(as.data.frame(resLFC), file = paste(save.path.dir, "/deseq2_shrinked_analysis_", save.dir, ".txt", sep = ""), sep = "\t", col.names = T, row.names = T, quote = F)
+  resLFC <- as.data.frame(resLFC[order(resLFC$padj),])
+  write.table(resLFC, file = paste(save.path.dir, "/deseq2_shrinked_analysis_", save.dir, ".txt", sep = ""), sep = "\t", col.names = T, row.names = T, quote = F)
   
   ##### VolcanoPlot 
   VolcanoPlot(resLFC, pthresh, save.path.dir, paste("/volcano_", save.dir, ".pdf", sep = ""), save.dir) 
@@ -264,7 +288,7 @@ for (i in 1:5){#seq_along(analysis)){
   #mcols(res)$description
   
   ##### Heatmap of 100 Best DE genes based on pval
-  rld <- rlog(dds, blind=FALSE)
+  rld <- rlog(dds2, blind=FALSE)
   HeatmapDE(resLFC, rld, pthresh, save.path.dir, paste("/Heatmap100DE_", save.dir, ".pdf", sep = ""), save.dir) 
   
   ##### Distance between samples 
@@ -272,18 +296,21 @@ for (i in 1:5){#seq_along(analysis)){
   
   ##### Dispersion plot
   pdf(paste(save.path.dir, "/dispersion_estimates_", save.dir, ".pdf", sep = ""))
-  plotDispEsts(dds)
+  plotDispEsts(dds2)
   dev.off()
   
   #### Density of count before and after normalization
   code <- matrix(annotation$strain, nrow = 1, dimnames = list(NULL, annotation$sample))
   code.repl <- matrix(sapply(annotation$sample, function(x) strsplit(x, ".", fixed = T)[[1]][2]), nrow = 1, dimnames = list(NULL, annotation$sample))
-  cds.count.norm <- counts(dds, normalize = T); cds.count <- counts(dds, normalize = F)
+  cds.count.norm <- counts(dds2, normalize = T); cds.count <- counts(dds2, normalize = F)
   count.norm <- melt(cds.count.norm , variable_name = "Samples"); count.norm$samples <- code[1, as.character(count.norm$Var2)]; count.norm$replicate <- code.repl[1, as.character(count.norm$Var2)]
   count <- melt(cds.count, variable_name = "Samples"); count$samples <- code[1, as.character(count$Var2)]; count$replicate <- code.repl[1, as.character(count$Var2)]
+  ##### Add chromosome informations per gene
   
   PlotCountDen(count, save.path.dir, paste("/Raw_Count_", save.dir, ".pdf", sep = ""))
   PlotCountDen(count.norm, save.path.dir, paste("/Norm_Count_", save.dir, ".pdf", sep = ""))
+  
+
   
   ##### Date results file
   system(paste("bash src/date.sh ./results/DESeq2_analysis/", save.dir, sep = ""))
