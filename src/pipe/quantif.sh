@@ -20,4 +20,4 @@ bin/nextflow src/pipeline.nf -c src/pipeline.config -profile docker --fastq "res
 
 
 module load nextflow/0.25.1
-nextflow src/pipeline.nf -c src/pipeline.config -profile sge --fastq "results/quality_control/trimming/*.fastq.gz" --index "results/mapping/index/2017_09_27_Schizosaccharomyces_pombe.ASM294v2.30.dna.genome.index*" --annot '2017_09_19_schizosaccharomyces_pombe.chr.gtf' --todo "bowtie2" -w /scratch/lmodolo/readthroughpombe/work/
+nextflow src/pipeline.nf -c src/pipeline.config -profile sge --fastq "results/quality_control/trimming/*.fastq.gz" --fasta "data/2017_10_26_Schizosaccharomyces_pombe.ASM294v2.30.dna.genome.fasta.gz" --todo "bowtie2" -w /scratch/lmodolo/readthroughpombe/work/
