@@ -80,3 +80,21 @@ ComputeDistKSTest <- function(dist1 = dist.diff, dist2 = dist.all) {
   x0 <- minMax[which( abs(cdf1(minMax) - cdf2(minMax)) == max(abs(cdf1(minMax) - cdf2(minMax))) )] 
   return(x0)
 }
+
+######################
+##### ViolinPlot #####
+######################
+ViolinPlot <- function(input.df.with.count, ylabel, save.pdf, do.col = F) {
+  if(do.col) {
+    input.df.with.count$genes <- as.factor(input.df.with.count$genes)
+    n <- length(levels(input.df.with.count$genes))
+    p <- ggplot(input.df.with.count, aes(factor(samples), log2(value+1), alpha = .3)) + geom_violin(draw_quantiles = c(0.25, 0.5, 0.75)) + theme(legend.position="none")+ geom_jitter(aes(colour = genes), height = 0, width = 0.2) + facet_grid(~chromosome)+
+      ylab(ylabel)+xlab("condition")+ scale_color_manual(values=rainbow(n))
+  } else{
+    p <- ggplot(input.df.with.count, aes(factor(samples), log2(value+1), alpha = .3)) + geom_violin(draw_quantiles = c(0.25, 0.5, 0.75)) + theme(legend.position="none")+ geom_jitter(height = 0, width = 0.2) + facet_grid(~chromosome)+
+      ylab(ylabel)+xlab("condition")
+  }
+  pdf(save.pdf)
+  print(p)
+  dev.off()
+}
