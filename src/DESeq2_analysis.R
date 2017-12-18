@@ -232,21 +232,16 @@ for (i in seq_along(analysis)){
   min.dist.up.down.tRNA <- c(min.dist.down.tRNA, min.dist.up.tRNA)
   min.dist.equal.tRNA <- sapply(1:dim(info.equ.genes)[1], function(x) min(abs(gff.tRNA$deb[which(gff.tRNA$V1 == info.equ.genes$V1[x])]-info.equ.genes$deb[x])))
   
-  # KS test unilateral and maximum distance between Fn 
-  #kstest.tRNA <- ks.test(min.dist.equal.tRNA,  min.dist.up.down.tRNA, alternative = "greater")
-  #x0.tRNA <- ComputeDistKSTest(dist1 = min.dist.equal.tRNA, dist2 = min.dist.up.down.tRNA) 
-  
-  # Fit NegBin GLM
+  ##### Fit NegBin GLM
   df.dist.tRNA <- data.frame(group = c(rep("equally.regulated", length(min.dist.equal.tRNA)), rep("up.down.regulated", length(min.dist.up.down.tRNA))), distance.tRNA = c(min.dist.equal.tRNA, min.dist.up.down.tRNA))
   nb.sample <- length(which(df.dist.tRNA$group == "up.down.regulated"))
   # subsample according to the nb of diff expressed genes
   df.tmp <- rbind(df.dist.tRNA[sample(which(df.dist.tRNA$group == "equally.regulated"), nb.sample, replace = T), ], df.dist.tRNA[which(df.dist.tRNA$group == "up.down.regulated"), ])
-  #glm.nb.0.tRNA <- glm.nb(distance.tRNA ~ 1, data = df.dist.tRNA)
+  # fit glm NB
   glm.nb.dist.tRNA <- glm.nb(distance.tRNA ~ group, data = df.tmp)
-  #comp2 <- anova(glm.nb.0.tRNA, glm.nb.dist.tRNA, test = "Chisq")["Pr(Chi)"][2,]
   pval.gr <- summary(glm.nb.dist.tRNA )[["coefficients"]][2, 4]
   
-  pdf(paste(save.path.dir, "/dist_next_tRNA_", save.dir, ".pdf", sep = ""))
+  pdf(paste(save.path.dir, "/dist_next_tRNA_thresholdLFC_", threshLFC, "_", save.dir, ".pdf", sep = ""))
   ha <- hist(min.dist.equal.tRNA, breaks = 100, plot = F)
   hdiff <- hist(min.dist.up.down.tRNA, breaks = 100, plot = F)
   ylim <- c(0, max(c(hdiff$counts, ha$counts)));  xlim <- c(0, max(c(hdiff$breaks, ha$breaks)))
@@ -269,25 +264,18 @@ for (i in seq_along(analysis)){
   
   legend("topright", c("differentially expressed genes", "all but differentially expressed genes"), col = c("purple", "darkgray"), lty = c(-1,-1), pch = c(15,15),bty = "n", cex = 0.6)
   if (pval.gr<0.05) {
-    txt <- paste("\nAt a risk of 5%, tRNA-gene distances are different in differentially\nexpressed genes (pred=", round(mu.1), ") compared to\nequally expressed genes (pred=", round(mu.null), ")\n(pvalue, Wald test=", 
+    txt <- paste("\nAt a risk of 5%, tRNA-gene distances are different in diff\nexpressed genes (pred=", round(mu.1), " bp) compared to\nequally expressed genes (pred=", round(mu.null), " bp)\n(pvalue, Wald test=", 
                  format(pval.gr, scientific = T), ", GLM NegBin)", sep = "")
   }else{
-    txt <- paste("\nAt a risk of 5%, we cannot say tRNA-gene distances are different in\ndifferentially expressed genes (pred=", round(mu.1), ") compared to\nequally expressed genes(pred=", round(mu.null), ")\n(pvalue, Wald test=", format(pval.gr, scientific = T), 
+    txt <- paste("\nAt a risk of 5%, we cannot say tRNA-gene distances are different in\ndiff expressed genes (pred=", round(mu.1), " bp) compared to\nequally expressed genes(pred=", round(mu.null), " bp)\n(pvalue, Wald test=", format(pval.gr, scientific = T), 
                  ", GLM NegBin)", sep = "")
   }
   text(1.2*xlim[2]/2, max(c(pred.null, pred.1))/2, txt, cex = 0.7)
   dev.off()
   
-  ##### MA plot
-  MAplotBetween2Cn(resLFC, save.path.dir, paste("/MAplot_", save.dir, ".pdf", sep = ""), save.dir) 
-  #idx <- identify(resLFC$baseMean, resLFC$log2FoldChange)
-  #rownames(resLFC)[idx]
-  #plotCounts(dds, gene=which.min(res$padj), intgroup="condition")
-  #mcols(res)$description
-  
   ##### Heatmap of 100 Best DE genes based on pval
-  rld <- rlog(dds2, blind=FALSE)
-  HeatmapDE(resLFC, rld, pthresh, save.path.dir, paste("/Heatmap100DE_", save.dir, ".pdf", sep = ""), save.dir) 
+  rld <- rlog(dds, blind=FALSE)
+  HeatmapDE(resLFC, rld, pthresh, save.path.dir, paste("/Heatmap100DE_thresholdLFC_", threshLFC, "_", save.dir, ".pdf", sep = ""), save.dir) 
   
   ##### Distance between samples 
   DistBetweenSamples(rld, save.path.dir, paste("/DistSamples_", save.dir, ".pdf", sep = "")) 
