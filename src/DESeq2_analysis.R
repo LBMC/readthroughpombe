@@ -282,30 +282,38 @@ for (i in seq_along(analysis)){
   
   ##### Dispersion plot
   pdf(paste(save.path.dir, "/dispersion_estimates_", save.dir, ".pdf", sep = ""))
-  plotDispEsts(dds2)
+  plotDispEsts(dds)
   dev.off()
   
   #### Density of count before and after normalization
   code <- matrix(annotation$strain, nrow = 1, dimnames = list(NULL, annotation$sample))
   code.repl <- matrix(sapply(annotation$sample, function(x) strsplit(x, ".", fixed = T)[[1]][2]), nrow = 1, dimnames = list(NULL, annotation$sample))
-  cds.count.norm <- counts(dds2, normalize = T); cds.count <- counts(dds2, normalize = F)
+  cds.count.norm <- counts(dds, normalize = T); cds.count <- counts(dds, normalize = F)
   count.norm <- melt(cds.count.norm , variable_name = "Samples"); count.norm$samples <- code[1, as.character(count.norm$Var2)]; count.norm$replicate <- code.repl[1, as.character(count.norm$Var2)]
   count <- melt(cds.count, variable_name = "Samples"); count$samples <- code[1, as.character(count$Var2)]; count$replicate <- code.repl[1, as.character(count$Var2)]
-  ##### Add chromosome informations per gene
   
   PlotCountDen(count, save.path.dir, paste("/Raw_Count_", save.dir, ".pdf", sep = ""))
   PlotCountDen(count.norm, save.path.dir, paste("/Norm_Count_", save.dir, ".pdf", sep = ""))
   
-  ##### Plot log2(nom counts +1) vs condition per chromosome for differentially expressed genes
+  ##### Plot log2(nom counts +1) vs condition per chromosome 
+all.equ <- info.equ.genes
   all.diff <- rbind(info.up.genes, info.down.genes)
-  count.norm.comp <- count.norm[which(count.norm$Var1 %in% all.diff$genes), ]
-  count.norm.comp$chromosome <- sapply(count.norm.comp$Var1, function(x) all.diff[which(all.diff$genes == x), ]$V1)
+  all.equ.diff <- rbind(info.up.genes, info.equ.genes, info.down.genes)
+  for (type in c("equ", "diff", "equ.diff")) {
+    eval(parse(text = paste("subset <- all.", type, sep = "")))
+    subset.genes <- subset$genes
+    count.norm.comp <- count.norm[which(count.norm$Var1 %in% subset.genes), ]
+    count.norm.comp$chromosome <- sapply(count.norm.comp$Var1, function(x) subset[which(subset$genes == x), ]$V1) # replace all.diff by subset 
+    ViolinPlot(input.df.with.count = count.norm.comp, ylabel = "log2(normalized count + 1)", save.pdf = paste(save.path.dir, "/log2count_", type, "_expressed_thresholdLFC_", threshLFC, "_", save.dir, ".pdf", sep = "")) 
   
-  p <- ggplot(count.norm.comp, aes(factor(samples), log2(value+1))) + geom_violin() + geom_jitter(height = 0, width = 0.2) + facet_grid(~chromosome)+ylab("log2(normalized count + 1)")
-  
-  pdf(paste(save.path.dir, "/log2count_diff_expressed_genes_", save.dir, ".pdf", sep = ""))
-  print(p)
-  dev.off()
+    cond <- unique(count.norm.comp[, c("samples", "chromosome")])
+    mean.count.norm.comp <- do.call(rbind, sapply(as.character(unique(count.norm.comp$Var1)), function(x) do.call(rbind, Filter(Negate(is.null), apply(cond, 1, function(y) {tmp <- which(count.norm.comp$samples == y[1] & count.norm.comp$chromosome == y[2] & count.norm.comp$Var1 == x); if(length(tmp)>0){as.vector(c(x, y, mean(count.norm.comp[tmp, "value"])))}}))), simplify = F))
+    colnames(mean.count.norm.comp) <- c("genes", "samples", "chromosome", "value")
+    mean.count.norm.comp <- as.data.frame(mean.count.norm.comp)
+    mean.count.norm.comp$value <- as.numeric(as.character(mean.count.norm.comp$value))
+    mean.count.norm.comp$genes <- as.character(mean.count.norm.comp$genes)
+    ViolinPlot(input.df.with.count = mean.count.norm.comp, ylabel = "log2(mean normalized count + 1)", save.pdf = paste(save.path.dir, "/mean_log2count_", type, "_expressed_thresholdLFC_", threshLFC, "_", save.dir, ".pdf", sep = ""), T) 
+  }
   
   ##### Date results file
   system(paste("bash src/date.sh ./results/DESeq2_analysis/", save.dir, sep = ""))
