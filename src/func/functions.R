@@ -98,3 +98,16 @@ ViolinPlot <- function(input.df.with.count, ylabel, save.pdf, do.col = F) {
   print(p)
   dev.off()
 }
+
+###################################
+##### ComputeWindowsOverChrom #####
+###################################
+ComputeWindowsOverChrom <- function(vect.pos, size.chr) {
+  tab <- table(vect.pos)
+  seq.along.chr <- 1:size.chr
+  missing.pos <- setdiff(seq.along.chr, as.numeric(names(tab)))
+  tab.missing <- rep(0, length(missing.pos)); names(tab.missing) <- missing.pos
+  tab.all <- c(tab, tab.missing)
+  tab.all <- tab.all[order(as.numeric(names(tab.all)))]
+  return(tab.all)
+}
