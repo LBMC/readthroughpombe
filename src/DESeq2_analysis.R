@@ -109,10 +109,10 @@ for (i in seq_along(analysis)){
   write.table(res, file = paste(save.path.dir, "/deseq2_shrinked_analysis_diff_expressed_", save.dir, ".txt", sep = ""), sep = "\t", col.names = T, row.names = T, quote = F) # Wald test on log2(FC) to abs(threshLFC)
  
   ##### VolcanoPlot 
-  VolcanoPlot(resLFC, pthresh, save.path.dir, paste("/volcano_", save.dir, ".pdf", sep = ""), save.dir) 
+  VolcanoPlot(resLFC, pthresh, save.path.dir, paste("/volcano_", threshLFC, "_", save.dir, ".pdf", sep = ""), save.dir) 
   
   ##### Pval hist
-  PvalHist(resLFC, pthresh,save.path.dir, paste("/padj_hist_", save.dir, ".pdf", sep = ""), save.dir)
+  PvalHist(resLFC, pthresh, save.path.dir, paste("/padj_hist_thresholdLFC_", threshLFC, "_", save.dir, ".pdf", sep = ""), save.dir)
   #Note on p-values set to NA: some values in the results table can be set to NA for one of the following reasons:
   #If within a row, all samples have zero counts, the baseMean column will be zero, and the log2 fold change estimates, p value and adjusted p value will all be set to NA.
   #If a row contains a sample with an extreme count outlier then the p value and adjusted p value will be set to NA. These outlier counts are detected by Cook’s distance. 
