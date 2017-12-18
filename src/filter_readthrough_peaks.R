@@ -141,3 +141,63 @@ for (l in seq_along(list_analysis)) {
   system(paste("bash src/date.sh results/readthrough_analysis/Output_Music/dist_TTS_peaks_", 
     list_analysis[[l]], "_forward_reverse.pdf", sep = ""))
 }
+
+#####  Computation of number of readthrough detected before and after
+##### substraction with annotation and after filtering with delta
+for (l in seq_along(list_analysis)) {
+  all_analysis <- all_analysis_list[[l]]
+  off <- 1
+  plots <- c()
+  for (j in seq_along(all_analysis)) {
+    analysis <- all_analysis[j]
+    all.peaks <- read.csv(paste("results/readthrough_analysis/Output_Music/", 
+      analysis, "/ERs_all.bed", sep = ""), sep = "\t", h = F, stringsAsFactors = F)
+    file <- system(paste("ls results/readthrough_analysis/Output_Music/", 
+      analysis, "/ERs_all_intersect_*", sep = ""), intern = T)
+    all.peaks.inter <- read.csv(file, sep = "\t", h = F, stringsAsFactors = F)
+    tab <- table(all.peaks$V1)
+    plot.tab <- data.frame(chromosome = c("I", "II", "III"), count = as.vector(tab[c("I", 
+      "II", "III")]))
+    g.tab <- BarplotCountPerChrom(plot.tab, F, paste("After intersection with annotation ", 
+      analysis, "\n# found per chromosome (on I, II, III: ", sum(table(all.peaks$V1)[c("I", 
+        "II", "III")]), ")", sep = ""))
+    eval(parse(text = paste("p", off, " = g.tab", sep = "")))
+    plots <- c(plots, off)
+    off <- off + 1
+    tab <- table(all.peaks.inter$V1)
+    plot.tab <- data.frame(chromosome = c("I", "II", "III"), count = as.vector(tab[c("I", 
+      "II", "III")]))
+    g.tab <- BarplotCountPerChrom(plot.tab, F, paste("After intersection with annotation ", 
+      analysis, "\n# found per chromosome (on I, II, III: ", sum(table(all.peaks.inter$V1)[c("I", 
+        "II", "III")]), ")", sep = ""))
+    eval(parse(text = paste("p", off, " = g.tab", sep = "")))
+    plots <- c(plots, off)
+    off <- off + 1
+  }
+  annot.readthrough <- read.csv(paste("results/readthrough_analysis/Output_Music/annot_readthrough_", 
+    list_analysis[[l]], "_forward_reverse.gff3", sep = ""), sep = "\t", 
+    h = F, stringsAsFactors = F)
+  tmp.rt <- annot.readthrough[which(annot.readthrough$V10 == ".rt"), 
+    ]
+  tab.neg <- table(tmp.rt[which(tmp.rt$V7 == "-"), ]$V1)
+  tab.pos <- table(tmp.rt[which(tmp.rt$V7 == "+"), ]$V1)
+  
+  plot.tab.neg <- data.frame(chromosome = c("I", "II", "III"), count = as.vector(tab.neg[c("I", 
+    "II", "III")]))
+  g.tab.neg <- BarplotCountPerChrom(plot.tab.neg, F, paste("After filter based on 5' and 3' (genes +)\n# found per chromosome (on I, II, III: ", 
+    sum(tab.neg[c("I", "II", "III")]), ")", sep = ""))
+  
+  plot.tab.pos <- data.frame(chromosome = c("I", "II", "III"), count = as.vector(tab.pos[c("I", 
+    "II", "III")]))
+  g.tab.pos <- BarplotCountPerChrom(plot.tab.pos, F, paste("After filter based on 5' and 3' (genes +)\n# found per chromosome (on I, II, III: ", 
+    sum(tab.pos[c("I", "II", "III")]), ")", sep = ""))
+  
+  png(paste("results/readthrough_analysis/Output_Music/", list_analysis[l], 
+    "_nb_peaks_detected_raw_after_inter.png", sep = ""), h = 750, w = 900)
+  eval(parse(text = paste("m = multiplot(", paste(paste("p", plots, sep = ""), 
+    collapse = ","), ",g.tab.neg, g.tab.pos, cols=", length(all_analysis) + 
+    1, ")", sep = "")))
+  dev.off()
+  system(paste("bash src/date.sh results/readthrough_analysis/Output_Music/", 
+    list_analysis[l], "_nb_peaks_detected_raw_after_inter.png", sep = ""))
+}
