@@ -8,6 +8,7 @@ require(gplots)
 require(data.table)
 require(parallel)
 require(MASS)
+require(zoo)
 source("src/func/functions.R")
 
 ##### parameters to set by user #####
@@ -109,7 +110,7 @@ for (i in seq_along(analysis)){
   write.table(res, file = paste(save.path.dir, "/deseq2_shrinked_analysis_diff_expressed_", save.dir, ".txt", sep = ""), sep = "\t", col.names = T, row.names = T, quote = F) # Wald test on log2(FC) to abs(threshLFC)
  
   ##### VolcanoPlot 
-  VolcanoPlot(resLFC, pthresh, save.path.dir, paste("/volcano_", threshLFC, "_", save.dir, ".pdf", sep = ""), save.dir) 
+  VolcanoPlot(resLFC, pthresh, save.path.dir, paste("/volcano_thresholdLFC_", threshLFC, "_", save.dir, ".pdf", sep = ""), save.dir) 
   
   ##### Pval hist
   PvalHist(resLFC, pthresh, save.path.dir, paste("/padj_hist_thresholdLFC_", threshLFC, "_", save.dir, ".pdf", sep = ""), save.dir)
@@ -182,52 +183,49 @@ for (i in seq_along(analysis)){
     write.table(output_perm_density_feature, file = paste(save.path.dir, "/test_clusters_DE_features_", save.dir, ".txt", sep = ""), sep = "\t", col.names = T, row.names = F, quote = F)
   }
   
-  ##### Density along chromosomes
-  pdf(paste(save.path.dir, "/density_up_down_reg_", save.dir, ".pdf", sep = ""), w = 7*length(chr.diff.all), h = 10)# 12)
-  par(mfrow = c(2,1))
-  den.d <- NULL; pos.d <- NULL; den.nd <- NULL; pos.nd <- NULL; ud <- c(); equ <- c(); den.diffa <- c(); pos.diff <- list(); up <- c(); dw <- c()
+ ##### Density along chromosomes representation with sliding windows
+  png(paste(save.path.dir, "/presence_along_chromosomes_thresholdLFC_", threshLFC, "_", save.dir, ".png", sep = ""), w = 450*length(chr.diff.all), h = 750)# 12)
+  w <- 10000; o <- 1
+  den.d <- NULL; pos.d <- NULL; den.nd <- NULL; pos.nd <- NULL; ud <- c(); equ <- c(); up <- c(); dw <- c(); #den.diffa <- c(); pos.diff <- list(); 
   for (chr in chr.diff.all) {
+    print(chr)
     tmp.up <- info.up.genes[which(info.up.genes$V1 == chr), ]; pos.genes.up <- unlist(apply(tmp.up, 1, function(x) x[3]:x[4]))
     tmp.down <- info.down.genes[which(info.down.genes$V1 == chr), ]; pos.genes.down <- unlist(apply(tmp.down, 1, function(x) x[3]:x[4]))
     tmp.equ <- info.equ.genes[which(info.equ.genes$V1 == chr), ];  pos.genes.not.diff <- unlist(apply(tmp.equ, 1, function(x) x[3]:x[4]))
-    den.diff <- density(c(pos.genes.up, pos.genes.down), width = 10000);  den.not.diff <- density(pos.genes.not.diff, width = 10000)
-    pos <- c(pos.genes.up, pos.genes.down, pos.genes.not.diff); xlim <- c(min(pos), max(pos))
-    den.d <- c(den.d, list(den.diff$y/max(den.diff$y)))
-    pos.d <- c(pos.d, list(den.diff$x))
-    den.nd <- c(den.nd, list(den.not.diff$y/max(den.not.diff$y)))
-    pos.nd <- c(pos.nd, list(den.not.diff$x))
+
+    pos.genes.diff <- c(pos.genes.up, pos.genes.down); 
+    tab.diff <- ComputeWindowsOverChrom(vect.pos = pos.genes.diff, size.chr = sizes[1, chr]) 
+    TS <- zoo(tab.diff)
+    roll.diff <- rollapply(TS, width = w, by = o, FUN = mean, align = "right")#, partial = T)
+    
+    tab.not.diff <- ComputeWindowsOverChrom(vect.pos = pos.genes.not.diff, size.chr = sizes[1, chr]) 
+    TS <- zoo(tab.not.diff)
+    roll.not.diff <- rollapply(TS, width = w, by = o, FUN = mean, align = "right")#, partial = T)
+    
+    den.d <- c(den.d, roll.diff); pos.d <- c(pos.d, list(as.numeric(names(roll.diff))))
+    den.nd <- c(den.nd, roll.not.diff); pos.nd <- c(pos.nd, list(as.numeric(names(roll.not.diff))))
     ud <- c(ud, dim(tmp.up)[1]+dim(tmp.down)[1]); up <- c(up, dim(tmp.up)[1]); dw <- c(dw, dim(tmp.down)[1])
     equ <- c(equ, dim(tmp.equ)[1])
-    tmp.den.diff <- density(c(pos.genes.up, pos.genes.down), from= xlim[1], to=xlim[2], width = 10000 )
-    tmp.den.equ <- density(pos.genes.not.diff,  from= xlim[1], to=xlim[2], width = 10000 )
-    tmp <- tmp.den.diff$y/max(tmp.den.diff$y) - tmp.den.equ$y/max(tmp.den.equ$y)
-    den.diffa <- c(den.diffa, unlist(tmp))#list(tmp))
-    pos.diff <- c(pos.diff, list( tmp.den.diff$x))
   }
   offset <- sizes[1, chr.diff.all]; offset <- c(0, cumsum(offset)[1:length(offset)])
   posd <- unlist(lapply(1:length(pos.d), function(x) pos.d[[x]]+offset[x]))
   posnd <- unlist(lapply(1:length(pos.nd), function(x) pos.nd[[x]]+offset[x]))
-  posdiff <-  unlist(lapply(1:length(pos.diff), function(x) pos.diff[[x]]+offset[x]))
-  
-  plot(posd, unlist(den.d)+1, type = "l", main = paste("Density of features - Chromosomes ", paste(chr.diff.all, collapse = " "), " - ", save.dir, "\n window=10kb - pthresh=", pthresh, sep = ""), xlab = "Position", ylab = "Normalized density", 
-       xlim = c(0, max(offset)), ylim = c(0, 2), yaxt = "n", col = "purple")
-  axis(2, c(0,1), c(0,1), col = "black")
-  axis(4, c(1,2), c(0,1), col = "purple", col.ticks = "purple", col.axis = "purple")
-  
-  points(posnd, unlist(den.nd), type = "l", col = 1)
-  abline(h=1, col = "gray")
+  #posdiff <-  unlist(lapply(1:length(pos.diff), function(x) pos.diff[[x]]+offset[x]))
+  lim <- ceiling(max(c(den.d, den.nd)))
+  plot(posd, den.d+lim, type = "p", pch = 16, cex = 0.7, main = paste("Presence of features - Chromosomes ", paste(chr.diff.all, collapse = " "), " - ", save.dir, "\n window=", w, "bp - pthresh=", pthresh, " - threshLFC = ", threshLFC, sep = ""), xlab = "Position", 
+       ylab = paste("Count in window (size=", w, " bp) by overlap of ", o, " bp", sep = ""), xlim = c(w, max(offset)), ylim = c(0, 2*lim), yaxt = "n", col = "purple")
+  axis(2, c(0,lim), c(0,lim), col = "black")
+  axis(4, c(lim,2*lim), c(0,lim), col = "purple", col.ticks = "purple", col.axis = "purple")
+  points(posnd, den.nd, type = "p", col = 1, pch = 16, cex = 0.7)
+  abline(h=0, col = "gray")
+  abline(h=lim, col = "gray")
   u <- par("usr")
   arrows(u[1], u[3], u[1], u[4], code = 2, xpd = TRUE)
-  text(offset[2:length(offset)], rep(1.9, length(offset)-1), paste(ud, " up (", up, ")\n/downregulated (", dw, ")", sep = ""), col = "darkorchid4", cex =0.8)
-  text(offset[2:length(offset)], rep(0.9, length(offset)-1), paste(equ, " equally expressed", sep = ""), cex = 0.8)
-  abline(v=offset, col = "darkgray", lwd = 1.5, lty = 2)
-  
-  plot(posdiff, den.diffa, type = "l", main = paste("Delta normalized density of diff.expressed - equ expressed features - Chromosomes ", paste(chr.diff.all, collapse = " "), " - ", save.dir, "\n window=10kb - pthresh=", pthresh, sep = ""), 
-       xlab = "Position", xlim = c(0, max(offset)), ylim = c(-1, 1), col = "darkgray", ylab = "Delta normalized density")
-  abline(h=0, col = "gray", lty = 2)
+  text(0.95*offset[2:length(offset)], rep(1.85*lim, length(offset)-1), paste(ud, " up (", up, ")\n/downregulated (", dw, ")", sep = ""), col = "darkorchid4", cex =0.8)
+  text(0.95*offset[2:length(offset)], rep(lim*0.85, length(offset)-1), paste(equ, " equally\nexpressed", sep = ""), cex = 0.8, col = "darkgray")
   abline(v=offset, col = "darkgray", lwd = 1.5, lty = 2)
   dev.off()
-  
+
   #### Distance between upregulated genes and the next tRNA promoters
   min.dist.up.tRNA <- sapply(1:dim(info.up.genes)[1], function(x) min(abs(gff.tRNA$deb[which(gff.tRNA$V1 == info.up.genes$V1[x])]-info.up.genes$deb[x])))
   min.dist.down.tRNA <- sapply(1:dim(info.down.genes)[1], function(x) min(abs(gff.tRNA$deb[which(gff.tRNA$V1 == info.down.genes$V1[x])]-info.down.genes$deb[x])))
