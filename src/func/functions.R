@@ -30,9 +30,10 @@ PvalHist <- function(res_deseq, pval.thresh, where, save, title) {
 ############################
 ##### MAplotBetween2Cn #####
 ############################
-MAplotBetween2Cn <- function(res_deseq, where, save, title) {
+MAplotBetween2Cn <- function(res_deseq, where, save, title, alpha, hlim) {
   pdf(paste(where, save, sep = ""))
-  plotMA(res_deseq, ylim=c(-2,2), main = title)
+  plotMA(res_deseq, ylim=c(-3,3), main = title, alpha = alpha, MLE = F)
+  abline(h = hlim, col = "dodgerblue", lwd = 2, lty = 2)
   dev.off()
 }
 
