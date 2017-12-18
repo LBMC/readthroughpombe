@@ -296,7 +296,7 @@ for (i in seq_along(analysis)){
   PlotCountDen(count.norm, save.path.dir, paste("/Norm_Count_", save.dir, ".pdf", sep = ""))
   
   ##### Plot log2(nom counts +1) vs condition per chromosome for normalized counts with a color code or not for DE and non DE gene
-all.equ <- info.equ.genes
+  all.equ <- info.equ.genes
   all.diff <- rbind(info.up.genes, info.down.genes)
   all.equ.diff <- rbind(info.up.genes, info.equ.genes, info.down.genes)
   for (type in c("equ", "diff", "equ.diff")) {
@@ -315,6 +315,25 @@ all.equ <- info.equ.genes
     ViolinPlot(input.df.with.count = mean.count.norm.comp, ylabel = "log2(mean normalized count + 1)", save.pdf = paste(save.path.dir, "/mean_log2count_", type, "_expressed_thresholdLFC_", threshLFC, "_", save.dir, ".pdf", sep = ""), T) 
   }
   
+  ##### Is there an enrichement in DE genes in some chromosomes?
+  tab.equ <- table(info.equ.genes$V1)  
+  count.DE.nonDE.chr <- matrix(c(tab.equ, rep(0, length(tab.equ))), ncol = 3, nrow = 2, byrow = T, dimnames = list(c("EE", "DE"), names(tab.equ)))
+  tab.up <- table(info.up.genes$V1)  
+  count.DE.nonDE.chr[2, names(tab.up)] <- tab.up
+  tab.d <- table(info.down.genes$V1)  
+  count.DE.nonDE.chr[2, names(tab.d)] <- count.DE.nonDE.chr[2, names(tab.d)]+tab.d
+
+  plot <- data.frame(chromosome = rep(colnames(count.DE.nonDE.chr), 2), count = c(count.DE.nonDE.chr[1, ], count.DE.nonDE.chr[2, ]), type = c(rep(rownames(count.DE.nonDE.chr), each = dim(count.DE.nonDE.chr)[2])))
+
+  g.fisher <- ggplot(data=plot, aes(x=chromosome, y=count, fill=type)) +
+  geom_bar(stat="identity", position=position_dodge())+
+  geom_text(aes(label=count), vjust=1.6, color="black", position = position_dodge(0.9), size=3.5)+
+  scale_fill_brewer(palette="Paired")+ theme_bw() + ggtitle(paste( save.dir,"\nDE/EE genes per chromosome:\np.fisher = ", formatC(fisher.test(count.DE.nonDE.chr)$p.value, digits = 3), sep = ""))
+
+  pdf(paste(save.path.dir, "/DE_EE_per_chromosome_thresholdLFC_", threshLFC, "_", save.dir, ".pdf", sep = ""))
+  print(g.fisher)
+  dev.off()
+
   ##### Date results file
   system(paste("bash src/date.sh ./results/DESeq2_analysis/", save.dir, sep = ""))
   
