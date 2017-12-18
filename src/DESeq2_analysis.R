@@ -118,19 +118,22 @@ for (i in seq_along(analysis)){
   #If a row contains a sample with an extreme count outlier then the p value and adjusted p value will be set to NA. These outlier counts are detected by Cook’s distance. 
   #If a row is filtered by automatic independent filtering, for having a low mean normalized count, then only the adjusted p value will be set to NA. 
   
-  ###### Up/downregulated genes along chromosomes
-  ind.up.genes <- which(resLFC$padj<pthresh & resLFC$log2FoldChange>0)
-  genes <- rownames(resLFC)[ind.up.genes]
-  l2fc <- sapply(genes, function(x) resLFC[which(rownames(resLFC) == x), ]$log2FoldChange)
-  info.up.genes <- cbind(genes, gff.transcripts[sapply(genes, function(x) which(keep.names == x)), c("V1", "V4", "V5", "V7", "deb")], l2fc)
-  chrom.up <- unique(info.up.genes$V1)
-  
-  ind.down.genes <- which(resLFC$padj<pthresh & resLFC$log2FoldChange<0)
-  genes <- rownames(resLFC)[ind.down.genes]
-  l2fc <- sapply(genes, function(x) resLFC[which(rownames(resLFC) == x), ]$log2FoldChange)
-  info.down.genes <- cbind(genes, gff.transcripts[sapply(genes, function(x) which(keep.names == x)), c("V1", "V4", "V5", "V7", "deb")], l2fc)
-  chrom.down <- unique(info.down.genes$V1)
-  
+  ###### Equ/Up/downregulated genes along chromosomes
+  for (pref in c("up", "down", "equ")) {
+    ind <- which(resLFC$padj<pthresh & resLFC$log2FoldChange<0)
+    if (pref == "up"){
+      ind <- which(resLFC$padj<pthresh & resLFC$log2FoldChange>0)
+    }
+    if(pref == "equ"){
+      ind <- which(resLFC$padj>=pthresh)
+    }
+    genes <- rownames(resLFC)[ind]
+    l2fc <- sapply(genes, function(x) resLFC[which(rownames(resLFC) == x), ]$log2FoldChange)
+    info <- cbind(genes, gff.transcripts[sapply(genes, function(x) which(keep.names == x)), c("V1", "V4", "V5", "V7", "deb")], l2fc)
+    eval(parse(text = paste("info.", pref, ".genes <- info", sep = "")))
+    eval(parse(text = paste("chrom.", pref, " <- unique(info$V1)", sep = "")))
+  }
+ 
   chr.diff.all <- unique(c(chrom.up, chrom.down))
   chr.diff.all <- chr.diff.all[order(chr.diff.all)]
   
