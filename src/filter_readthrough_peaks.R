@@ -201,3 +201,51 @@ for (l in seq_along(list_analysis)) {
   system(paste("bash src/date.sh results/readthrough_analysis/Output_Music/", 
     list_analysis[l], "_nb_peaks_detected_raw_after_inter.png", sep = ""))
 }
+
+#####  Put all features together and prepare gff annotation with
+##### readthrough added for final analysis
+annot.readthrough.cut14.wt.based <- read.csv("results/readthrough_analysis/Output_Music/annot_readthrough_cut14_wt_forward_reverse.gff3", 
+  sep = "\t", h = F)
+annot.readthrough.rrp6D.wt.based <- read.csv("results/readthrough_analysis/Output_Music/annot_readthrough_rrp6D_wt_forward_reverse.gff3", 
+  sep = "\t", h = F)
+selected.features <- read.csv("data/ReferenceGenomes/2017_10_03_selected_features_s_pombe.gff3", 
+  sep = "\t", h = F)
+# Readthroughs specific of one strain
+gene.is.not.in.rrp6D <- setdiff(annot.readthrough.cut14.wt.based$V9, annot.readthrough.rrp6D.wt.based$V9)
+gene.is.not.in.cut14 <- setdiff(annot.readthrough.rrp6D.wt.based$V9, annot.readthrough.cut14.wt.based$V9)
+
+# Make cut14-wt based + rrp6D annotation
+tmp <- annot.readthrough.rrp6D.wt.based[which(annot.readthrough.rrp6D.wt.based$V9 %in% 
+  gene.is.not.in.cut14), ]
+annot.readthrough.cut14.wt.based.completed <- rbind(annot.readthrough.cut14.wt.based, 
+  tmp)
+write.table(annot.readthrough.cut14.wt.based.completed[, 1:(dim(annot.readthrough.cut14.wt.based.completed)[2] - 
+  1)], "results/readthrough_analysis/Output_Music/annot_readthrough_cut14_wt_based_forward_reverse.gff3", 
+  sep = "\t", col.names = F, row.names = F, quote = F)
+system("bash src/date.sh results/readthrough_analysis/Output_Music/annot_readthrough_cut14_wt_based_forward_reverse.gff3")
+
+gene.is.not.complem <- setdiff(selected.features$V9, annot.readthrough.cut14.wt.based.completed$V9)
+tmp <- selected.features[which(selected.features$V9 %in% gene.is.not.complem), 
+  ]
+write.table(rbind(annot.readthrough.cut14.wt.based.completed[, 1:(dim(annot.readthrough.cut14.wt.based.completed)[2] - 
+  1)], tmp), "results/readthrough_analysis/Output_Music/annot_readthrough_cut14_wt_based_forward_reverse_with_genes.gff3", 
+  sep = "\t", col.names = F, row.names = F, quote = F)
+system("bash src/date.sh results/readthrough_analysis/Output_Music/annot_readthrough_cut14_wt_based_forward_reverse_with_genes.gff3")
+
+# Make rrp6D-wt based + cut14 annotation
+tmp <- annot.readthrough.cut14.wt.based[which(annot.readthrough.cut14.wt.based$V9 %in% 
+  gene.is.not.in.rrp6D), ]
+annot.readthrough.rrp6D.wt.based.completed <- rbind(annot.readthrough.rrp6D.wt.based, 
+  tmp)
+write.table(annot.readthrough.rrp6D.wt.based.completed[, 1:(dim(annot.readthrough.rrp6D.wt.based.completed)[2] - 
+  1)], "results/readthrough_analysis/Output_Music/annot_readthrough_rrp6D_wt_based_forward_reverse.gff3", 
+  sep = "\t", col.names = F, row.names = F, quote = F)
+system("bash src/date.sh results/readthrough_analysis/Output_Music/annot_readthrough_rrp6D_wt_based_forward_reverse.gff3")
+
+gene.is.not.complem <- setdiff(selected.features$V9, annot.readthrough.rrp6D.wt.based.completed$V9)
+tmp <- selected.features[which(selected.features$V9 %in% gene.is.not.complem), 
+  ]
+write.table(rbind(annot.readthrough.rrp6D.wt.based.completed[, 1:(dim(annot.readthrough.rrp6D.wt.based.completed)[2] - 
+  1)], tmp), "results/readthrough_analysis/Output_Music/annot_readthrough_rrp6D_wt_based_forward_reverse_with_genes.gff3", 
+  sep = "\t", col.names = F, row.names = F, quote = F)
+system("bash src/date.sh results/readthrough_analysis/Output_Music/annot_readthrough_rrp6D_wt_based_forward_reverse_with_genes.gff3")
