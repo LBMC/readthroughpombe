@@ -118,7 +118,6 @@ ComputeWindowsOverChrom <- function(vect.pos, size.chr) {
   return(tab.all)
 }
 
-
 ##### CreateRTName #####
 CreateRTName <- function(original_name) {
   split <- strsplit(original_name, ";")[[1]]
@@ -130,3 +129,17 @@ CreateRTName <- function(original_name) {
     noun, sep = ""), ";", paste("Parent=", parent, sep = ""), ";", 
     paste("transcript_id=", name, ".rt", sep = ""), sep = ""))
 }
+
+##### BarplotCountPerChrom #####
+BarplotCountPerChrom <- function(data, col.by.type, title) {
+  if (col.by.type) {
+    g <- ggplot(data = data, aes(x = chromosome, y = count, fill = type))
+  } else {
+    g <- ggplot(data = data, aes(x = chromosome, y = count, fill = "azure3")) + theme(legend.position="none") 
+  }
+  g <- g + geom_bar(stat = "identity", position = position_dodge()) + 
+    geom_text(aes(label = count), vjust = 1.6, color = "black", position = position_dodge(0.9), 
+      size = 3.5) + scale_fill_brewer(palette = "Paired") + ggtitle(title)
+  return(g)
+}
+
