@@ -119,3 +119,14 @@ for filename in results/mapping/mapped/cut14-208_cdc15-118/*sort_reverse.bam; do
     samtools view -hb "$filename" -L data/ReferenceGenomes/2017_10_25_sorted_schizosaccharomyces_pombe.chr1.based.pos.bed -U "$res""_without.bam" > /dev/null
     samtools index "$res""_without.bam"
 done 
+
+
+##### MUSIC #####
+# Generate multi-mappability profile
+# cp data/ReferenceGenomes/Schizosaccharomyces_pombe.ASM294v2.30.dna.genome.fa bin/MUSIC/bin/ref.fa ######!!!!!!!!!!!!!!######
+# I only keep names of chromosomes
+#  within bin/MUSIC/bin
+bowtie2-build -f ref.fa ref &&\
+bash generate_multimappability_signal.csh ref.fa 50 ref &&\
+bash temp_map_reads.csh &&\
+bash temp_process_mapping.csh &&\
