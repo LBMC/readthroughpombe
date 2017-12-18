@@ -303,7 +303,7 @@ all.equ <- info.equ.genes
     eval(parse(text = paste("subset <- all.", type, sep = "")))
     subset.genes <- subset$genes
     count.norm.comp <- count.norm[which(count.norm$Var1 %in% subset.genes), ]
-    count.norm.comp$chromosome <- sapply(count.norm.comp$Var1, function(x) subset[which(subset$genes == x), ]$V1) # replace all.diff by subset 
+    count.norm.comp$chromosome <- sapply(count.norm.comp$Var1, function(x) subset[which(subset$genes == x), ]$V1)  
     ViolinPlot(input.df.with.count = count.norm.comp, ylabel = "log2(normalized count + 1)", save.pdf = paste(save.path.dir, "/log2count_", type, "_expressed_thresholdLFC_", threshLFC, "_", save.dir, ".pdf", sep = "")) 
   
     cond <- unique(count.norm.comp[, c("samples", "chromosome")])
