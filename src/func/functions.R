@@ -65,7 +65,7 @@ DistBetweenSamples <- function(rld_count, where, save) {
 ##### PlotCountDen #####
 ########################
 PlotCountDen <- function(count_df, where, save) {
-  den <- ggplot(count_df, aes(log2(value+1), fill = samples, linetype=replicate)) + geom_density(alpha = 0.5) + xlab("") + ylab(expression("density"(log[10](count + 1))))
+  den <- ggplot(count_df, aes(log2(value+1), fill = samples, linetype=replicate)) + geom_density(alpha = 0.5) + xlab("") + ylab(expression("density"(log[2](count + 1))))
   pdf(paste(where, save, sep = ""))
   print(den)
   dev.off()  
