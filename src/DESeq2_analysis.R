@@ -137,10 +137,10 @@ for (i in seq_along(analysis)){
   chr.diff.all <- unique(c(chrom.up, chrom.down))
   chr.diff.all <- chr.diff.all[order(chr.diff.all)]
   
-  ##### Pick annotation of equally expressed genes 
-  genes <- setdiff(rownames(txi.rsem.keep.notnull$counts), c(info.up.genes$genes, info.down.genes$genes))
-  l2fc <- sapply(genes, function(x) resLFC[which(rownames(resLFC) == x), ]$log2FoldChange)
-  info.equ.genes <- cbind(genes, gff.transcripts[sapply(genes, function(x) which(keep.names == x)), c("V1", "V4", "V5", "V7", "deb")],l2fc)
+  ##### MAplot
+  MAplotBetween2Cn(res, save.path.dir, paste("/MAplot_diff_expressed_", save.dir, ".pdf", sep = ""), paste("nb diff. expressed features\nin classic analysis is ", nb.diff.res, "(up=", length(which(res$padj<pthresh & res$log2FoldChange>0)), " - down=",  length(which(res$padj<pthresh & res$log2FoldChange<0)), ")", sep = ""), pthresh, 0) 
+
+  MAplotBetween2Cn(resLFC, save.path.dir, paste("/MAplot_thresholdLFC_", threshLFC, "_", save.dir, ".pdf", sep = ""), paste("nb diff. expressed features at LFC\nthreshold of ", threshLFC, " is ", nb.diff.res.threshLFC, "(up=", dim(info.up.genes)[1], " - down=",  dim(info.down.genes)[1],")", sep = ""), pthresh, c(-threshLFC, threshLFC)) 
   
   ##### Implementation of test to compare densities/to assess presence of clusters of DE genes
   if(do.perm.dist.tRNA){
