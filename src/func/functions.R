@@ -43,10 +43,10 @@ MAplotBetween2Cn <- function(res_deseq, where, save, title, alpha, hlim) {
 HeatmapDE <- function(res_deseq, rld_count, pval.thresh, where, save, title) {
   ind.ord.pval <- order(res_deseq$padj)
   ind.signif <- which(res_deseq$padj[ind.ord.pval] <pval.thresh & is.na(res_deseq$padj[ind.ord.pval]) == F)
-  de <- ind.ord.pval
-  de.to.clust <-t(assay(rld_count)[de, ])
+  de <- ind.signif[1:min(c(100, length(ind.signif)))]
+  de.to.clust <-t(assay(rld_count)[rownames(res_deseq)[ind.ord.pval][de], ])
   pdf(paste(where, save, sep = ""))
-  heatmap(de.to.clust, xlab = "Genes", ylab = "Samples", margin = c(8, 8), cexRow = 0.9, cex.main = 0.9, main = title)
+  heatmap.2(de.to.clust, xlab = "Genes", ylab = "Samples", margin = c(8, 8), cexRow = 0.9, cex.main = 0.75, main = paste(title, " (rlog)", sep = ""), trace = "none",symm = F)
   dev.off()
 }
 
