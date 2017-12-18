@@ -4,8 +4,8 @@
 VolcanoPlot <- function(res_deseq, pval.thresh, where, save, title) {
   pdf(paste(where, save, sep = ""))
   plot(res_deseq$log2FoldChange, -log10(res_deseq$padj), xlab = "shrinked log2FC", ylab = "-log10(pval)", main = title) 
-  nbup <- length(which(res_deseq$padj<=pval.thresh & res_deseq$log2FoldChange>0))
-  nbdown <- length(which(res_deseq$padj<=pval.thresh & res_deseq$log2FoldChange<0))
+  nbup <- length(which(res_deseq$padj<pval.thresh & res_deseq$log2FoldChange>0))
+  nbdown <- length(which(res_deseq$padj<pval.thresh & res_deseq$log2FoldChange<0))
   
   abline(v = 0, col = "gray", lty = 2)
   abline(h = -log10(pval.thresh), col = "red", lty = 2)     
@@ -17,10 +17,10 @@ VolcanoPlot <- function(res_deseq, pval.thresh, where, save, title) {
 ####################
 ##### PvalHist #####
 ####################
-PvalHist <- function(res_deseq, pval.thresh,where, save, title) {
+PvalHist <- function(res_deseq, pval.thresh, where, save, title) {
   pdf(paste(where, save, sep = ""))
   hist(res_deseq$padj, breaks = 50, xlab = "pval", main = title )  
-  nbupdown <- length(which(res_deseq$padj<=pval.thresh))
+  nbupdown <- length(which(res_deseq$padj<pval.thresh))
   mtext(paste("nb diff=", nbupdown, " on ", dim(res_deseq)[1], " genes", sep = ""), 3)
   abline(v = pval.thresh, col = "red", lty = 2)     
   legend("topright", legend = paste("pval threshold=", pval.thresh, sep = ""), col = "red", lty = 2, cex =0.75, bty = "n")
