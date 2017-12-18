@@ -1,4 +1,4 @@
-#######################  VolcanoPlot #####
+###### VolcanoPlot #####
 VolcanoPlot <- function(res_deseq, pval.thresh, where, save, title) {
   pdf(paste(where, save, sep = ""))
   plot(res_deseq$log2FoldChange, -log10(res_deseq$padj), xlab = "shrinked log2FC", 
@@ -17,7 +17,7 @@ VolcanoPlot <- function(res_deseq, pval.thresh, where, save, title) {
   dev.off()
 }
 
-####################  PvalHist #####
+###### PvalHist #####
 PvalHist <- function(res_deseq, pval.thresh, where, save, title) {
   pdf(paste(where, save, sep = ""))
   hist(res_deseq$padj, breaks = 50, xlab = "pval", main = title)
@@ -30,7 +30,7 @@ PvalHist <- function(res_deseq, pval.thresh, where, save, title) {
   dev.off()
 }
 
-############################ MAplotBetween2Cn #####
+###### MAplotBetween2Cn #####
 MAplotBetween2Cn <- function(res_deseq, where, save, title, pval.thresh, 
   hlim) {
   res.plot <- res_deseq[, c("baseMean", "log2FoldChange")]
@@ -41,7 +41,7 @@ MAplotBetween2Cn <- function(res_deseq, where, save, title, pval.thresh,
   dev.off()
 }
 
-##################### HeatmapDE #####
+###### HeatmapDE #####
 HeatmapDE <- function(res_deseq, rld_count, pval.thresh, where, save, title) {
   ind.ord.pval <- order(res_deseq$padj)
   ind.signif <- which(res_deseq$padj[ind.ord.pval] < pval.thresh & is.na(res_deseq$padj[ind.ord.pval]) == 
@@ -56,7 +56,7 @@ HeatmapDE <- function(res_deseq, rld_count, pval.thresh, where, save, title) {
   dev.off()
 }
 
-############################## DistBetweenSamples #####
+###### DistBetweenSamples #####
 DistBetweenSamples <- function(rld_count, where, save) {
   save.pref <- strsplit(save, ".", fixed = T)[[1]][1]
   pca <- plotPCA(rld_count, intgroup = "condition")
@@ -65,7 +65,7 @@ DistBetweenSamples <- function(rld_count, where, save) {
   dev.off()
 }
 
-######################## PlotCountDen #####
+###### PlotCountDen #####
 PlotCountDen <- function(count_df, where, save) {
   den <- ggplot(count_df, aes(log2(value + 1), fill = samples, linetype = replicate)) + 
     geom_density(alpha = 0.5) + xlab("") + ylab(expression(density(log[2](count + 
@@ -75,7 +75,7 @@ PlotCountDen <- function(count_df, where, save) {
   dev.off()
 }
 
-############################# ComputeDistKSTest #####
+###### ComputeDistKSTest #####
 ComputeDistKSTest <- function(dist1 = dist.diff, dist2 = dist.all) {
   cdf1 <- ecdf(dist1)
   cdf2 <- ecdf(dist2)
@@ -85,7 +85,7 @@ ComputeDistKSTest <- function(dist1 = dist.diff, dist2 = dist.all) {
   return(x0)
 }
 
-###################### ViolinPlot #####
+###### ViolinPlot #####
 ViolinPlot <- function(input.df.with.count, ylabel, save.pdf, do.col = F) {
   if (do.col) {
     input.df.with.count$genes <- as.factor(input.df.with.count$genes)
@@ -106,7 +106,7 @@ ViolinPlot <- function(input.df.with.count, ylabel, save.pdf, do.col = F) {
   dev.off()
 }
 
-################################### ComputeWindowsOverChrom #####
+###### ComputeWindowsOverChrom #####
 ComputeWindowsOverChrom <- function(vect.pos, size.chr) {
   tab <- table(vect.pos)
   seq.along.chr <- 1:size.chr
@@ -116,4 +116,17 @@ ComputeWindowsOverChrom <- function(vect.pos, size.chr) {
   tab.all <- c(tab, tab.missing)
   tab.all <- tab.all[order(as.numeric(names(tab.all)))]
   return(tab.all)
+}
+
+
+##### CreateRTName #####
+CreateRTName <- function(original_name) {
+  split <- strsplit(original_name, ";")[[1]]
+  parent <- na.omit(sapply(split, function(x) strsplit(x, "ID=")[[1]][2]))
+  name <- na.omit(sapply(split, function(x) strsplit(strsplit(x, "ID=")[[1]][2], 
+    ":")[[1]][2]))
+  noun <- na.omit(sapply(split, function(x) strsplit(x, "Name=")[[1]][2]))
+  return(paste(paste("ID=transcript:", name, ".rt", sep = ""), ";", paste("Name=", 
+    noun, sep = ""), ";", paste("Parent=", parent, sep = ""), ";", 
+    paste("transcript_id=", name, ".rt", sep = ""), sep = ""))
 }
