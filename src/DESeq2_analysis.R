@@ -295,7 +295,7 @@ for (i in seq_along(analysis)){
   PlotCountDen(count, save.path.dir, paste("/Raw_Count_", save.dir, ".pdf", sep = ""))
   PlotCountDen(count.norm, save.path.dir, paste("/Norm_Count_", save.dir, ".pdf", sep = ""))
   
-  ##### Plot log2(nom counts +1) vs condition per chromosome 
+  ##### Plot log2(nom counts +1) vs condition per chromosome for normalized counts with a color code or not for DE and non DE gene
 all.equ <- info.equ.genes
   all.diff <- rbind(info.up.genes, info.down.genes)
   all.equ.diff <- rbind(info.up.genes, info.equ.genes, info.down.genes)
