@@ -56,6 +56,7 @@ When and where we are :
 date();
 R.Version()$version.string;
 getwd();
+require(formatR) # indentation with 2 blank spaces and lines of max 70 char
 @
 
 We source here useful functions and load necessary packages and tools.
