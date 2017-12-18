@@ -104,9 +104,9 @@ for (i in seq_along(analysis)){
 
   ##### Write results to txt files
   resLFC <- as.data.frame(resLFC[order(resLFC$padj),])
-  write.table(resLFC, file = paste(save.path.dir, "/deseq2_shrinked_analysis_thresholdLFC_", threshLFC, "_", save.dir, ".txt", sep = ""), sep = "\t", col.names = T, row.names = T, quote = F)
+  write.table(resLFC, file = paste(save.path.dir, "/deseq2_shrinked_analysis_thresholdLFC_", threshLFC, "_", save.dir, ".txt", sep = ""), sep = "\t", col.names = T, row.names = T, quote = F) # classic DE analysis output (Wald test on log2(FC) to 0)
   res <- as.data.frame(res[order(res$padj),])
-  write.table(res, file = paste(save.path.dir, "/deseq2_shrinked_analysis_diff_expressed_", save.dir, ".txt", sep = ""), sep = "\t", col.names = T, row.names = T, quote = F)
+  write.table(res, file = paste(save.path.dir, "/deseq2_shrinked_analysis_diff_expressed_", save.dir, ".txt", sep = ""), sep = "\t", col.names = T, row.names = T, quote = F) # Wald test on log2(FC) to abs(threshLFC)
  
   ##### VolcanoPlot 
   VolcanoPlot(resLFC, pthresh, save.path.dir, paste("/volcano_", save.dir, ".pdf", sep = ""), save.dir) 
