@@ -16,6 +16,8 @@ for (analysis in all_analysis) {
     analysis, "/ERs_all.bed", sep = ""))
 }
 
+source("src/format_bed.R")
+
 ##### Clean found peaks by substracted annotation of known features
 system("bash src/substract_2_beds.sh")
 
