@@ -19,9 +19,8 @@ module use /applis/PSMN/Modules
 module load Base/psmn
 module load use.own
 module load MUSIC/6613c53
-module load SAMtools/1.5
 
-# You need to tun  this script in the directory where you want to store your peak calling outputs per analysis 
+# You need to run  this script in the directory where you want to store your peak calling outputs per analysis 
 
 # Obtain window size per analysis
 MUSIC -get_per_win_p_vals_vs_FC -chip /scratch/cburny/Output_Music/output_cut14_forward/dedup -control /scratch/cburny/Output_Music/output_wt_forward/dedup -l_win_step 50 -l_win_min 200 -l_win_max 16000 &&\
