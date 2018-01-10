@@ -2,6 +2,7 @@
 # Use bed in 0 based coordinate to do the substraction
 
 ARRAY_fwd=(results/readthrough_analysis/Output_Music/output_cut14_wt_forward/ results/readthrough_analysis/Output_Music/output_rrp6D_wt_forward/)
+ARRAY_rev=(results/readthrough_analysis/Output_Music/output_cut14_wt_reverse/ results/readthrough_analysis/Output_Music/output_rrp6D_wt_reverse/)
 
 # Loop over directories 
 for tab in ${ARRAY_fwd[@]}; do
@@ -9,8 +10,7 @@ for tab in ${ARRAY_fwd[@]}; do
     bin/bedtools2/bin/bedtools subtract -S -a "$tab""ERs_all.bed" -b data/ReferenceGenomes/2017_10_25_sorted_schizosaccharomyces_pombe.chr.neg.bed > "$tab""ERs_all_intersect_neg.bed" 
 done 
 
-string_to_replace_with='reverse'
-for tab in ${ARRAY_fwd[@]}; do
-    repl="${tab/forward/$string_to_replace_with}" &&\
-    bin/bedtools2/bin/bedtools subtract -S -a "$repl""ERs_all.bed" -b data/ReferenceGenomes/2017_10_25_sorted_schizosaccharomyces_pombe.chr.pos.bed > "$repl""ERs_all_intersect_pos.bed"
+for tab in ${ARRAY_rev[@]}; do
+    echo $tab
+    bin/bedtools2/bin/bedtools subtract -a "$tab""ERs_all.bed" -b data/ReferenceGenomes/2017_10_25_sorted_schizosaccharomyces_pombe.chr.pos.bed > "$tab""ERs_all_intersect_pos.bed"
 done 
