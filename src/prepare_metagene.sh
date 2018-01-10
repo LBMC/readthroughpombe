@@ -5,10 +5,6 @@
 
 bin/bioawk/bioawk -c fastx '{ print $name, length($seq) }' <data/ReferenceGenomes/Schizosaccharomyces_pombe.ASM294v2.30.dna.genome.fa > data/ReferenceGenomes/genome.txt &&\
 
-##### Extract areas corresponding to genes with readthrough
-# cut14 - wt
-bin/bedtools2/bin/bedtools intersect -abam results/mapping/mapped/cut14-208/2017_10_26_PLBD2_cut14-208_R1_trim_sort.bam -b results/readthrough_analysis/sleuth_analysis/cut14_wt_rt_only/coord_metagene_cut14_wt_rt_only.bed -S > results/readthrough_analysis/metagene_readthrough/cut14_wt_rt_only_cut14_R1.bam &&\
-
 ##### compute coverage at bp level
 
 # cut14
