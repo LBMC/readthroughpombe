@@ -6,6 +6,7 @@ require(data.table)
 require(zoo)
 require(MASS)
 require(VennDiagram)
+source("src/func/functions.R")
 
 wt <- paste("wt", 1:3, sep = "")
 cut14 <- paste("cut14", 1:3, sep = "")
@@ -211,7 +212,8 @@ for (i in seq_along(s2c.all.analysis)){
     init <- dim( sleuth_results(so, comp, ref.level[i], show_all = T))[1]
     filt <- dim(sleuth_table_wt_filt)[1]
     sleuth_table_wt_filt$log2FC <-log2( exp(sleuth_table_wt_filt$b))
-    write.table(sleuth_table_wt_filt, file = paste(save.path.dir, save.dir, "/sleuth_shrinked_analysis_diff_expressed_", save.dir, ".txt", sep = ""), sep = "\t", col.names = T, row.names = T, quote = F)
+    sleuth_table_wt$log2FC <- log2( exp(sleuth_table_wt$b))
+    write.table(sleuth_table_wt, file = paste(save.path.dir, save.dir, "/sleuth_shrinked_analysis_diff_expressed_", save.dir, ".txt", sep = ""), sep = "\t", col.names = T, row.names = T, quote = F)
 
     ##### VolcanoPlot 
     volcano <- plot_volcano(so, comp, test_type = "wt", which_model = "full", sig_level = alpha_thresh, point_alpha = 0.2, sig_color = "red", highlight = NULL)
@@ -457,6 +459,7 @@ for (i in i_rt_only){
   save.path.dir <- paste("results/readthrough_analysis/sleuth_analysis/", sep = "")
   save.dir <- names(s2c.all.analysis)[i] 
   res <- read.csv(paste(save.path.dir, save.dir, "/sleuth_shrinked_analysis_diff_expressed_", save.dir, ".txt", sep = ""), sep = "\t", stringsAsFactors = F, h = T)
+  res <- res[which(sapply(res$target_id, function(x) str_detect(x, ".rt")) == T),]
   for (pt in c(0.05, 0.01, 0.001)){
     nb.equ.res <-  length(which(res$qval >= pt ))
     for (t in c(0, 0.5, 1, 1.5)) {
@@ -553,7 +556,6 @@ for (chr in chrom){
 }
 rm(ref_R1); rm(ref_R2); rm(ref_R3)
 
-results_rt_detect <- NULL
 for (i in i_rt_only){
   name_ref <- names(bed.used)[i]
   ref <- bed_cut14_based
@@ -571,9 +573,6 @@ for (i in i_rt_only){
 
   ref.target.rt <- ref[sapply(ref.filt.rt, function(x) which(ref$V4 == x)), ]
   ref.target <- ref[sapply(ref.filt.rt, function(x) which(ref$V4 == x)+1), ]
-
-  # Save nb of readthrough filtered
-  results_rt_detect <- rbind(results_rt_detect, data.frame(analysis = save.dir, ref = name_ref, pthresh = pthresh_rt, threshLFC = threshLFC_rt, nb_readthrough_init = length(ref.rt.init), nb_readthrough_filt = length(ref.filt.rt), stringsAsFactors = F)) 
 
   # Histogram of readthrough length
   rt.pos <- ref.target.rt[which(ref.target.rt$V6 == "+"), ]
@@ -600,12 +599,13 @@ for (i in i_rt_only){
   }
   rm(mut_R1); rm(mut_R2); rm(mut_R3)
 
-  cov <- list()
+  cov <- list(); cov_rt <- list()
   for (j in 1:dim(ref.target)[1]) {
     print(j)
     ref.gene <- ref.target[j, ]
     chr <- ref.gene$V1
     ref.gene$V2 <- ref.gene$V2+1
+    len_rt <- (ref.target.rt[j, ]$V3-ref.target.rt[j, ]$V2)-(ref.gene$V3-ref.gene$V2)
 
     bins_g <- round(seq(from = ref.gene$V2, to = ref.gene$V3, length = n+1)); if (tail(bins_g,1)!=ref.gene$V3){bins_g[length(bins_g)] <- tmp.gene$V3};
     length_g <- sapply(1:n, function(x)  bins_g[x+1] - bins_g[x])
@@ -615,17 +615,23 @@ for (i in i_rt_only){
     length_ext <- sapply(1:n_ext, function(x)  bins_ext[x+1] -bins_ext[x])
     mean_norm_5p_ref <- list(); mean_norm_5p_mut <- list()
     mean_norm_3p_ref <- list(); mean_norm_3p_mut <- list()
+    mean_norm_3p_ref_rt <- list(); mean_norm_3p_mut_rt <- list()
+    bl <- max(c(b, len_rt))
+    if(len_rt<bin){bin_rt <- len_rt}else{bin_rt <- bin}
 
     for (k in 1:3) {
       for (suff in c("ref", "mut")) {
 	if(suff == "ref"){corr <- cov_wt[k]}else{eval(parse(text = paste("corr <- cov_", mutant, "[k]", sep = "")))}
-        eval(parse(text = paste("tmp <- filter(", suff, "_", chr, "_R", k, ", V2>=ref.gene$V2-", b, " & V2<=ref.gene$V3+", b, ")", sep = "")))
+        eval(parse(text = paste("tmp <- filter(", suff, "_", chr, "_R", k, ", V2>=ref.gene$V2-", bl, " & V2<=ref.gene$V3+", bl, ")", sep = "")))
         eval(parse(text = paste("tmp_5p <- filter(tmp, V2>=ref.gene$V2-", b, " & V2<=ref.gene$V2)$V3", sep = "")))
+        eval(parse(text = paste("tmp_5p_rt <- filter(tmp, V2>=ref.gene$V2-", len_rt, " & V2<=ref.gene$V2)$V3", sep = "")))
         eval(parse(text = paste("tmp_3p <- filter(tmp, V2>=ref.gene$V3 & V2<=ref.gene$V3+", b, ")$V3", sep = "")))
+        eval(parse(text = paste("tmp_3p_rt <- filter(tmp, V2>=ref.gene$V3 & V2<=ref.gene$V3+", len_rt, ")$V3", sep = "")))
         if (ref.gene$V8 == "-") {
           eval(parse(text = paste("tmp$V3 <- rev(tmp$V3)", sep = "")))
           eval(parse(text = paste("tmp_5p <- rev(tmp_3p)", sep = "")))
           eval(parse(text = paste("tmp_3p <- rev(tmp_5p)", sep = "")))
+          eval(parse(text = paste("tmp_3p_rt <- rev(tmp_5p_rt)", sep = "")))
         }    
         eval(parse(text = paste("count <- sapply(1:n, function(x) mean(filter(tmp, V2 >= bins_g[x] & V2 < bins_g[x+1])$V3/(corr*length_g[x])))", sep = "")))
         eval(parse(text = paste("mean_norm_gene_", suff, " <- c(mean_norm_gene_", suff, ", list(as.vector(count)))", sep = "")))  
@@ -635,139 +641,134 @@ for (i in i_rt_only){
         eval(parse(text = paste("count <- rollapply(zoo(tmp_3p/corr), ", bin, ", mean)", sep = "")))
         #eval(parse(text = paste("count <- sapply(1:n, function(x) mean(tmp_3p[bins_ext[x]:(bins_ext[x+1]-1)]/(corr*length_ext[x])))", sep = "")))
         eval(parse(text = paste("mean_norm_3p_", suff, " <- c(mean_norm_3p_", suff, ", list(as.vector(count)*(1/", bin, ")))", sep = "")))
+        eval(parse(text = paste("count <- rollapply(zoo(tmp_3p_rt/corr), ", bin_rt, ", mean)", sep = "")))
+        eval(parse(text = paste("mean_norm_3p_", suff, "_rt <- c(mean_norm_3p_", suff, "_rt, list(as.vector(count)*(1/", bin_rt, ")))", sep = "")))
       }
     }
     for (k in 1:3) {
       for (suff in c("ref", "mut")) {
-	eval(parse(text = paste(suff, k, " <- c(mean_norm_5p_", suff, "[[k]], mean_norm_gene_", suff, "[[k]], mean_norm_3p_", suff, "[[k]])", sep = "")))
+	eval(parse(text = paste(suff, k, " <- list(c(mean_norm_5p_", suff, "[[k]], mean_norm_gene_", suff, "[[k]], mean_norm_3p_", suff, "[[k]]), c(mean_norm_gene_", suff, "[[k]], mean_norm_3p_", suff, "_rt[[k]]))", sep = "")))
       }
     }
-    cov <- c(cov, list(data.frame(x = 1:length(ref1), ref1 = ref1, ref2 = ref2, ref3 = ref3, mut1 = mut1, mut2 = mut2, mut3 = mut3))) 
+    cov <- c(cov, list(data.frame(x = 1:length(ref1[[1]]), ref1 = ref1[[1]], ref2 = ref2[[1]], ref3 = ref3[[1]], mut1 = mut1[[1]], mut2 = mut2[[1]], mut3 = mut3[[1]])))
+    cov_rt <- c(cov_rt, list(data.frame(x = 1:length(ref1[[2]]), ref1 = ref1[[2]], ref2 = ref2[[2]], ref3 = ref3[[2]], mut1 = mut1[[2]], mut2 = mut2[[2]], mut3 = mut3[[2]]))) 
   }
   names(cov) <- ref.target$V4
-  saveRDS(cov, paste("results/readthrough_analysis/metagene_readthrough/", mutant, "_wt_metagene_rt_on_mean_pthresh_rt_", pthresh_rt, "_threshLFC_", threshLFC_rt, ".RData", sep = ""))
+  names(cov_rt) <- ref.target$V4
+  saveRDS(cov, paste("results/readthrough_analysis/metagene_readthrough/", mutant, "_wt_metagene_on_mean_pthresh_rt_", pthresh_rt, "_threshLFC_", threshLFC_rt, ".RData", sep = ""))
+  saveRDS(cov_rt, paste("results/readthrough_analysis/metagene_readthrough/", mutant, "_wt_metagene_rt_on_mean_pthresh_rt_", pthresh_rt, "_threshLFC_", threshLFC_rt, ".RData", sep = ""))
 }
 
 ##### Plot metagene profiles
-for (mutant in c("cut14", "cut14_cdc15", "rrp6D")){
+p_kall <- 0.01; threshlog2FC_kall <- 1
+mut <- c("cut14", "cut14_cdc15", "rrp6D")
+for (j in seq_along(i_rt_only))){
+  i <- i_rt_only[j]
+  mutant <- mut[j]
   name_ref <- names(bed.used)[i]
   ref <- bed_cut14_based
   if(name_ref == "rrp6D_wt"){
     ref <- bed_rrp6D_based
   }
   s2c <- s2c.all.analysis[[i]]
-
   save.path.dir <- paste("results/readthrough_analysis/sleuth_analysis/", sep = "")
   save.dir <- names(s2c.all.analysis)[i] 
   res <- read.csv(paste(save.path.dir, save.dir, "/sleuth_shrinked_analysis_diff_expressed_", save.dir, ".txt", sep = ""), sep = "\t", stringsAsFactors = F, h = T)
   res.filt <- res[which(res$qval < pthresh_rt & log2(exp(res$b)) > threshLFC_rt), ]
   ref.filt.rt <- res.filt$target_id[which(sapply(res.filt$target_id, function(x) str_detect(x, ".rt")) == T)]
   ref.rt.init <- res$target_id[which(sapply(res$target_id, function(x) str_detect(x, ".rt")) == T)]
-
   ref.target.rt <- ref[sapply(ref.filt.rt, function(x) which(ref$V4 == x)), ]
   ref.target <- ref[sapply(ref.filt.rt, function(x) which(ref$V4 == x)+1), ]
 
-  cov_meta <- readRDS(paste("results/readthrough_analysis/metagene_readthrough/", mutant, "_wt_metagene_rt_on_mean_pthresh_rt_", pthresh_rt, "_threshLFC_", threshLFC_rt, ".RData", sep = ""))
-  cov_tmp <- do.call(rbind, cov_meta)
+  for (suff in c("", "_rt")) {
+    cov_meta <- readRDS(paste("results/readthrough_analysis/metagene_readthrough/", mutant, "_wt_metagene", suff, "_on_mean_pthresh_rt_", pthresh_rt, "_threshLFC_", threshLFC_rt, ".RData", sep = ""))
+    for (type in c("", "_without_up")){
+      if (type != ""){
+        transcr_name <- ref.target$V4
+        eval(parse(text = paste("kall <- res_kallisto_", mutant, sep = "")))
+        not_up <- setdiff(transcr_name, kall$target_id[which(kall$qval < p_kall & log2(exp(b))>threshlog2FC_kall)])
+        cov_tmp <- do.call(rbind, cov_meta[not_up])
+      }else{
+        cov_tmp <- do.call(rbind, cov_meta)
+      }
+      # Compute mean over all gene of coverage for each bin per replicate and between replicates
+      xp <- unique(cov_tmp$x)
+      ref1_tmp <- sapply(xp, function(x) mean(cov_tmp[which(cov_tmp$x == x), ]$ref1))
+      ref2_tmp <- sapply(xp, function(x) mean(cov_tmp[which(cov_tmp$x == x), ]$ref2))
+      ref3_tmp <- sapply(xp, function(x) mean(cov_tmp[which(cov_tmp$x == x), ]$ref3))
+      refp <- sapply(xp, function(x) mean(c(ref1_tmp[x], ref2_tmp[x], ref3_tmp[x])))
 
-  # Compute mean over all gene of coverage for each bin per replicate and between replicates
-  xp <- unique(cov_tmp$x)
-  ref1_tmp <- sapply(xp, function(x) mean(cov_tmp[which(cov_tmp$x == x), ]$ref1))
-  ref2_tmp <- sapply(xp, function(x) mean(cov_tmp[which(cov_tmp$x == x), ]$ref2))
-  ref3_tmp <- sapply(xp, function(x) mean(cov_tmp[which(cov_tmp$x == x), ]$ref3))
-  refp <- sapply(xp, function(x) mean(c(ref1_tmp[x], ref2_tmp[x], ref3_tmp[x])))
+      mut1_tmp <- sapply(xp, function(x) mean(cov_tmp[which(cov_tmp$x == x), ]$mut1))
+      mut2_tmp <- sapply(xp, function(x) mean(cov_tmp[which(cov_tmp$x == x), ]$mut2))
+      mut3_tmp <- sapply(xp, function(x) mean(cov_tmp[which(cov_tmp$x == x), ]$mut3))
+      mutp <- sapply(xp, function(x) mean(c(mut1_tmp[x], mut2_tmp[x], mut3_tmp[x])))
+      ylim_max <- max(c(refp, ref1_tmp, ref2_tmp, ref3_tmp, mut1_tmp,mut2_tmp,mut3_tmp, mutp))
+      ylim_min <- min(c(refp, ref1_tmp, ref2_tmp, ref3_tmp, mut1_tmp,mut2_tmp,mut3_tmp, mutp))
 
-  mut1_tmp <- sapply(xp, function(x) mean(cov_tmp[which(cov_tmp$x == x), ]$mut1))
-  mut2_tmp <- sapply(xp, function(x) mean(cov_tmp[which(cov_tmp$x == x), ]$mut2))
-  mut3_tmp <- sapply(xp, function(x) mean(cov_tmp[which(cov_tmp$x == x), ]$mut3))
-  mutp <- sapply(xp, function(x) mean(c(mut1_tmp[x], mut2_tmp[x], mut3_tmp[x])))
-  ylim_max <- max(c(refp, ref1_tmp, ref2_tmp, ref3_tmp, mut1_tmp,mut2_tmp,mut3_tmp, mutp))
-  ylim_min <- min(c(refp, ref1_tmp, ref2_tmp, ref3_tmp, mut1_tmp,mut2_tmp,mut3_tmp, mutp))
+      # Change scale of representation to see the gene
+      if(suff != ""){
+        xtemp <- (length(ref1_tmp)-n)
+        xtemp_med <- seq(from = 1, by = bin, length = n+1)
+        x <- c(xtemp_med[1:n], seq(from = tail(xtemp_med, 1), by = 1662/2178, length = length(xp)-length(xtemp_med)+1))
+      }else{
+        xtemp <- (length(ref1_tmp)-n)/2
+        xtemp_med <- seq(from = xtemp, by = bin, length = n+2)
+        x <- c(1:xtemp, xtemp_med[2:(length(xtemp_med)-1)], seq(from = tail(xtemp_med, 1), by = 1, length = xtemp))
+      }
+  
+      pdf(paste("results/readthrough_analysis/metagene_readthrough/metagene_readthrough", type, "_", mutant, suff, ".pdf", sep = ""), w = 12, h = 8)
+      par(mfrow = c(2,2))
+      plot(x, ref1_tmp, type = "l", xaxt = "n", main = paste(mutant, " - TSS/TTS +/-", b, " bp\n(p=",pthresh_rt, " - log2FC=", threshLFC_rt, ")", sep = ""), xlab = "", ylim = c(0, ylim_max), ylab = "normalized count by bin size and mean coverage")
+      points(x, ref2_tmp, type = "l", lty = 2)
+      points(x, ref3_tmp, type = "l", lty = 3)
+      points(x, mut1_tmp, type = "l", col = "red")
+      points(x, mut2_tmp, type = "l", lty = 2,  col = "red")
+      points(x, mut3_tmp, type = "l", lty = 3,  col = "red")
+      if (suff != ""){
+        axis(1, c(1,tail(xtemp_med, 1)), c("TSS", "TTS"), cex.axis = 0.75)
+        abline(v = tail(xtemp_med, 1))
+      }else{ 
+        axis(1, c(xtemp, xtemp_med[length(xtemp_med)]), c("TSS", "TTS"), cex.axis = 0.75)
+        abline(v = c(xtemp, xtemp_med[length(xtemp_med)]))
+      }
+ 
+      plot(x, refp, type = "l", xaxt = "n", main = mutant, ylab = "normalized count by bin size and mean coverage", ylim = c(0, ylim_max), xlab = "")
+      points(x, mutp, type = "l", col = "red")
+      if (suff != ""){
+        axis(1, c(1,tail(xtemp_med, 1)), c("TSS", "TTS"), cex.axis = 0.75)
+        abline(v = tail(xtemp_med, 1))
+      }else{ 
+        axis(1, c(xtemp, xtemp_med[length(xtemp_med)]), c("TSS", "TTS"), cex.axis = 0.75)
+        abline(v = c(xtemp, xtemp_med[length(xtemp_med)]))
+      }
 
-  # Change scale of representation to see the gene
-  xtemp <- (length(ref1_tmp)-n)/2
-  xtemp_med <- seq(from = xtemp, by = bin, length = n+2)
-  x <- c(1:xtemp, xtemp_med[2:(length(xtemp_med)-1)], seq(from = tail(xtemp_med, 1), by = 1, length = xtemp))
+      plot(x, log2(ref1_tmp+0.5), type = "l", xaxt = "n", main = mutant, ylim = log2(c(ylim_min, ylim_max)+0.5), ylab = "log2(normalized count+0.5)", xlab = "")
+      points(x, log2(ref2_tmp+0.5), type = "l", lty = 2)
+      points(x, log2(ref3_tmp+0.5), type = "l", lty = 3)
+      points(x, log2(mut1_tmp+0.5), type = "l", col = "red")
+      points(x, log2(mut2_tmp+0.5), type = "l", lty = 2,  col = "red")
+      points(x, log2(mut3_tmp+0.5), type = "l", lty = 3,  col = "red")
+      if (suff != ""){
+        axis(1, c(1,tail(xtemp_med, 1)), c("TSS", "TTS"), cex.axis = 0.75)
+        abline(v = tail(xtemp_med, 1))
+      }else{ 
+        axis(1, c(xtemp, xtemp_med[length(xtemp_med)]), c("TSS", "TTS"), cex.axis = 0.75)
+        abline(v = c(xtemp, xtemp_med[length(xtemp_med)]))
+      }
 
-  pdf(paste("results/readthrough_analysis/metagene_readthrough/metagene_readthrough_", mutant, ".pdf", sep = ""), w = 12, h = 8)
-  par(mfrow = c(2,2))
-  plot(x, ref1_tmp, type = "l", xaxt = "n", main = paste(mutant, " - TSS/TTS +/-", b, " bp\n(p=",pthresh_rt, " - log2FC=", threshLFC_rt, ")", sep = ""), xlab = "", ylim = c(0, ylim_max), ylab = "normalized count by bin size and mean coverage")
-  axis(1, c(xtemp_med[2], xtemp_med[length(xtemp_med)]), c("TSS", "TTS"), cex.axis = 0.75)
-  points(x, ref2_tmp, type = "l", lty = 2)
-  points(x, ref3_tmp, type = "l", lty = 3)
-  points(x, mut1_tmp, type = "l", col = "red")
-  points(x, mut2_tmp, type = "l", lty = 2,  col = "red")
-  points(x, mut3_tmp, type = "l", lty = 3,  col = "red")
-  abline(v = c(xtemp_med[2], xtemp_med[length(xtemp_med)]))
-
-  plot(x, refp, type = "l", xaxt = "n", main = mutant, ylab = "normalized count by bin size and mean coverage", ylim = c(0, ylim_max), xlab = "")
-  axis(1, c(xtemp_med[2], xtemp_med[length(xtemp_med)]), c("TSS", "TTS"),cex.axis = 0.75)
-  points(x, mutp, type = "l", col = "red")
-  abline(v = c(xtemp_med[2], xtemp_med[length(xtemp_med)]))
-
-  plot(x, log2(ref1_tmp+0.5), type = "l", xaxt = "n", main = mutant, ylim = log2(c(ylim_min, ylim_max)+0.5), ylab = "log2(normalized count+0.5)", xlab = "")
-  axis(1, c(xtemp_med[2], xtemp_med[length(xtemp_med)]), c("TSS", "TTS"), cex.axis = 0.75)
-  points(x, log2(ref2_tmp+0.5), type = "l", lty = 2)
-  points(x, log2(ref3_tmp+0.5), type = "l", lty = 3)
-  points(x, log2(mut1_tmp+0.5), type = "l", col = "red")
-  points(x, log2(mut2_tmp+0.5), type = "l", lty = 2,  col = "red")
-  points(x, log2(mut3_tmp+0.5), type = "l", lty = 3,  col = "red")
-  abline(v = c(xtemp_med[2], xtemp_med[length(xtemp_med)]))
-
-  plot(x, log2(refp+0.5), type = "l", xaxt = "n", main = mutant, ylim = log2(c(ylim_min, ylim_max)+0.5), ylab = "log2(normalized count+0.5)", xlab = "")
-  axis(1, c(xtemp_med[2], xtemp_med[length(xtemp_med)]), c("TSS", "TTS"), cex.axis = 0.75)
-  points(x, log2(mutp+0.5), type = "l", col = "red")
-  abline(v = c(xtemp_med[2], xtemp_med[length(xtemp_med)]))
-  dev.off()
-
-  # Plot metagene after having remove up regulated gene obtained with kallisto at a thresold of 0.01 and log2FC threshold of 1
-  transcr_name <- ref.target$V4
-  eval(parse(text = paste("kall <- res_kallisto_", mutant, sep = "")))
-  not_up <- setdiff(transcr_name, kall$target_id[which(kall$qval < 0.01 & log2(exp(b))>1)])
-
-  cov_tmp <- do.call(rbind, cov_meta[not_up])
-  xp <- unique(cov_tmp$x)
-  ref1_tmp <- sapply(xp, function(x) mean(cov_tmp[which(cov_tmp$x == x), ]$ref1))
-  ref2_tmp <- sapply(xp, function(x) mean(cov_tmp[which(cov_tmp$x == x), ]$ref2))
-  ref3_tmp <- sapply(xp, function(x) mean(cov_tmp[which(cov_tmp$x == x), ]$ref3))
-  refp <- sapply(xp, function(x) mean(c(ref1_tmp[x], ref2_tmp[x], ref3_tmp[x])))
-
-  mut1_tmp <- sapply(xp, function(x) mean(cov_tmp[which(cov_tmp$x == x), ]$mut1))
-  mut2_tmp <- sapply(xp, function(x) mean(cov_tmp[which(cov_tmp$x == x), ]$mut2))
-  mut3_tmp <- sapply(xp, function(x) mean(cov_tmp[which(cov_tmp$x == x), ]$mut3))
-  mutp <- sapply(xp, function(x) mean(c(mut1_tmp[x], mut2_tmp[x], mut3_tmp[x])))
-
-  pdf(paste("results/readthrough_analysis/metagene_readthrough/metagene_readthrough_without_up_", mutant, ".pdf", sep = ""), w = 12, h = 8)
-  par(mfrow = c(2,2))
-  plot(x, ref1_tmp, type = "l", xaxt = "n", main = paste(mutant, " without up - TSS/TTS +/-", b, " bp\n(p=0.01 - log2FC=1)", sep = ""), xlab = "", ylim = c(0, ylim_max), ylab = "normalized count by bin size and mean coverage")
-  axis(1, c(xtemp_med[2], xtemp_med[length(xtemp_med)]), c("TSS", "TTS"), cex.axis = 0.75)
-  points(x, ref2_tmp, type = "l", lty = 2)
-  points(x, ref3_tmp, type = "l", lty = 3)
-  points(x, mut1_tmp, type = "l", col = "red")
-  points(x, mut2_tmp, type = "l", lty = 2,  col = "red")
-  points(x, mut3_tmp, type = "l", lty = 3,  col = "red")
-  abline(v = c(xtemp_med[2], xtemp_med[length(xtemp_med)]))
-
-  plot(x, refp, type = "l", xaxt = "n", main = mutant, ylab = "normalized count by bin size and mean coverage", ylim = c(0, ylim_max), xlab = "")
-  axis(1, c(xtemp_med[2], xtemp_med[length(xtemp_med)]), c("TSS", "TTS"),cex.axis = 0.75)
-  points(x, mutp, type = "l", col = "red")
-  abline(v = c(xtemp_med[2], xtemp_med[length(xtemp_med)]))
-
-  plot(x, log2(ref1_tmp+0.5), type = "l", xaxt = "n", main = mutant, ylim = log2(c(ylim_min, ylim_max)+0.5), ylab = "log2(normalized count+0.5)", xlab = "")
-  axis(1, c(xtemp_med[2], xtemp_med[length(xtemp_med)]), c("TSS", "TTS"), cex.axis = 0.75)
-  points(x, log2(ref2_tmp+0.5), type = "l", lty = 2)
-  points(x, log2(ref3_tmp+0.5), type = "l", lty = 3)
-  points(x, log2(mut1_tmp+0.5), type = "l", col = "red")
-  points(x, log2(mut2_tmp+0.5), type = "l", lty = 2,  col = "red")
-  points(x, log2(mut3_tmp+0.5), type = "l", lty = 3,  col = "red")
-  abline(v = c(xtemp_med[2], xtemp_med[length(xtemp_med)]))
-
-  plot(x, log2(refp+0.5), type = "l", xaxt = "n", main = mutant, ylim = log2(c(ylim_min, ylim_max)+0.5), ylab = "log2(normalized count+0.5)", xlab = "")
-  axis(1, c(xtemp_med[2], xtemp_med[length(xtemp_med)]), c("TSS", "TTS"), cex.axis = 0.75)
-  points(x, log2(mutp+0.5), type = "l", col = "red")
-  abline(v = c(xtemp_med[2], xtemp_med[length(xtemp_med)]))
-  dev.off()
-}
+      plot(x, log2(refp+0.5), type = "l", xaxt = "n", main = mutant, ylim = log2(c(ylim_min, ylim_max)+0.5), ylab = "log2(normalized count+0.5)", xlab = "")
+      points(x, log2(mutp+0.5), type = "l", col = "red")
+      if (suff != ""){
+        axis(1, c(1,tail(xtemp_med, 1)), c("TSS", "TTS"), cex.axis = 0.75)
+        abline(v = tail(xtemp_med, 1))
+      }else{ 
+        axis(1, c(xtemp, xtemp_med[length(xtemp_med)]), c("TSS", "TTS"), cex.axis = 0.75)
+        abline(v = c(xtemp, xtemp_med[length(xtemp_med)]))
+      }
+      dev.off()
+    }
+  }     
+}   
 
 
 
