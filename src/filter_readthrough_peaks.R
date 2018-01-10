@@ -2,6 +2,7 @@
 require(data.table)
 require(ggplot2)
 require(stringr)
+source("src/func/functions.R")
 
 all_analysis <- c("output_cut14_wt_forward", "output_cut14_wt_reverse", "output_rrp6D_wt_forward", 
   "output_rrp6D_wt_reverse")
@@ -9,10 +10,8 @@ threshold <- 0.05
 
 ##### Concatenate all potential peaks in one bed file
 for (analysis in all_analysis) {
-  file <- system(paste("ls results/readthrough_analysis/Output_Music/", 
-    analysis, "/ERs_[0123456789]*.bed", sep = ""), intern = T)
-  system(paste("cat results/readthrough_analysis/Output_Music/", analysis, 
-    "/ERs_*[0123456789].bed > results/readthrough_analysis/Output_Music/", 
+  file <- system(paste("cp results/readthrough_analysis/Output_Music/", 
+    analysis, "/ERs_[0123456789]*.bed results/readthrough_analysis/Output_Music/", 
     analysis, "/ERs_all.bed", sep = ""))
 }
 
@@ -78,9 +77,9 @@ for (l in seq_along(list_analysis)) {
           l1 <- length(unique(tmp.bed[index.bed, ]$V2))
           l2 <- length(unique(tmp.bed[index.bed, ]$V3))
           if (l1 != 1 | l2 != 1) {
-          print(tmp.bed[index.bed, ])
-          print(delta[ind.min[1]])
-          print("#############")
+            print(tmp.bed[index.bed, ])
+            print(delta[ind.min[1]])
+            print("#############")
           }
         }
         dist.end <- c(dist.end, delta[ind.min[1]])
@@ -112,10 +111,10 @@ for (l in seq_along(list_analysis)) {
         50)), stringsAsFactors = F))
   }
   write.table(new.annot, paste("results/readthrough_analysis/Output_Music/annot_readthrough_", 
-    list_analysis[[l]], "_forward_reverse.bed", sep = ""), sep = "\t", 
+    list_analysis[l], "_forward_reverse.bed", sep = ""), sep = "\t", 
     col.names = F, row.names = F, quote = F)
   write.table(res, paste("results/readthrough_analysis/Output_Music/summary_annot_readthrough_", 
-    list_analysis[[l]], ".txt", sep = ""), sep = "\t", col.names = T, 
+    list_analysis[l], ".txt", sep = ""), sep = "\t", col.names = T, 
     row.names = F, quote = F)
   #system(paste("bash src/date.sh results/readthrough_analysis/Output_Music/annot_readthrough_", 
   #  list_analysis[[l]], "_forward_reverse.bed", sep = ""))
