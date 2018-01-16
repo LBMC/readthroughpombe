@@ -56,9 +56,10 @@ When and where we are :
 date();
 R.Version()$version.string;
 getwd();
+require(formatR) # indentation with 2 blank spaces and lines of max 70 char
 @
 
-We source here useful functions and load necessary packages and tools.
+We source here useful functions and load necessary packages and tools. See the material and methods for more information on the data analysis protocol and the version fo the tools used.
 
 \setkeys{Gin}{width = 0.8\textwidth}  
 
@@ -88,14 +89,14 @@ See doc directory for reports produced by IGBMC.
   \item bp content. First 12 bp are biased in bp content probably due to experimental protocole (random hexamer fixation on RNA fragments), this does not required trimming. 3 samples (cut14 repl1, rrp6D repl3 and cdc15 repl1) display, as raw data and after trimming, 2 modes in GC\% distribution; this reflects rRNA sequences after some BLAST attempts. Indeed according to https://www.pombase.org/status/statistics, rRNA contains 48\% of GC compared to protein coding genes (36\%). This could also reflects tRNA content (54\% of GC). These 3 samples also display a high content of overrepresented sequences. Note that cdc15 repl2 also displays a high content of overrepresented sequences.  
 \end{itemize}
 
-\includegraphics{{quality_control/fastqc_per_sequence_gc_content_plot}.png}\\
-\includegraphics{{quality_control/fastqc_overrepresented_sequencesi_plot}.png}
+\includegraphics{{../results/quality_control/fastqc_per_sequence_gc_content_plot}.png}\\
+\includegraphics{{../results/quality_control/fastqc_overrepresented_sequencesi_plot}.png}
 
 
 % ------------------------
 \subsection{Data cleaning}
 
-We used cutadapt to trim tails with quality lower than 20. No other filter was applied.
+Laurent Modolo performed quality control on PSMN. We used cutadapt to trim tails with quality lower than 20. No other filter was applied. Trimmed reads are located in \textcolor{blue}{results/quality\_control/trimming} directory.
 
 \begin{tabular}{c|c|c|c|c|c}
 sample & initial & after adapter removal by IGBMC & \% bases over 30 & after cleaning & \% GC\\
@@ -135,33 +136,33 @@ II: 4,539,804bp\\
 III: 2,452,883bp
 
 
-% ------------------------------------------------------------------
-\subsection{Mapping to S. pombe reference genome and quantification}
+% ----------------------------------------------
+\subsection{Mapping to S. pombe reference genome}
 
-This was done using mapping.nf on PSMN. This was done by coupling Bowtie2 and RSEM. It gives:
+Mapping was performed by Laurent Modolo on PSMN from the trimmed FASTQ files; outputs of mapping are saved in \textcolor{blue}{results/mapping/mapped} and classified by strain (\texttt{2017\_10\_26} sorted BAM files).
 
 \begin{tabular}{c|c|c|c|c}
 sample & aligned concordantly 0 times & exactly 1 time & > 1 time & \% mapped\\
 \hline
-1 - wt repl1 & 2,560,694 (4.32\%) & 43,974,947 (74.11\%) & 12,805,321 (21.58\%) & 95.68\%\\
-6 - wt repl2 & 3,312,253 (4.50\%) & 53,960,850 (73.36\%)  & 16,283,373 (22.14\%) & 95.5\%\\
-11 - wt repl3 & 2,911,335 (4.08\%) & 53,713,523 (75.27\%) & 14,737,392 (20.65\%) & 95.92\%\\
+1 - wt repl1 & 931,061 (1.57\%) & 51,861,837 (87.4\%) & 6,548,064 (11.03\%) & 98.43\%\\
+6 - wt repl2 &  1,404,250 (1.91\%) & 63,481,938 (86.30\%) & 8,670,288 (11.79\%) & 98.09\%\\
+11 - wt repl3 & 1,050,119 (1.47\%) & 63,180,210 (88.53\%)& 7,131,921 (9.99\%) & 98.53\%\\
 \hline
-2 - cut14-208 repl1 & 2,151,772 (3.03\%) & 34,018,573 (47.89\%) & \textcolor{red}{34,864,979 (49.08\%)}  & 96.97\%\\
-7 - cut14-208 repl2 & 3,582,227 (4.45\%) & 59,753,003 (74.18\%) & 17,211,338 (21.37\%) & 95.55\%\\
-12 - cut14-208 repl3 & 3,414,963 (4.26\%) &60,304,257 (75.22\%) & 16,450,814 (20.52\%) & 95.74\%\\
+2 - cut14-208 repl1 & 718,161 (1.01\%)  & 40,284,357 (56.71\%) & \textcolor{red}{30,032,806 (42.28\%)}& 98.99\%\\
+7 - cut14-208 repl2 & 1,210,643 (1.50\%) & 70,774,395 (87.87\%) & 8,561,530 (10.63\%) & 98.5\%\\
+12 - cut14-208 repl3 & 1,073,503 (1.34\%) & 71,341,832 (88.99\%) & 7,754,699 (9.67\%)& 98.66\%\\
 \hline
-3 - cut14-208  cdc15-118 repl1 & 3,236,463 (4.10\%) & 56,980,301 (72.14\%) & 18,767,967 (23.76\%) & 95.9\%\\
-8 - cut14-208  cdc15-118 repl2 & 2,828,458 (3.92\%) &   54,201,636 (75.07\%) &  15,170,714 (21.01\%) & 96.08\%\\
-13 - cut14-208  cdc15-118 repl3 & 3,357,460 (3.99\%) & 62,696,894 (74.43\%) & 18,186,162 (21.59\%) & 96.01\%\\
+3 - cut14-208  cdc15-118 repl1 & 1,203,716 (1.52\%) & 67,301,903 (85.21\%) & 10,479,112 (13.27\%) & 98.48\%\\
+8 - cut14-208  cdc15-118 repl2 & 1,084,581 (1.50\%)  &  63,804,070 (88.37\%)& 7,312,157 (10.13\%) & 98.5\%\\
+13 - cut14-208  cdc15-118 repl3 &  1,248,135 (1.48\%)  & 73,929,409 (87.76\%) &  9,062,972 (10.76\%) & 98.52\%\\
 \hline
-4 - cdc15-118 repl1 & 2,195,204 (2.82\%) & 34,983,174 (44.93\%) &  \textcolor{red}{40,681,435 (52.25\%)} & 97.18\%\\
-9 - cdc15-118 repl2 & 2,836,638 (3.95\%) & 44,951,861 (62.54\%) & \textcolor{red}{24,091,740 (33.52\%)} & 96.05\%\\
-14 - cdc15-118 repl3 & 3,412,487 (3.98\%) & 63,783,418 (74.46\%) & 18,465,306 (21.56\%)& 96.02\%\\
+4 - cdc15-118 repl1 & 848,597 (1.09\%) &  41,178,330 (52.89\%) &  \textcolor{red}{ 35,832,886 (46.02\%) )} & 98.91\%\\
+9 - cdc15-118 repl2 & 1,171,116 (1.63\%) & 52,883,443 (73.57\%) & \textcolor{red}{17,825,680 (24.80\%)} & 98.37\%\\
+14 - cdc15-118 repl3 & 1,125,054 (1.31\%) & 75,045,171 (87.61\%) & 9,490,986 (11.08\%) & 98.69\%\\
 \hline
-5 - rrp6D repl1 & 4,499,937 (5.86\%) & 54,917,401 (71.50\%) & 17,392,443 (22.64\%)  & 97.14\%\\
-10 - rrp6D repl2 &  5,238,003 (5.61\%) & 64,208,833 (68.77\%) & 23,916,803 (25.62\%) & 94.39\%\\
-15 - rrp6D repl3 &2,730,532 (3.49\%) & \textcolor{red}{31,325,269 (40.01\%)} &  \textcolor{red}{44,232,508 (56.50\%)} & 96.51\%\\
+5 - rrp6D repl1 & 1,389,131 (1.81\%) & 66,121,823 (86.09\%)& 9,298,827 (12.11\%) & 98.19\%\\
+10 - rrp6D repl2 &  1,612,648 (1.73\%) & 77,072,084 (82.55\%)  & 14,678,907 (15.72\%) & 98.27\%\\
+15 - rrp6D repl3 & 926,017 (1.18\%)& \textcolor{red}{37,437,085 (47.82\%))} &  \textcolor{red}{39,925,207 (51.00\%)} & 98.82\%\\
 \end{tabular}
 
 
@@ -212,6 +213,41 @@ Detailed results were saved in \texttt{results/DESeq2\_analysis/}. Within each r
   \item Readthrough: now we have the expressiong per gene, need to compute gene by gene profiles with different sizes of windows. 
   
 \end{itemize}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Readthrough detection}
+
+The protocol is described in details in the material and methods. 
+
+% ---------------------------------------------
+\subsection{Detection of raw readthrough events}
+
+\begin{enumerate}
+  \item \textcolor{blue}{src/prepare\_readthrough\_detection.sh}:
+sorted BAM files obtained after bowtie2 mapping were saved in two sub files - forward and reverse BAM - to make 2 peaks calling (one per strand) per cut14 and rrp6D mutant. Intersed BAM on the corresponding features (+ if reverse BAM and - if forward BAM) have the extion \texttt{\_without}. Outputs are in \texttt{results/mapping/mapped/} and in the corresponding subdirectory. I also generated the mappability profile.
+  \item \textcolor{blue}{src/preprocess\_MUSIC.sh} (PSMN):
+the previous BAM files are preprocessed for sorting, removal of duplicates with MUSIC.
+  \item \textcolor{blue}{src/peak\_calling\_MUSIC.sh} (PSMN):
+  peak calling is performed with MUSIC by pooling all triplicates samples from the mutant of interest and compared to the pooled WT samples. Outputs from MUSIC are saved in \texttt{results/readthrough\_analysis/Output\_Music} within the corresponding directories. 
+  \item \textcolor{blue}{src/filter\_readthrough\_peaks.R}:
+ raw detected peaks are filtered after intersection with the corresponding stranded annotation (output for forward detection are intersected with - annotation considering again the strand-specific protocol of library preparation) using \textcolor{blue}{src/substract\_2\_bed.sh}. Only peaks which frontiers correspond to the 3' of the feature are kept. Two annotation are thus generated, based on rrp6 vs WT peaks detection and based on cut14 vs WT peaks detection:\\
+annot\_readthrough\_with\_other\_genes\_rrp6D\_wt\_based\_cut14\_forward\_reverse.bed\ (readthrough and their parent, 1 line for the parent and the next line for readthrough + other genes)\
+annot\_readthrough\_with\_other\_genes\_cut14\_wt\_based\_rrp6D\_forward_reverse.bed
+annot\_readthrough\_rrp6D\_wt\_based\_cut14\_forward\_reverse.bed (readthrough and their parent only, 1 line for the parent and the next line for readthrough)\\
+annot\_readthrough\_cut14\_wt\_based\_rrp6D\_forward\_reverse.bed
+  \item \textcolor{blue}{kallisto\_quantif.sh}: quantification is made from annotation of all genes for classic DEA and from annotation of reathrough and their parents + other genes. The last quantification will allow to select putative readthrough with sleuth. Quantification are stored in \texttt{results/kallisto\_quantif/} with \texttt{\_all\_genes} suffix when it concerns classic DEA. 
+  \item \textcolor{blue}{src/kallisto\_sleuth\_analysis.sh}:
+a differential analysis is performed using the previous quantification from sleuth subsetted to readthrough and their parents to select "true" putative readthrough. Outputs is saved in \texttt{results\sleuth\_analysis} in the corresponding subdirectory with the \texttt{\_rt\_only} suffix! This script performed also intersection on what is found between DESeq2 and kallisto for the classic differential expression analysis, and generated a metagene plot as well after having called \textcolor{blue}{src/prepare\_metagene.sh} to obtain coverage at each bp from BAM.
+\end{enumerate}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Differential expression analysis}
+
+Note that the differential expression analysis was performed with DESeq2 (quantification with RSEM) and with sleuth (quantification with kallisto). Outputs from the sleuth analysis is saved in \texttt{results\sleuth\_analysis} in the corresponding subdirectory without the \texttt{\_rt\_only} suffix!
+Outputs from DESeq2 analysis are saved in \texttt{results/DESeq2\_analysis} under the prefix \texttt{2017\_12\_31}. You will also find the count obtained from RSEM within the \texttt{count} directory at this place.
 
 
 \end{document}

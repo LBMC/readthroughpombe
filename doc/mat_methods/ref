@@ -1,0 +1,32 @@
+##### References #####
+
+Benjamini and Hochberg. Controlling the false discovery rate: a practical and powerful approach to multiple testing. Journal of the Royal Statistical Society Series B, 1995.
+
+Bray, Pimentel, Melsted and Pachter. Near-optimal probabilistic RNA-seq quantification. Nature Biotechnology, 2016.
+
+Fischer, Pau and Smith. rhdf5: HDF5 interface to R. R package version 2.22.0. 2017.
+
+Harmanci, Rozowsky, and Gerstein. MUSIC: identification of enriched regions in ChIP-Seq experiments using a mappability-corrected multiscale signal processing framework. Genome Biology, 2014. 
+
+Langmead, Salzberg. Fast gapped-read alignment with Bowtie 2. Nature Methods, 2012.
+
+Li and  Dewey. RSEM: accurate transcript quantification from RNA-Seq data with or without a reference genome. BMC Bioinformatics, 2011.
+
+Li, Handsaker, Wysoker, Fennell, Ruan, Homer, Marth, Abecasis, Durbin, and 1000 Genome Project Data Processing Subgroup.
+The Sequence Alignment/Map format and SAMtools. Bioinformatics, 2009.
+
+Love, Huber and Anders. Moderated estimation of fold change and dispersion for RNA-seq data with DESeq2. Genome Biology, 2014.
+
+Martin. Cutadapt removes adapter sequences from high-throughput sequencing reads. EMBnet.journal, 2011.
+
+Neph, Kuehn, Reynolds, Haugen, Thurman, Johnson, Rynes, Maurano, Vierstra, Thomas, Sandstrom, Humbert and Stamatoyannopoulos. BEDOPS: high-performance genomic feature operations. Bioinformatics, 2012.
+
+Pimentel, Bray, Puente, Melsted and Pachter. Differential analysis of RNA-seq incorporating quantification uncertainty. Nature Methods, 2017.
+
+Soneson, Love and Robinson. Differential analyses for RNA-seq: transcript-level estimates improve gene-level inferences. F1000Research, 2015.
+
+Quinlan and Hall. BEDTools: a flexible suite of utilities for comparing genomic features. Bioinformatics, 2010.
+
+Venables and Ripley. Modern Applied Statistics with S. Fourth Edition. Springer, New York. ISBN 0-387-95457-0. 2002.
+
+Zeileis and Grothendieck. zoo: S3 Infrastructure for Regular and Irregular Time Series. Journal of Statistical Software, 2003. 
