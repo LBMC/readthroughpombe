@@ -1,6 +1,3 @@
-[submodule "data/examples/tiny_dataset"]
-	path = data/examples/tiny_dataset
-	url = gitlab_lbmc:LBMC/tiny_dataset.git
 [submodule "src/file_handle"]
 	path = src/file_handle
 	url = gitlab_lbmc:LBMC/file_handle.git
