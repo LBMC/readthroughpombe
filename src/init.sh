@@ -101,3 +101,8 @@ wget http://www.bioinformatics.babraham.ac.uk/projects/fastqc/fastqc_v0.11.5.zip
   mv FastQC /opt/FastQC && \
   ln -s /opt/FastQC/fastqc /usr/local/bin/fastqc && \
   chmod +x /usr/local/bin/fastqc
+
+
+################################################################################
+# readthrough detection
+docker build src/func/docker_readthrough -t 'readthrough:0.0.1'
