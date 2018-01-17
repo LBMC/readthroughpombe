@@ -1,28 +1,29 @@
-# Quality control
+# Reads Quality control
 
-The first part of the pipeline is about quality control of the data.
+The first part of the pipeline is the quality control of the data.
 For this we need 4 steps:
+
 - check the quality of the fastq files
 - remove (if any) the adaptor of the reads
 - trim the reads to remove nucleotid of poor quality
 - check the quality of the results
 
-Those steps are executed with the `pipe/quality_control.nf` script
+# Reads Mapping
 
-There are two testing script regarding quality control in the `tests` directory.
+The second part of the pipeline is to map the RNASeq data on the reference
+genomes. For this we need 2 steps:
 
-You can either run:
+- indexing the reference genomes
+- mapping the reads on the references
 
-```
-sh tests/quality_control_test.sh
-```
-To run the analysis locally. You will need to install every required tools
-and configure the pipeline to find them in the respective path.
+all the steps of quality control and mapping are computed with the
+`src/pipeline.nf` script. To use this pipeline, one must first run the
+appropriate sections of the `src/init.sh` script, then run the commands from the
+`/src/pipe/quantif.sh` script.
 
-Otherise, you can run:
+# Readthrough Detection
 
-```
-sh tests/quality_control_docker_test.sh
-```
-To run the analysis in a Docker container, the tools will be installed
-automatically within the container and the default paths will work.
+The detection of readthrough is done with the `src/readthrough.nf` script. To
+use this pipeline, one must first un the appropriate sections of the
+`src/init.sh` script, then run the commands from the `src/pipe/readthrough.sh`
+script.
