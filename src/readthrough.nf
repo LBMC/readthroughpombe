@@ -54,11 +54,11 @@ process sort_bam {
   input:
     file bam from bam_files
   output:
-    file "*_sort.bam" into sorted_bams
+    file "*_sorted.bam" into sorted_bams
   script:
     """
-    samtools sort -@ ${task.cpus} -O BAM -o ${bam} ${bam}_sorted.bam
-    find . -name "*_sorted.bam" | sed 's/\.bam_sorted\.bam//g' | \
+    samtools sort -@ ${task.cpus} -O BAM -o ${bam}_sorted.bam ${bam}
+    find . -name "*_sorted.bam" | sed 's/\\.bam_sorted\\.bam//g' | \
     awk '{system("mv "\$0".bam_sorted.bam "\$0"_sorted.bam")}'
     file_handle.py -f *.bam*
     """
@@ -69,17 +69,17 @@ process split_bam {
   publishDir "${results_path}/readthrough/bam_spliting", mode: 'copy'
   cpus = 2
   input:
-    file bam from indexed_bams
+    file bam from sorted_bams
   output:
     file "*_forward.bam*" into forward_bams
     file "*_reverse.bam*" into reverse_bams
   script:
   """
-    samtools view -hb -F 0x10 ${filename} > ${filename}_forward.bam &
-    samtools view -hb -f 0x10 ${filename} > ${filename}_reverse.bam
-    find . -name "*_forward.bam" | sed 's/\.bam_forward\.bam//g' | \
+    samtools view -hb -F 0x10 ${bam} > ${bam}_forward.bam &
+    samtools view -hb -f 0x10 ${bam} > ${bam}_reverse.bam
+    find . -name "*_forward.bam" | sed 's/\\.bam_forward\\.bam//g' | \
     awk '{system("mv "\$0".bam_forward.bam "\$0"_forward.bam")}'
-    find . -name "*_reverse.bam" | sed 's/\.bam_reverse\.bam//g' | \
+    find . -name "*_reverse.bam" | sed 's/\\.bam_reverse\\.bam//g' | \
     awk '{system("mv "\$0".bam_reverse.bam "\$0"_reverse.bam")}'
     file_handle.py -f *_forward.bam *_reverse.bam
   """
