@@ -36,9 +36,9 @@
 * knowledge of the CeCILL license and that you accept its terms.
 */
 
-params.vebose = false;
-docker.enabled = true
-}
+params.vebose = true
+params.bams = ""
+params.annotation = ""
 
 bam_files = Channel.fromPath(params.bams)
   .ifEmpty { exit 1, "Cannot find any bams files matching: ${params.bams}" }
