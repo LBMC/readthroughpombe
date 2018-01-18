@@ -98,6 +98,11 @@ process split_bam {
   """
 }
 
+annotation_file.into{
+  annotation_forward;
+  annotation_reverse
+}
+
 process filter_forward {
   echo params.verbose
   publishDir "${results_path}/readthrough/bam_filtering", mode: 'copy'
