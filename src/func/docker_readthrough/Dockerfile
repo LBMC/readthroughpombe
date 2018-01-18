@@ -45,7 +45,7 @@ RUN git clone https://github.com/LBMC/file_handle.git && \
 # install MUSIC
 RUN git clone https://github.com/gersteinlab/MUSIC.git && \
     cd MUSIC && \
-    git checkout ${MUSIC_VERSION} \
+    git checkout ${MUSIC_VERSION} &&\
     make clean && \
     make && \
     chmod +x bin/* && \
