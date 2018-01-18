@@ -49,7 +49,7 @@ annotation_file = Channel.fromPath(params.annotation)
 
 process sort_bam {
   echo params.verbose
-  publishDir "${results_path}/mapping/mapping", mode: 'copy'
+  publishDir "${results_path}/readthrough/bam_sorting", mode: 'copy'
   cpus = 4
   input:
     file bam from bam_files
@@ -79,6 +79,7 @@ process indexing_bam {
 
 process split_bam {
   echo params.verbose
+  publishDir "${results_path}/readthrough/bam_spliting", mode: 'copy'
   cpus = 2
   input:
     file bam from indexed_bams
@@ -99,7 +100,8 @@ process split_bam {
 
 process filter_forward {
   echo params.verbose
-  cpus = 4
+  publishDir "${results_path}/readthrough/bam_filtering", mode: 'copy'
+  cpus 4
   input:
     file bam from forward_bams
     file annotation from annotation_file.first()
@@ -117,7 +119,8 @@ process filter_forward {
 
 process filter_reverse {
   echo params.verbose
-  cpus = 4
+  publishDir "${results_path}/readthrough/bam_filtering", mode: 'copy'
+  cpus 4
   input:
     file bam from reverse_bams
     file annotation from annotation_file.first()
