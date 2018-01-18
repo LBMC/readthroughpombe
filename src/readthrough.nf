@@ -96,14 +96,14 @@ process filter_forward {
   cpus 4
   input:
     file bam from forward_bams
-    file annotation from annotation_file.first()
+    file annotation from annotation_forward.first()
   output:
     file "*_noannot.bam*" into filtered_forward_bams
   script:
   """
-    samtools view -@ ${task.cpus} -hb ${forward_bams} -L ${annotation} -U ${bam}_noannot.bam > /dev/null
+    samtools view -@ ${task.cpus} -hb ${bam} -L ${annotation} -U ${bam}_noannot.bam > /dev/null
     samtools index ${bam}_noannot.bam
-    find . -name "*_noannot.bam" | sed 's/\.bam_noannot\.bam//g' | \
+    find . -name "*_noannot.bam" | sed 's/\\.bam_noannot\\.bam//g' | \
     awk '{system("mv "\$0".bam_noannot.bam "\$0"_noannot.bam")}'
     file_handle.py -f *_noannot.bam*
   """
@@ -115,14 +115,14 @@ process filter_reverse {
   cpus 4
   input:
     file bam from reverse_bams
-    file annotation from annotation_file.first()
+    file annotation from annotation_reverse.first()
   output:
     file "*_noannot.bam*" into filtered_reverse_bams
   script:
   """
-    samtools view -@ ${task.cpus} -hb ${forward_bams} -L ${annotation} -U ${bam}_noannot.bam > /dev/null
+    samtools view -@ ${task.cpus} -hb ${bam} -L ${annotation} -U ${bam}_noannot.bam > /dev/null
     samtools index ${bam}_noannot.bam
-    find . -name "*_noannot.bam" | sed 's/\.bam_noannot\.bam//g' | \
+    find . -name "*_noannot.bam" | sed 's/\\.bam_noannot\\.bam//g' | \
     awk '{system("mv "\$0".bam_noannot.bam "\$0"_noannot.bam")}'
     file_handle.py -f *_noannot.bam*
   """
