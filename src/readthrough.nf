@@ -64,19 +64,6 @@ process sort_bam {
     """
 }
 
-process indexing_bam {
-  echo params.verbose
-  input:
-    file bam from sorted_bams
-  output:
-    file "*.bam*" into indexed_bams
-  script:
-  """
-    samtools index ${bam}
-    file_handle.py -f *.bam*
-  """
-}
-
 process split_bam {
   echo params.verbose
   publishDir "${results_path}/readthrough/bam_spliting", mode: 'copy'
