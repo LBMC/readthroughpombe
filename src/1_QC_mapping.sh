@@ -9,4 +9,4 @@ bin/nextflow src/pipeline.nf -c src/pipeline.config -profile docker --fastq "dat
 bin/nextflow src/reversecomplement.nf -c src/pipe/conf/reversecomplement_docker.config --fastq "results/quality_control/trimming/2017_09_*.fastq.gz"
 
 # mapping
-bin/nextflow src/pipeline.nf -c src/pipeline.config -profile docker --fastq "results/reversecomplement/*_rev.fastq.gz" --fasta 'data/2017_09_19_Schizosaccharomyces_pombe.ASM294v2.30.dna.genome.fasta.gz' --todo "bowtie2"
+bin/nextflow src/pipeline.nf -c src/pipeline.config -profile docker --fastq "results/reversecomplement/*_rev.fastq.gz" --fasta 'data/2017_09_19_Schizosaccharomyces_pombe.ASM294v2.30.dna.genome.fasta.gz' --todo "bowtie2" -resume
