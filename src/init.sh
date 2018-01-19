@@ -105,4 +105,5 @@ wget http://www.bioinformatics.babraham.ac.uk/projects/fastqc/fastqc_v0.11.5.zip
 
 ################################################################################
 # readthrough detection
+docker build src/func/docker_reversecomplement -t 'reversecomplement:0.0.1'
 docker build src/func/docker_readthrough -t 'readthrough:0.0.1'
