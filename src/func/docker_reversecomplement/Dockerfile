@@ -35,3 +35,10 @@ RUN apt-get update && \
 RUN curl -k -L https://github.com/shenwei356/seqkit/releases/download/v${SEQKIT_VERSION}/seqkit_linux_amd64.tar.gz -o seqkit_linux_amd64.tar.gz && \
   tar xvf seqkit_linux_amd64.tar.gz && \
   cp seqkit /usr/local/bin/
+
+# install file_handle
+RUN git clone https://github.com/LBMC/file_handle.git && \
+    cd file_handle && \
+    git checkout tags/v${FILE_HANDLE_VERSION} && \
+    cp src/file_handle.py /usr/bin/file_handle.py && \
+    chmod +x /usr/bin/file_handle.py
