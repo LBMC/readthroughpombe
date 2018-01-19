@@ -36,7 +36,7 @@
 * knowledge of the CeCILL license and that you accept its terms.
 */
 
-params.vebose = true
+params.verbose = false
 params.bams = ""
 params.annotation = ""
 
@@ -49,7 +49,7 @@ annotation_file = Channel.fromPath(params.annotation)
 
 process sort_bam {
   echo params.verbose
-  publishDir "${results_path}/readthrough/bam_sorting", mode: 'copy'
+  publishDir "results/readthrough/bam_sorting", mode: 'copy'
   cpus = 4
   input:
     file bam from bam_files
@@ -66,7 +66,7 @@ process sort_bam {
 
 process split_bam {
   echo params.verbose
-  publishDir "${results_path}/readthrough/bam_spliting", mode: 'copy'
+  publishDir "results/readthrough/bam_spliting", mode: 'copy'
   cpus = 2
   input:
     file bam from sorted_bams
@@ -85,14 +85,31 @@ process split_bam {
   """
 }
 
-annotation_file.into{
-  annotation_forward;
-  annotation_reverse
+process gff_to_bed {
+  echo params.verbose
+  publishDir "results/readthrough/annotation", mode: 'copy'
+  cpus 4
+  input:
+    file annotation from annotation_file
+  output:
+    file "*_forward.bed*" into annotation_forward
+    file "*_reverse.bed*" into annotation_reverse
+  script:
+  """
+  ls -l
+  convert2bed --input=gff --output=bed < ${annotation} > ${annotation}.bed
+  awk '{if(\$6 == "+"){print \$0 >> "${annotation}_forward.bed"}; if(\$6 == "-"){print \$0 >> "${annotation}_reverse.bed"}'} ${annotation}.bed
+  find . -name "*gff3_forward.bed" | sed 's/\\.gff3_forward\\.bed//g' | \
+  awk '{system("mv "\$0".gff3_forward.bed "\$0"_forward.bed")}'
+  find . -name "*_reverse.bed" | sed 's/\\.gff3_reverse\\.bed//g' | \
+  awk '{system("mv "\$0".gff3_reverse.bed "\$0"_reverse.bed")}'
+  ls -l
+  """
 }
 
 process filter_forward {
   echo params.verbose
-  publishDir "${results_path}/readthrough/bam_filtering", mode: 'copy'
+  publishDir "results/readthrough/bam_filtering", mode: 'copy'
   cpus 4
   input:
     file bam from forward_bams
@@ -105,13 +122,15 @@ process filter_forward {
     samtools index ${bam}_noannot.bam
     find . -name "*_noannot.bam" | sed 's/\\.bam_noannot\\.bam//g' | \
     awk '{system("mv "\$0".bam_noannot.bam "\$0"_noannot.bam")}'
+    find . -name "*_noannot.bam.bai" | sed 's/\\.bam_noannot\\.bam.bai//g' | \
+    awk '{system("mv "\$0".bam_noannot.bam.bai "\$0"_noannot.bam.bai")}'
     file_handle.py -f *_noannot.bam*
   """
 }
 
 process filter_reverse {
   echo params.verbose
-  publishDir "${results_path}/readthrough/bam_filtering", mode: 'copy'
+  publishDir "results/readthrough/bam_filtering", mode: 'copy'
   cpus 4
   input:
     file bam from reverse_bams
@@ -124,6 +143,8 @@ process filter_reverse {
     samtools index ${bam}_noannot.bam
     find . -name "*_noannot.bam" | sed 's/\\.bam_noannot\\.bam//g' | \
     awk '{system("mv "\$0".bam_noannot.bam "\$0"_noannot.bam")}'
+    find . -name "*_noannot.bam.bai" | sed 's/\\.bam_noannot\\.bam.bai//g' | \
+    awk '{system("mv "\$0".bam_noannot.bam.bai "\$0"_noannot.bam.bai")}'
     file_handle.py -f *_noannot.bam*
   """
 }
