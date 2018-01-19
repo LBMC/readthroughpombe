@@ -5,6 +5,7 @@ ENV FILE_HANDLE_VERSION 0.1.1
 ENV BOWTIE2_VERSION 2.3.2
 ENV SAMTOOLS_VERSION 1.5
 ENV MUSIC_VERSION 6613c532bf21d958ae380f064cc7752f3e8c368f
+ENV BEDOOPS_VERSION 2.4.30
 
 ENV PACKAGES curl=7.47.0* \
     git=1:2.7.4-0* \
@@ -66,3 +67,8 @@ RUN curl -k -L https://sourceforge.net/projects/samtools/files/samtools/${SAMTOO
   make && \
   make install && \
   cd .. && rm -Rf samtools-${SAMTOOLS_VERSION}*
+
+# install bedops
+RUN curl -k -L https://github.com/bedops/bedops/releases/download/v2.4.30/bedops_linux_x86_64-v${BEDOOPS_VERSION}.tar.bz2 -o bedops_linux_x86_64-v${BEDOOPS_VERSION}.tar.bz2 && \
+  tar xvf bedops_linux_x86_64-v${BEDOOPS_VERSION}.tar.bz2 && \
+  cp bin/* /usr/local/bin/
