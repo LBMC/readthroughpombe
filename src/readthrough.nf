@@ -83,17 +83,20 @@ process split_bam {
   input:
     file bam from sorted_bams
   output:
-    file "*_forward.bam*" into forward_bams
-    file "*_reverse.bam*" into reverse_bams
+    file "forward/*_forward.bam*" into forward_bams
+    file "reverse/*_reverse.bam*" into reverse_bams
   script:
   """
     samtools view -hb -F 0x10 ${bam} > ${bam}_forward.bam &
     samtools view -hb -f 0x10 ${bam} > ${bam}_reverse.bam
+    mkdir -p forward reverse
     find . -name "*_forward.bam" | sed 's/\\.bam_forward\\.bam//g' | \
     awk '{system("mv "\$0".bam_forward.bam "\$0"_forward.bam")}'
     find . -name "*_reverse.bam" | sed 's/\\.bam_reverse\\.bam//g' | \
     awk '{system("mv "\$0".bam_reverse.bam "\$0"_reverse.bam")}'
     file_handle.py -f *_forward.bam *_reverse.bam
+    mv *_forward.bam forward/
+    mv *_reverse.bam reverse/
   """
 }
 
@@ -125,20 +128,32 @@ genome_file.into{
   genome_file_annotation_reverse
 }
 
+annotation_forward.into{
+  annotation_forward_to_merge;
+  annotation_forward_to_negate
+}
+
+annotation_reverse.into{
+  annotation_reverse_to_merge;
+  annotation_reverse_to_negate
+}
+
 process negative_forward {
   echo params.verbose
   publishDir "results/readthrough/bams/forward", mode: 'copy'
   cpus 4
   input:
     file genome from genome_file_annotation_forward
-    file annotation from annotation_forward
+    file annotation from annotation_forward_to_negate
   output:
     file "*_negative.bed" into annotation_negative_forward
   script:
   """
-  bedtools complement -i ${annotation} -g ${genome} > ${annotation}_negative.bed
-  find . -name "*_negative.bed" | sed 's/\\.gff3_negative\\.bed//g' | \
-  awk '{system("mv "\$0".gff3_negative.bed "\$0"_negative.bed")}'
+  samtools faidx ${genome}
+  awk -v OFS='\t' '{print \$1,\$2}' ${genome}.fai > ${genome}.genome
+  bedtools complement -i ${annotation} -g ${genome}.genome > ${annotation}_negative.bed
+  find . -name "*_negative.bed" | sed 's/\\.bed_negative\\.bed//g' | \
+  awk '{system("mv "\$0".bed_negative.bed "\$0"_negative.bed")}'
   file_handle.py -f *_negative.bed
   """
 }
@@ -149,14 +164,16 @@ process negative_reverse {
   cpus 4
   input:
     file genome from genome_file_annotation_reverse
-    file annotation from annotation_reverse
+    file annotation from annotation_reverse_to_negate
   output:
     file "*_negative.bed" into annotation_negative_reverse
   script:
   """
-  bedtools complement -i ${annotation} -g ${genome} > ${annotation}_negative.bed
-  find . -name "*_negative.bed" | sed 's/\\.gff3_negative\\.bed//g' | \
-  awk '{system("mv "\$0".gff3_negative.bed "\$0"_negative.bed")}'
+  samtools faidx ${genome}
+  awk -v OFS='\t' '{print \$1,\$2}' ${genome}.fai > ${genome}.genome
+  bedtools complement -i ${annotation} -g ${genome}.genome > ${annotation}_negative.bed
+  find . -name "*_negative.bed" | sed 's/\\.bed_negative\\.bed//g' | \
+  awk '{system("mv "\$0".bed_negative.bed "\$0"_negative.bed")}'
   file_handle.py -f *_negative.bed
   """
 }
@@ -373,6 +390,19 @@ deduplicated_forward.choice(
   wt_deduplicated_forward,
   mutant_deduplicated_forward){ a -> a =~ /.*_wt/ ? 0 : 1 }
 
+  wt_reverse_bams =  Channel.create()
+  mutant_reverse_bams =  Channel.create()
+  wt_deduplicated_reverse =  Channel.create()
+  mutant_deduplicated_reverse =  Channel.create()
+
+  filtered_reverse_bams_peak_calling.choice(
+    wt_reverse_bams,
+    mutant_reverse_bams){ a -> a =~ /.*_wt_.*/ ? 0 : 1 }
+
+  deduplicated_reverse.choice(
+    wt_deduplicated_reverse,
+    mutant_deduplicated_reverse){ a -> a =~ /.*_wt/ ? 0 : 1 }
+
 process music_forward_computation {
   echo params.verbose
   publishDir "results/readthrough/peak_calling/forward", mode: 'copy'
@@ -386,45 +416,36 @@ process music_forward_computation {
     file mapp from mappability_forward.first()
   output:
     file "*" into music_output_forward
-    file "*ERs*.bed" into peaks_forward
+    file "*_ERs*.bed" into peaks_forward
   script:
   """
   mkdir mappability
   mv ${mapp} mappability/
-  file_handle.py -f mappability/*
+
   mkdir wt
   mv ${wt_deduplicated} wt/
-  find wt/* | sed 's/_wt//g' |awk '{system("mv "\$0"_wt "\$0)}'
+  find wt/ | sed 's/_wt//g' |awk '{system("mv "\$0"_wt "\$0)}'
   mv ${wt_bams} wt/
-  file_handle.py -f wt/*
+
   mkdir mutant
   mv ${mutant_deduplicated} mutant/
-  find mutant/* | sed 's/_mutant//g' |awk '{system("mv "\$0"_mutant "\$0)}'
+  find mutant/ | sed 's/_mutant//g' |awk '{system("mv "\$0"_mutant "\$0)}'
   mv ${mutant_bams} mutant/
-  file_handle.py -f mutant/*
+
   MUSIC -get_per_win_p_vals_vs_FC -chip mutant/ -control wt/ \
     -l_win_step 50 -l_win_min 50 -l_win_max 5000
   MUSIC -get_multiscale_punctate_ERs \
     -chip mutant/ -control wt/ -mapp mappability/ \
     -begin_l 100 -end_l 500 -step 1.1 \
     -l_mapp ${params.reads_size} -l_frag ${params.frag_size} -q_val 1 -l_p 0
-  find mutant/*.bam | sed 's/\\.bam//g' | sed 's/mutant\\///g' |  awk '{system("mkdir "\$0"; mv * "\$0"; cp "\$0"/ERs*.bed ./")}'
+
+  rm -Rf wt mutant
+  find mutant/*.bam | \
+  sed 's/\\.bam//g' | sed 's/mutant\\///g' | \
+  awk '{system("mkdir "\$0"; mv * "\$0"; cp "\$0"/*_ERs*.bed ./")}'
   file_handle.py -f *
   """
 }
-
-wt_reverse_bams =  Channel.create()
-mutant_reverse_bams =  Channel.create()
-wt_deduplicated_reverse =  Channel.create()
-mutant_deduplicated_reverse =  Channel.create()
-
-filtered_reverse_bams_peak_calling.choice(
-  wt_reverse_bams,
-  mutant_reverse_bams){ a -> a =~ /.*_wt_.*/ ? 0 : 1 }
-
-deduplicated_reverse.choice(
-  wt_deduplicated_reverse,
-  mutant_deduplicated_reverse){ a -> a =~ /.*_wt/ ? 0 : 1 }
 
 process music_reverse_computation {
   echo params.verbose
@@ -439,29 +460,33 @@ process music_reverse_computation {
     file mapp from mappability_reverse.first()
   output:
     file "*" into music_output_reverse
-    file "*ERs*.bed" into peaks_reverse
+    file "*_ERs*.bed" into peaks_reverse
   script:
   """
   mkdir mappability
   mv ${mapp} mappability/
-  file_handle.py -f mappability/*
+
   mkdir wt
   mv ${wt_deduplicated} wt/
   find wt/ | sed 's/_wt//g' |awk '{system("mv "\$0"_wt "\$0)}'
   mv ${wt_bams} wt/
-  file_handle.py -f wt/*
+
   mkdir mutant
   mv ${mutant_deduplicated} mutant/
   find mutant/ | sed 's/_mutant//g' |awk '{system("mv "\$0"_mutant "\$0)}'
   mv ${mutant_bams} mutant/
-  file_handle.py -f mutant/*
+
   MUSIC -get_per_win_p_vals_vs_FC -chip mutant/ -control wt/ \
     -l_win_step 50 -l_win_min 50 -l_win_max 5000
   MUSIC -get_multiscale_punctate_ERs \
     -chip mutant/ -control wt/ -mapp mappability/ \
     -begin_l 100 -end_l 500 -step 1.1 \
     -l_mapp ${params.reads_size} -l_frag ${params.frag_size} -q_val 1 -l_p 0
-  find mutant/*.bam | sed 's/\\.bam//g' | sed 's/mutant\\///g' | awk '{system("mkdir "\$0"; mv * "\$0"; cp "\$0"/ERs*.bed ./")}'
+
+  rm -Rf wt mutant
+  find mutant/*.bam | \
+  sed 's/\\.bam//g' | sed 's/mutant\\///g' | \
+  awk '{system("mkdir "\$0"; mv * "\$0"; cp "\$0"/*_ERs*.bed ./")}'
   file_handle.py -f *
   """
 }
@@ -473,13 +498,15 @@ process bed_merge_forward {
   input:
     file bed from peaks_forward.collect()
   output:
-    file "concatenate_forward.bed" into peak_final_forward
+    file "*_forward.bed" into peaks_final_forward
   script:
   """
   cat ${bed} > concatenate_forward_m.bed
   bedtools sort -i concatenate_forward_m.bed > concatenate_forward_s.bed
-  bedtools merge -i concatenate_forward_s.bed > concatenate_forward.bed
-  file_handle.py -f concatenate_forward.bed
+  bedtools merge -d ${params.reads_size} -i concatenate_forward_s.bed > concatenate_forward_u.bed
+  awk -v OFS='\t' '{print \$0, ".", ".", "+", ".", "RT", ".", "."}' \
+  concatenate_forward_u.bed > peak_calling_forward.bed
+  file_handle.py -f peak_calling_forward.bed
   """
 }
 
@@ -490,13 +517,87 @@ process bed_merge_reverse {
   input:
     file bed from peaks_reverse.collect()
   output:
-    file "concatenate_reverse.bed" into peak_final_reverse
+    file "*_reverse.bed" into peaks_final_reverse
   script:
   """
   cat ${bed} > concatenate_reverse_m.bed
   bedtools sort -i concatenate_reverse_m.bed > concatenate_reverse_s.bed
-  bedtools merge -i concatenate_reverse_s.bed > concatenate_reverse.bed
-  sed -i 's/+/-/g' concatenate_reverse.bed
-  file_handle.py -f concatenate_forward.bed
+  bedtools merge -d ${params.reads_size} -i concatenate_reverse_s.bed > concatenate_reverse_u.bed
+  awk -v OFS='\t' '{print \$0, ".", ".", "-", ".", "RT", ".", "."}' \
+  concatenate_reverse_u.bed > peak_calling_reverse.bed
+  file_handle.py -f peak_calling_reverse.bed
+  """
+}
+
+process peak_merge_forward {
+  echo params.verbose
+  publishDir "results/readthrough/peak_calling/", mode: 'copy'
+  cpus 1
+  input:
+    file peaks from peaks_final_forward
+    file annotation from annotation_forward_to_merge
+  output:
+    file "*RT_forward.bed" into rt_forward
+  script:
+  """
+  cat ${peaks} ${annotation} > to_merge_forward.bed
+  bedtools sort -i to_merge_forward.bed > to_merge_forward_s.bed
+
+  tac to_merge_forward_s.bed | \
+  awk -v OFS='\t' '{
+    if (\$8 == "RT") {
+      rt_start = \$2;
+      rt_stop = \$3;
+    } else {
+      if (\$8 == "CDS" && rt_start != "" && rt_start <= (\$3 + 100) ) {
+        print \$0;
+        \$3 = rt_stop;
+        rt_start = "";
+        rt_stop = "";
+        \$8 = "CDS_RT";
+        print \$0;
+      } else {
+        print \$0;
+      }
+    }
+  }' > RT_forward.bed
+
+  file_handle.py -f RT_forward.bed
+  """
+}
+
+process peak_merge_reverse {
+  echo params.verbose
+  publishDir "results/readthrough/peak_calling/", mode: 'copy'
+  cpus 1
+  input:
+    file peaks from peaks_final_reverse
+    file annotation from annotation_reverse_to_merge
+  output:
+    file "*RT_reverse.bed" into rt_reverse
+  script:
+  """
+  cat ${peaks} ${annotation} > to_merge_reverse.bed
+  bedtools sort -i to_merge_reverse.bed > to_merge_reverse_s.bed
+
+  awk -v OFS='\t' '{
+    if (\$8 == "RT") {
+      rt_start = \$2;
+      rt_stop = \$3;
+    } else {
+      if (\$8 == "CDS" && rt_start != "" && rt_stop <= (\$3 - 100) ) {
+        print \$0
+        \$2 = rt_start;
+        rt_start = "";
+        rt_stop = "";
+        \$8 = "CDS_RT";
+        print \$0;
+      } else {
+        print \$0;
+      }
+    }
+  }' to_merge_reverse_s.bed > RT_reverse.bed
+
+  file_handle.py -f RT_reverse.bed
   """
 }
