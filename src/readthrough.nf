@@ -37,6 +37,7 @@
 */
 
 params.verbose = false
+params.name = ""
 params.bams = ""
 params.annotation = ""
 params.index = ""
@@ -61,7 +62,7 @@ genome_file = Channel.fromPath(params.genome)
 
 process sort_bam {
   echo params.verbose
-  publishDir "results/readthrough/bams", mode: 'copy'
+  publishDir "results/readthrough/bams/" + params.name, mode: 'copy'
   cpus 4
   input:
     file bam from bam_files
@@ -78,7 +79,7 @@ process sort_bam {
 
 process split_bam {
   echo params.verbose
-  publishDir "results/readthrough/bams", mode: 'copy'
+  publishDir "results/readthrough/bams" + params.name, mode: 'copy'
   cpus 2
   input:
     file bam from sorted_bams
@@ -102,7 +103,7 @@ process split_bam {
 
 process gff_to_bed {
   echo params.verbose
-  publishDir "results/readthrough/bams", mode: 'copy'
+  publishDir "results/readthrough/bams" + params.name, mode: 'copy'
   cpus 4
   input:
     file annotation from annotation_file
@@ -140,7 +141,7 @@ annotation_reverse.into{
 
 process negative_forward {
   echo params.verbose
-  publishDir "results/readthrough/bams/forward", mode: 'copy'
+  publishDir "results/readthrough/bams/" + params.name + "/forward", mode: 'copy'
   cpus 4
   input:
     file genome from genome_file_annotation_forward
@@ -160,7 +161,7 @@ process negative_forward {
 
 process negative_reverse {
   echo params.verbose
-  publishDir "results/readthrough/bams/reverse", mode: 'copy'
+  publishDir "results/readthrough/bams/" + params.name + "/reverse", mode: 'copy'
   cpus 4
   input:
     file genome from genome_file_annotation_reverse
@@ -180,7 +181,7 @@ process negative_reverse {
 
 process filter_forward {
   echo params.verbose
-  publishDir "results/readthrough/bams/forward", mode: 'copy'
+  publishDir "results/readthrough/bams/" + params.name + "/forward", mode: 'copy'
   cpus 4
   input:
     file bam from forward_bams
@@ -201,7 +202,7 @@ process filter_forward {
 
 process filter_reverse {
   echo params.verbose
-  publishDir "results/readthrough/bams/reverse", mode: 'copy'
+  publishDir "results/readthrough/bams/" + params.name + "/reverse", mode: 'copy'
   cpus 4
   input:
     file bam from reverse_bams
@@ -388,7 +389,7 @@ filtered_forward_bams_peak_calling.choice(
 
 deduplicated_forward.choice(
   wt_deduplicated_forward,
-  mutant_deduplicated_forward){ a -> a =~ /.*_wt/ ? 0 : 1 }
+  mutant_deduplicated_forward){ a -> a =~ /.*_wt_.*/ ? 0 : 1 }
 
   wt_reverse_bams =  Channel.create()
   mutant_reverse_bams =  Channel.create()
@@ -401,11 +402,11 @@ deduplicated_forward.choice(
 
   deduplicated_reverse.choice(
     wt_deduplicated_reverse,
-    mutant_deduplicated_reverse){ a -> a =~ /.*_wt/ ? 0 : 1 }
+    mutant_deduplicated_reverse){ a -> a =~ /.*_wt_.*/ ? 0 : 1 }
 
 process music_forward_computation {
   echo params.verbose
-  publishDir "results/readthrough/peak_calling/forward", mode: 'copy'
+  publishDir "results/readthrough/peak_calling/" + params.name + "/forward", mode: 'copy'
   memory '30GB'
   cpus 1
   input:
@@ -449,7 +450,7 @@ process music_forward_computation {
 
 process music_reverse_computation {
   echo params.verbose
-  publishDir "results/readthrough/peak_calling/reverse", mode: 'copy'
+  publishDir "results/readthrough/peak_calling/" + params.name + "/reverse", mode: 'copy'
   cpus 1
   memory '30GB'
   input:
@@ -505,8 +506,8 @@ process bed_merge_forward {
   bedtools sort -i concatenate_forward_m.bed > concatenate_forward_s.bed
   bedtools merge -d ${params.reads_size} -i concatenate_forward_s.bed > concatenate_forward_u.bed
   awk -v OFS='\t' '{print \$0, ".", ".", "+", ".", "RT", ".", "."}' \
-  concatenate_forward_u.bed > peak_calling_forward.bed
-  file_handle.py -f peak_calling_forward.bed
+  concatenate_forward_u.bed > ${params.name}_peak_calling_forward.bed
+  file_handle.py -f ${params.name}_peak_calling_forward.bed
   """
 }
 
@@ -524,8 +525,8 @@ process bed_merge_reverse {
   bedtools sort -i concatenate_reverse_m.bed > concatenate_reverse_s.bed
   bedtools merge -d ${params.reads_size} -i concatenate_reverse_s.bed > concatenate_reverse_u.bed
   awk -v OFS='\t' '{print \$0, ".", ".", "-", ".", "RT", ".", "."}' \
-  concatenate_reverse_u.bed > peak_calling_reverse.bed
-  file_handle.py -f peak_calling_reverse.bed
+  concatenate_reverse_u.bed > ${params.name}_peak_calling_reverse.bed
+  file_handle.py -f ${params.name}_peak_calling_reverse.bed
   """
 }
 
@@ -560,9 +561,9 @@ process peak_merge_forward {
         print \$0;
       }
     }
-  }' > RT_forward.bed
+  }' > ${params.name}_RT_forward.bed
 
-  file_handle.py -f RT_forward.bed
+  file_handle.py -f ${params.name}_RT_forward.bed
   """
 }
 
@@ -596,8 +597,8 @@ process peak_merge_reverse {
         print \$0;
       }
     }
-  }' to_merge_reverse_s.bed > RT_reverse.bed
+  }' to_merge_reverse_s.bed > ${params.name}_RT_reverse.bed
 
-  file_handle.py -f RT_reverse.bed
+  file_handle.py -f ${params.name}_RT_reverse.bed
   """
 }
