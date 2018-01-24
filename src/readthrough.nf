@@ -62,7 +62,7 @@ genome_file = Channel.fromPath(params.genome)
 process sort_bam {
   echo params.verbose
   publishDir "results/readthrough/bams", mode: 'copy'
-  cpus 5
+  cpus 4
   input:
     file bam from bam_files
   output:
@@ -549,12 +549,12 @@ process peak_merge_forward {
       rt_start = \$2;
       rt_stop = \$3;
     } else {
-      if (\$8 == "CDS" && rt_start != "" && rt_start <= (\$3 + 100) ) {
+      if (\$8 == "transcript" && rt_start != "" && rt_start <= (\$3 + 100) ) {
         print \$0;
         \$3 = rt_stop;
         rt_start = "";
         rt_stop = "";
-        \$8 = "CDS_RT";
+        \$8 = "transcript_RT";
         print \$0;
       } else {
         print \$0;
@@ -585,12 +585,12 @@ process peak_merge_reverse {
       rt_start = \$2;
       rt_stop = \$3;
     } else {
-      if (\$8 == "CDS" && rt_start != "" && rt_stop <= (\$3 - 100) ) {
+      if (\$8 == "transcript" && rt_start != "" && rt_stop <= (\$3 - 100) ) {
         print \$0
         \$2 = rt_start;
         rt_start = "";
         rt_stop = "";
-        \$8 = "CDS_RT";
+        \$8 = "transcript_RT";
         print \$0;
       } else {
         print \$0;
