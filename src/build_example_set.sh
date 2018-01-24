@@ -20,8 +20,8 @@ sed -i 's/>I:5219957-5420676/>I/g' data/example/example.fasta
 
 #get mapping
 find results/mapping/mapping/ -name "2018_01_19*[rrp6D|wt]_*_sort.bam" | \
-sed 's/results\/mapping\/mapping\/2018_01_17_//g' | \
-awk '{system("samtools index results/mapping/mapping/2018_01_17_"$0"; samtools view -@ 10 -b results/mapping/mapping/2018_01_17_"$0" -o data/example/example_"$0" I:5219957-5420676")}'
+sed 's/results\/mapping\/mapping\/2018_01_19_//g' | \
+awk '{system("samtools index results/mapping/mapping/2018_01_19_"$0"; samtools view -@ 10 -b results/mapping/mapping/2018_01_19_"$0" -o data/example/example_"$0" I:5219957-5420676")}'
 
 find data/example/*.bam | \
 sed 's/bam//g' | \
@@ -37,4 +37,4 @@ bin/nextflow src/pipeline.nf -c src/pipeline.config -profile docker --fastq "dat
 ################################################################################
 ########################### readthrough detection ##############################
 
-bin/nextflow src/readthrough.nf -c src/pipe/conf/readthrough_docker.config --bams "results/mapping/mapping/*_example*.bam" --annotation "data/example/example.gff3" --index "results/mapping/indexing/2018_01_18_example.index*" --genome "data/example/example.fasta" --reads_size 5- --frag_size 363 -resume
+bin/nextflow src/readthrough.nf -c src/pipe/conf/readthrough_docker.config --bams "results/mapping/mapping/*example*_sort_sort.bam" --annotation "data/example/example.gff3" --index "results/mapping/indexing/2018_01_18_example.index*" --genome "data/example/example.fasta" --reads_size 50 --frag_size 363 -resume
