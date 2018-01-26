@@ -661,21 +661,3 @@ process peak_merge_reverse {
   file_handle.py -f ${params.name}_RT_reverse.bed
   """
 }
-
-// process peak_transcript_forward {
-//   echo params.verbose
-//   publishDir "results/readthrough/quantification/" +, mode: 'copy'
-//   cpus 1
-//   input:
-//     file peaks from peaks_final_reverse
-//     file genome from genome_file_transcript_forward
-//   output:
-//     file "*_forward.fasta" into transcript_forward
-//   script:
-//   """
-//   ${peaks}
-//   bedtools getfasta -fi ${genome} -bed ${peaks} \
-//   > ${params.name}_transcript_forward.bed
-//   file_handle.py -f ${params.name}_transcript_forward.bed
-//   """
-// }
