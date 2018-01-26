@@ -139,8 +139,9 @@ process gff_to_bed {
 
 genome_file.into{
   genome_file_mappability;
-  genome_file_annotation_forward;
-  genome_file_annotation_reverse
+  genome_file_to_annotate;
+  genome_file_transcript_forward;
+  genome_file_transcript_reverse
 }
 
 annotation_forward.into{
@@ -151,6 +152,29 @@ annotation_forward.into{
 annotation_reverse.into{
   annotation_reverse_to_merge;
   annotation_reverse_to_negate
+}
+
+process build_genome {
+  echo params.verbose
+  publishDir "results/readthrough/bams/" + params.name + "/", mode: 'copy'
+  cpus 4
+  input:
+    file genome from genome_file_to_annotate
+  output:
+    file "*.genome" into genome_file_annotation
+  script:
+  """
+  samtools faidx ${genome}
+  awk -v OFS='\t' '{print \$1,\$2}' ${genome}.fai > ${genome}.genome
+  file_handle.py -f *.genome
+  """
+}
+
+genome_file_annotation.into{
+  genome_file_annotation_forward;
+  genome_file_annotation_reverse;
+  genome_file_peak_merge_forward;
+  genome_file_peak_merge_reverse
 }
 
 process negative_forward {
@@ -164,9 +188,7 @@ process negative_forward {
     file "*_negative.bed" into annotation_negative_forward
   script:
   """
-  samtools faidx ${genome}
-  awk -v OFS='\t' '{print \$1,\$2}' ${genome}.fai > ${genome}.genome
-  bedtools complement -i ${annotation} -g ${genome}.genome > ${annotation}_negative.bed
+  bedtools complement -i ${annotation} -g ${genome} > ${annotation}_negative.bed
   find . -name "*_negative.bed" | sed 's/\\.bed_negative\\.bed//g' | \
   awk '{system("mv "\$0".bed_negative.bed "\$0"_negative.bed")}'
   file_handle.py -f *_negative.bed
@@ -184,9 +206,7 @@ process negative_reverse {
     file "*_negative.bed" into annotation_negative_reverse
   script:
   """
-  samtools faidx ${genome}
-  awk -v OFS='\t' '{print \$1,\$2}' ${genome}.fai > ${genome}.genome
-  bedtools complement -i ${annotation} -g ${genome}.genome > ${annotation}_negative.bed
+  bedtools complement -i ${annotation} -g ${genome} > ${annotation}_negative.bed
   find . -name "*_negative.bed" | sed 's/\\.bed_negative\\.bed//g' | \
   awk '{system("mv "\$0".bed_negative.bed "\$0"_negative.bed")}'
   file_handle.py -f *_negative.bed
@@ -451,7 +471,7 @@ process music_forward_computation {
     -l_win_step 50 -l_win_min 50 -l_win_max 5000
   MUSIC -get_multiscale_punctate_ERs \
     -chip mutant/ -control wt/ -mapp mappability/ \
-    -begin_l 100 -end_l 500 -step 1.1 \
+    -begin_l 50 -end_l 500 -step 1.1 \
     -l_mapp ${params.reads_size} -l_frag ${params.frag_size} -q_val 1 -l_p 0
 
     find mutant/*.bam |\
@@ -496,7 +516,7 @@ process music_reverse_computation {
     -l_win_step 50 -l_win_min 50 -l_win_max 5000
   MUSIC -get_multiscale_punctate_ERs \
     -chip mutant/ -control wt/ -mapp mappability/ \
-    -begin_l 100 -end_l 500 -step 1.1 \
+    -begin_l 50 -end_l 500 -step 1.1 \
     -l_mapp ${params.reads_size} -l_frag ${params.frag_size} -q_val 1 -l_p 0
 
   find mutant/*.bam |\
@@ -512,38 +532,60 @@ process music_reverse_computation {
 process bed_merge_forward {
   echo params.verbose
   publishDir "results/readthrough/peak_calling/", mode: 'copy'
-  cpus 1
+  echo true
   input:
     file bed from peaks_forward.collect()
+    file genome from genome_file_peak_merge_forward
   output:
+    file "*_forward_full.bed" into peaks_final_forward_full
     file "*_forward.bed" into peaks_final_forward
   script:
   """
   cat ${bed} > concatenate_forward_m.bed
-  bedtools sort -i concatenate_forward_m.bed > concatenate_forward_s.bed
-  bedtools merge -d ${params.reads_size} -i concatenate_forward_s.bed > concatenate_forward_u.bed
-  awk -v OFS='\t' '{print \$0, ".", ".", "+", ".", "RT", ".", "."}' \
+  bedtools sort -i concatenate_forward_m.bed | \
+  awk -v OFS='\t' '{print \$1, \$2, \$3, "-"}' > concatenate_forward_s.bed
+
+  bedtools genomecov -bg -i concatenate_forward_s.bed -g ${genome} | \
+  awk -v OFS='\t' '{if(\$4 >= ${bed.size()/2}) {print \$0}}' \
+  > concatenate_forward_cov.bed
+
+  bedtools merge -d ${params.reads_size} -i concatenate_forward_cov.bed \
+  > concatenate_forward_u.bed
+  awk -v OFS='\t' '{ print \$0, ".", ".", "+", ".", "RT", ".", "."}' \
   concatenate_forward_u.bed > ${params.name}_peak_calling_forward.bed
-  file_handle.py -f ${params.name}_peak_calling_forward.bed
+
+  cp concatenate_forward_s.bed ${params.name}_peak_calling_forward_full.bed
+  file_handle.py -f *_forward.bed *_forward_full.bed
   """
 }
 
 process bed_merge_reverse {
   echo params.verbose
   publishDir "results/readthrough/peak_calling/", mode: 'copy'
-  cpus 1
+  echo true
   input:
     file bed from peaks_reverse.collect()
+    file genome from genome_file_peak_merge_reverse
   output:
+    file "*_reverse_full.bed" into peaks_final_reverse_full
     file "*_reverse.bed" into peaks_final_reverse
   script:
   """
   cat ${bed} > concatenate_reverse_m.bed
-  bedtools sort -i concatenate_reverse_m.bed > concatenate_reverse_s.bed
-  bedtools merge -d ${params.reads_size} -i concatenate_reverse_s.bed > concatenate_reverse_u.bed
-  awk -v OFS='\t' '{print \$0, ".", ".", "-", ".", "RT", ".", "."}' \
+  bedtools sort -i concatenate_reverse_m.bed | \
+  awk -v OFS='\t' '{print \$1, \$2, \$3, "-"}' > concatenate_reverse_s.bed
+
+  bedtools genomecov -bg -i concatenate_reverse_s.bed -g ${genome} | \
+  awk -v OFS='\t' '{if(\$4 >= ${bed.size()/2}) {print \$0}}' \
+  > concatenate_reverse_cov.bed
+
+  bedtools merge -d ${params.reads_size} -i concatenate_reverse_cov.bed \
+  > concatenate_reverse_u.bed
+  awk -v OFS='\t' '{ print \$0, ".", ".", "-", ".", "RT", ".", "."}' \
   concatenate_reverse_u.bed > ${params.name}_peak_calling_reverse.bed
-  file_handle.py -f ${params.name}_peak_calling_reverse.bed
+
+  cp concatenate_reverse_s.bed ${params.name}_peak_calling_reverse_full.bed
+  file_handle.py -f *_reverse.bed *_reverse_full.bed
   """
 }
 
@@ -626,32 +668,14 @@ process peak_merge_reverse {
 //   cpus 1
 //   input:
 //     file peaks from peaks_final_reverse
-//     file annotation from annotation_reverse_to_merge
+//     file genome from genome_file_transcript_forward
 //   output:
-//     file "*RT_reverse.bed" into rt_reverse
+//     file "*_forward.fasta" into transcript_forward
 //   script:
 //   """
-//   cat ${peaks} ${annotation} > to_merge_reverse.bed
-//   bedtools sort -i to_merge_reverse.bed > to_merge_reverse_s.bed
-//
-//   awk -v OFS='\t' '{
-//     if (\$8 == "RT") {
-//       rt_start = \$2;
-//       rt_stop = \$3;
-//     } else {
-//       if (\$8 == "transcript" && rt_start != "" && rt_stop <= (\$3 - 100) ) {
-//         print \$0
-//         \$2 = rt_start;
-//         rt_start = "";
-//         rt_stop = "";
-//         \$8 = "transcript_RT";
-//         print \$0;
-//       } else {
-//         print \$0;
-//       }
-//     }
-//   }' to_merge_reverse_s.bed > ${params.name}_RT_reverse.bed
-//
-//   file_handle.py -f ${params.name}_RT_reverse.bed
+//   ${peaks}
+//   bedtools getfasta -fi ${genome} -bed ${peaks} \
+//   > ${params.name}_transcript_forward.bed
+//   file_handle.py -f ${params.name}_transcript_forward.bed
 //   """
 // }
