@@ -540,7 +540,7 @@ process bed_merge_forward {
     file bed from peaks_forward.collect()
     file genome from genome_file_peak_merge_forward
   output:
-    file "*_forward_full.bed" into peaks_final_forward_full
+    file "*_forward_full_*.bed" into peaks_final_forward_full
     file "*_forward.bed" into peaks_final_forward
   script:
   """
@@ -570,7 +570,7 @@ process bed_merge_reverse {
     file bed from peaks_reverse.collect()
     file genome from genome_file_peak_merge_reverse
   output:
-    file "*_reverse_full.bed" into peaks_final_reverse_full
+    file "*_reverse_full_*.bed" into peaks_final_reverse_full
     file "*_reverse.bed" into peaks_final_reverse
   script:
   """
