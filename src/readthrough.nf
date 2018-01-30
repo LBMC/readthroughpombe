@@ -46,6 +46,8 @@ params.index = ""
 params.genome = ""
 params.reads_size = 0
 params.frag_size = 200
+params.begin_l = 50
+params.end_l = 500
 
 bam_files = Channel
     .fromPath(params.bams, glob: true)
@@ -165,7 +167,8 @@ process build_genome {
   script:
   """
   samtools faidx ${genome}
-  awk -v OFS='\t' '{print \$1,\$2}' ${genome}.fai > ${genome}.genome
+  awk -v OFS='\t' '{print \$1,\$2}' ${genome}.fai | \
+  sort -k1 > ${genome}.genome
   file_handle.py -f *.genome
   """
 }
@@ -471,10 +474,10 @@ process music_forward_computation {
     -l_win_step 50 -l_win_min 50 -l_win_max 5000
   MUSIC -get_multiscale_punctate_ERs \
     -chip mutant/ -control wt/ -mapp mappability/ \
-    -begin_l 50 -end_l 500 -step 1.1 \
+    -begin_l ${params.begin_l} -end_l ${params.end_l} -step 1.1 \
     -l_mapp ${params.reads_size} -l_frag ${params.frag_size} -q_val 1 -l_p 0
 
-    find mutant/*.bam |\
+  find mutant/*.bam |\
     sed 's/\\.bam//g' |\
     sed 's/mutant\\///g' |\
     sed 's/\\(.*\\)_rev*/\\1/g' |\
@@ -516,15 +519,15 @@ process music_reverse_computation {
     -l_win_step 50 -l_win_min 50 -l_win_max 5000
   MUSIC -get_multiscale_punctate_ERs \
     -chip mutant/ -control wt/ -mapp mappability/ \
-    -begin_l 50 -end_l 500 -step 1.1 \
+    -begin_l ${params.begin_l} -end_l ${params.end_l} -step 1.1 \
     -l_mapp ${params.reads_size} -l_frag ${params.frag_size} -q_val 1 -l_p 0
 
   find mutant/*.bam |\
-  sed 's/\\.bam//g' |\
-  sed 's/mutant\\///g' |\
-  sed 's/\\(.*\\)_rev*/\\1/g' |\
-  sed 's/\\(.*\\)_trim*/\\1/g' |\
-  awk '{system("mkdir "\$0"; rm -Rf wt mutant; mv * "\$0"; cp "\$0"/ERs*.bed ./")}'
+    sed 's/\\.bam//g' |\
+    sed 's/mutant\\///g' |\
+    sed 's/\\(.*\\)_rev*/\\1/g' |\
+    sed 's/\\(.*\\)_trim*/\\1/g' |\
+    awk '{system("mkdir "\$0"; rm -Rf wt mutant; mv * "\$0"; cp "\$0"/ERs*.bed ./")}'
   file_handle.py -f *
   """
 }
@@ -554,8 +557,8 @@ process bed_merge_forward {
   awk -v OFS='\t' '{ print \$0, ".", ".", "+", ".", "RT", ".", "."}' \
   concatenate_forward_u.bed > ${params.name}_peak_calling_forward.bed
 
-  cp concatenate_forward_s.bed ${params.name}_peak_calling_forward_full.bed
-  file_handle.py -f *_forward.bed *_forward_full.bed
+  cp concatenate_forward_s.bed ${params.name}_peak_calling_forward_full_${params.begin_l}_${params.end_l}.bed
+  file_handle.py -f *_forward.bed *_forward_full_${params.begin_l}_${params.end_l}.bed
   """
 }
 
@@ -584,8 +587,8 @@ process bed_merge_reverse {
   awk -v OFS='\t' '{ print \$0, ".", ".", "-", ".", "RT", ".", "."}' \
   concatenate_reverse_u.bed > ${params.name}_peak_calling_reverse.bed
 
-  cp concatenate_reverse_s.bed ${params.name}_peak_calling_reverse_full.bed
-  file_handle.py -f *_reverse.bed *_reverse_full.bed
+  cp concatenate_reverse_s.bed ${params.name}_peak_calling_reverse_full_${params.begin_l}_${params.end_l}.bed
+  file_handle.py -f *_reverse.bed *_reverse_full_${params.begin_l}_${params.end_l}.bed
   """
 }
 
