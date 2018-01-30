@@ -603,7 +603,7 @@ process peak_merge_forward {
     file "*RT_forward.bed" into rt_forward
   script:
   """
-  bedtools substract -a ${peaks} -b ${annotation} > peaks_cleaned.bed
+  bedtools subtract -a ${peaks} -b ${annotation} > peaks_cleaned.bed
   cat peaks_cleaned.bed ${annotation} > to_merge_forward.bed
   bedtools sort -i to_merge_forward.bed > to_merge_forward_s.bed
 
@@ -641,7 +641,7 @@ process peak_merge_reverse {
     file "*RT_reverse.bed" into rt_reverse
   script:
   """
-  bedtools substract -a ${peaks} -b ${annotation} > peaks_cleaned.bed
+  bedtools subtract -a ${peaks} -b ${annotation} > peaks_cleaned.bed
   cat peaks_cleaned.bed ${annotation} > to_merge_reverse.bed
   bedtools sort -i to_merge_reverse.bed > to_merge_reverse_s.bed
 
