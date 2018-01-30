@@ -39,6 +39,47 @@ bin/nextflow src/pipeline.nf -c src/pipeline.config -profile docker --fastq "dat
 
 bin/nextflow src/readthrough.nf -c src/pipe/conf/readthrough_docker.config --name "example_rrp6D" --bams "data/example/bams_rrp6D.csv" --annotation "data/example/example.gff3" --index "results/mapping/indexing/2018_01_18_example.index*" --genome "data/example/example.fasta" --reads_size 50 --frag_size 363
 
-bin/nextflow src/readthrough.nf -c src/pipe/conf/readthrough_docker.config --name "example_cut14" --bams "data/example/bams_cut14.csv" --annotation "data/example/example.gff3" --index "results/mapping/indexing/2018_01_18_example.index*" --genome "data/example/example.fasta" --reads_size 50 --frag_size 363 -resume
+bin/nextflow src/readthrough.nf -c src/pipe/conf/readthrough_docker.config --name "example_cut14" --bams "data/example/bams_cut14.csv" --annotation "data/example/example.gff3" --index "results/mapping/indexing/2018_01_18_example.index*" --genome "data/example/example.fasta" --reads_size 50 --frag_size 363 -resume --begin_l 25 --end_l 50
 
 bin/nextflow src/readthrough.nf -c src/pipe/conf/readthrough_docker.config --name "example_cut14_cdc15" --bams "data/example/bams_cut14_cdc15.csv" --annotation "data/example/example.gff3" --index "results/mapping/indexing/2018_01_18_example.index*" --genome "data/example/example.fasta" --reads_size 50 --frag_size 363 -resume
+
+
+## test range
+
+bin/nextflow src/readthrough.nf -c src/pipe/conf/readthrough_docker.config --name "example_cut14" --bams "data/example/bams_cut14.csv" --annotation "data/example/example.gff3" --index "results/mapping/indexing/2018_01_18_example.index*" --genome "data/example/example.fasta" --reads_size 50 --frag_size 363 -resume --begin_l 25 --end_l 50
+
+bin/nextflow src/readthrough.nf -c src/pipe/conf/readthrough_docker.config --name "example_cut14" --bams "data/example/bams_cut14.csv" --annotation "data/example/example.gff3" --index "results/mapping/indexing/2018_01_18_example.index*" --genome "data/example/example.fasta" --reads_size 50 --frag_size 363 -resume --begin_l 25 --end_l 100
+
+bin/nextflow src/readthrough.nf -c src/pipe/conf/readthrough_docker.config --name "example_cut14" --bams "data/example/bams_cut14.csv" --annotation "data/example/example.gff3" --index "results/mapping/indexing/2018_01_18_example.index*" --genome "data/example/example.fasta" --reads_size 50 --frag_size 363 -resume --begin_l 25 --end_l 200
+
+bin/nextflow src/readthrough.nf -c src/pipe/conf/readthrough_docker.config --name "example_cut14" --bams "data/example/bams_cut14.csv" --annotation "data/example/example.gff3" --index "results/mapping/indexing/2018_01_18_example.index*" --genome "data/example/example.fasta" --reads_size 50 --frag_size 363 -resume --begin_l 25 --end_l 500
+
+bin/nextflow src/readthrough.nf -c src/pipe/conf/readthrough_docker.config --name "example_cut14" --bams "data/example/bams_cut14.csv" --annotation "data/example/example.gff3" --index "results/mapping/indexing/2018_01_18_example.index*" --genome "data/example/example.fasta" --reads_size 50 --frag_size 363 -resume --begin_l 25 --end_l 1000
+
+bin/nextflow src/readthrough.nf -c src/pipe/conf/readthrough_docker.config --name "example_cut14" --bams "data/example/bams_cut14.csv" --annotation "data/example/example.gff3" --index "results/mapping/indexing/2018_01_18_example.index*" --genome "data/example/example.fasta" --reads_size 50 --frag_size 363 -resume --begin_l 25 --end_l 2000
+
+bin/nextflow src/readthrough.nf -c src/pipe/conf/readthrough_docker.config --name "example_cut14" --bams "data/example/bams_cut14.csv" --annotation "data/example/example.gff3" --index "results/mapping/indexing/2018_01_18_example.index*" --genome "data/example/example.fasta" --reads_size 50 --frag_size 363 -resume --begin_l 50 --end_l 50
+
+bin/nextflow src/readthrough.nf -c src/pipe/conf/readthrough_docker.config --name "example_cut14" --bams "data/example/bams_cut14.csv" --annotation "data/example/example.gff3" --index "results/mapping/indexing/2018_01_18_example.index*" --genome "data/example/example.fasta" --reads_size 50 --frag_size 363 -resume --begin_l 50 --end_l 100
+
+bin/nextflow src/readthrough.nf -c src/pipe/conf/readthrough_docker.config --name "example_cut14" --bams "data/example/bams_cut14.csv" --annotation "data/example/example.gff3" --index "results/mapping/indexing/2018_01_18_example.index*" --genome "data/example/example.fasta" --reads_size 50 --frag_size 363 -resume --begin_l 50 --end_l 200
+
+bin/nextflow src/readthrough.nf -c src/pipe/conf/readthrough_docker.config --name "example_cut14" --bams "data/example/bams_cut14.csv" --annotation "data/example/example.gff3" --index "results/mapping/indexing/2018_01_18_example.index*" --genome "data/example/example.fasta" --reads_size 50 --frag_size 363 -resume --begin_l 50 --end_l 500
+
+bin/nextflow src/readthrough.nf -c src/pipe/conf/readthrough_docker.config --name "example_cut14" --bams "data/example/bams_cut14.csv" --annotation "data/example/example.gff3" --index "results/mapping/indexing/2018_01_18_example.index*" --genome "data/example/example.fasta" --reads_size 50 --frag_size 363 -resume --begin_l 50 --end_l 1000
+
+bin/nextflow src/readthrough.nf -c src/pipe/conf/readthrough_docker.config --name "example_cut14" --bams "data/example/bams_cut14.csv" --annotation "data/example/example.gff3" --index "results/mapping/indexing/2018_01_18_example.index*" --genome "data/example/example.fasta" --reads_size 50 --frag_size 363 -resume --begin_l 50 --end_l 2000
+
+bin/nextflow src/readthrough.nf -c src/pipe/conf/readthrough_docker.config --name "example_cut14" --bams "data/example/bams_cut14.csv" --annotation "data/example/example.gff3" --index "results/mapping/indexing/2018_01_18_example.index*" --genome "data/example/example.fasta" --reads_size 50 --frag_size 363 -resume --begin_l 50 --end_l 2000
+
+bin/nextflow src/readthrough.nf -c src/pipe/conf/readthrough_docker.config --name "example_cut14" --bams "data/example/bams_cut14.csv" --annotation "data/example/example.gff3" --index "results/mapping/indexing/2018_01_18_example.index*" --genome "data/example/example.fasta" --reads_size 50 --frag_size 363 -resume --begin_l 100 --end_l 50
+
+bin/nextflow src/readthrough.nf -c src/pipe/conf/readthrough_docker.config --name "example_cut14" --bams "data/example/bams_cut14.csv" --annotation "data/example/example.gff3" --index "results/mapping/indexing/2018_01_18_example.index*" --genome "data/example/example.fasta" --reads_size 50 --frag_size 363 -resume --begin_l 100 --end_l 100
+
+bin/nextflow src/readthrough.nf -c src/pipe/conf/readthrough_docker.config --name "example_cut14" --bams "data/example/bams_cut14.csv" --annotation "data/example/example.gff3" --index "results/mapping/indexing/2018_01_18_example.index*" --genome "data/example/example.fasta" --reads_size 50 --frag_size 363 -resume --begin_l 100 --end_l 200
+
+bin/nextflow src/readthrough.nf -c src/pipe/conf/readthrough_docker.config --name "example_cut14" --bams "data/example/bams_cut14.csv" --annotation "data/example/example.gff3" --index "results/mapping/indexing/2018_01_18_example.index*" --genome "data/example/example.fasta" --reads_size 50 --frag_size 363 -resume --begin_l 100 --end_l 500
+
+bin/nextflow src/readthrough.nf -c src/pipe/conf/readthrough_docker.config --name "example_cut14" --bams "data/example/bams_cut14.csv" --annotation "data/example/example.gff3" --index "results/mapping/indexing/2018_01_18_example.index*" --genome "data/example/example.fasta" --reads_size 50 --frag_size 363 -resume --begin_l 100 --end_l 1000
+
+bin/nextflow src/readthrough.nf -c src/pipe/conf/readthrough_docker.config --name "example_cut14" --bams "data/example/bams_cut14.csv" --annotation "data/example/example.gff3" --index "results/mapping/indexing/2018_01_18_example.index*" --genome "data/example/example.fasta" --reads_size 50 --frag_size 363 -resume --begin_l 100 --end_l 2000
