@@ -471,7 +471,7 @@ process music_forward_computation {
   mv ${mutant_bams} mutant/
 
   MUSIC -get_per_win_p_vals_vs_FC -chip mutant/ -control wt/ \
-    -l_win_step ${params.end_l} -l_win_min ${params.end_l)} -l_win_max ${params.end_l * 10}
+    -l_win_step ${params.end_l} -l_win_min ${params.end_l} -l_win_max ${params.end_l * 10}
   MUSIC -get_multiscale_punctate_ERs \
     -chip mutant/ -control wt/ -mapp mappability/ \
     -begin_l ${params.begin_l} -end_l ${params.end_l} -step 1.1 \
@@ -516,7 +516,7 @@ process music_reverse_computation {
   mv ${mutant_bams} mutant/
 
   MUSIC -get_per_win_p_vals_vs_FC -chip mutant/ -control wt/ \
-  -l_win_step ${params.end_l} -l_win_min ${params.end_l)} -l_win_max ${params.end_l * 10}
+  -l_win_step ${params.end_l} -l_win_min ${params.end_l} -l_win_max ${params.end_l * 10}
   MUSIC -get_multiscale_punctate_ERs \
     -chip mutant/ -control wt/ -mapp mappability/ \
     -begin_l ${params.begin_l} -end_l ${params.end_l} -step 1.1 \
