@@ -120,7 +120,7 @@ process merge_annotation_reverse {
       sed 's/\\(.*;Name=\\)\\(.*\\)\\(;Parent.*\\)/\\1\\2_RT\\3/g' | \
       sed 's/transcript:/transcript:RT_/g' > \
       annotation_merge_RT.bed
-      
+
     cat annotation_merge_T.bed annotation_merge_RT.bed | \
       bedtools sort -i stdin > annotation_reverse.bed
 
@@ -249,7 +249,7 @@ process indexing_forward {
     file "*index*" into index_forward
   script:
   """
-    kallisto index -k 31 -i forward.index ${genome} &> kallisto_index_forward_report.txt
+    kallisto index -k 31 --make-unique -i forward.index ${genome} &> kallisto_index_forward_report.txt
     file_handle.py -f *index*
   """
 }
@@ -263,7 +263,7 @@ process indexing_reverse {
     file "*index*" into index_reverse
   script:
   """
-    kallisto index -k 31 -i reverse.index ${genome} &> kallisto_index_reverse_report.txt
+    kallisto index -k 31 --make-unique -i reverse.index ${genome} &> kallisto_index_reverse_report.txt
     file_handle.py -f *index*
   """
 }
