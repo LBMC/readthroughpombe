@@ -73,3 +73,10 @@ RUN curl -k -L https://sourceforge.net/projects/samtools/files/samtools/${SAMTOO
 RUN curl -k -L https://github.com/bedops/bedops/releases/download/v2.4.30/bedops_linux_x86_64-v${BEDOOPS_VERSION}.tar.bz2 -o bedops_linux_x86_64-v${BEDOOPS_VERSION}.tar.bz2 && \
   tar xvf bedops_linux_x86_64-v${BEDOOPS_VERSION}.tar.bz2 && \
   cp bin/* /usr/local/bin/
+
+# install kallisto
+ENV KALLISTO_VERSION 0.43.1
+RUN  curl -k -L https://github.com/pachterlab/kallisto/releases/download/v${KALLISTO_VERSION}/kallisto_linux-v${KALLISTO_VERSION}.tar.gz -o kallisto_linux-v${KALLISTO_VERSION}.tar.gz && \
+  tar xzf kallisto_linux-v${KALLISTO_VERSION}.tar.gz && \
+  cp kallisto_linux-v${KALLISTO_VERSION}/kallisto /usr/local/bin/ && \
+  cd .. && rm -Rf kallisto_linux-v${KALLISTO_VERSION}*
