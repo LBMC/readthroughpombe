@@ -30,7 +30,6 @@ ENV PACKAGES curl=7.47.0* \
     libncurses5=6.0+20160213-1* \
     libncurses5-dev=6.0+20160213-1* \
     libfreetype6=2.6.1-0.1* \
-    genometools=1.5* \
     bedtools=2.25.0-1
 
 RUN apt-get update && \
