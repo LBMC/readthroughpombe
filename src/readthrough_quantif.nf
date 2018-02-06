@@ -227,6 +227,7 @@ process transcript_forward {
 
 process transcript_reverse {
   echo params.verbose
+  publishDir "results/readthrough/transcript/", mode: 'copy'
   cpus 1
   input:
     file genome from genome_file_transcript_reverse
@@ -242,6 +243,7 @@ process transcript_reverse {
 
 process indexing_forward {
   echo params.verbose
+  publishDir "results/readthrough/transcript/", mode: 'copy'
   cpus 1
   input:
     file genome from transcript_forward
