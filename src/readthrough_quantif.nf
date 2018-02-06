@@ -273,14 +273,14 @@ process quantification_forward {
   cpus 4
   publishDir "results/readthrough/quantification/forward/", mode: 'copy'
   input:
-    file index from index_forward.collect().first()
+    file index from index_forward.collect()
     file fastq from fastq_forward
   output:
     file "*" into quantification_forward
   script:
-  tagname = (file =~ /(.*\/){0,1}d{0,1}(.*)\.fast[aq](\.gz){0,1}/)[0][2]
+  tagname = (fastq =~ /(.*\/){0,1}d{0,1}(.*)\.fast[aq](\.gz){0,1}/)[0][2]
   """
-    kallisto quant -i forward_ -t ${task.cpus} --single -l ${params.mean_size} \
+    kallisto quant -i *forward.index -t ${task.cpus} --single -l ${params.mean_size} \
       -s ${params.sd_size} -o ./ ${fastq} &> ${tagname}_kallisto_report.txt
     mv abundance.tsv ${tagname}.tsv
     mv run_info.json ${tagname}_info.json
@@ -294,14 +294,14 @@ process quantification_reverse {
   cpus 4
   publishDir "results/readthrough/quantification/reverse/", mode: 'copy'
   input:
-    file index from index_reverse.collect().first()
+    file index from index_reverse.collect()
     file fastq from fastq_reverse
   output:
     file "*" into quantification_reverse
   script:
-  tagname = (file =~ /(.*\/){0,1}d{0,1}(.*)\.fast[aq](\.gz){0,1}/)[0][2]
+  tagname = (fastq =~ /(.*\/){0,1}d{0,1}(.*)\.fast[aq](\.gz){0,1}/)[0][2]
   """
-    kallisto quant -i reverse_ -t ${task.cpus} --single -l ${params.mean_size} \
+    kallisto quant -i *reverse.index -t ${task.cpus} --single -l ${params.mean_size} \
       -s ${params.sd_size} -o ./ ${fastq} &> ${tagname}_kallisto_report.txt
     mv abundance.tsv ${tagname}.tsv
     mv run_info.json ${tagname}_info.json
