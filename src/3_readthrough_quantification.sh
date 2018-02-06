@@ -8,3 +8,20 @@ bin/nextflow src/readthrough_quantif.nf -c src/pipe/conf/readthrough_docker.conf
   --mean_size 363.4 \
   --sd_size 85.53354 \
   -resume -w /home/laurent/data/work/
+
+# quantification withtout RT
+bin/nextflow src/pipeline.nf -c src/pipeline.config -profile docker \
+  --fastq "results/readthrough/fastq/forward/*.fastq" \
+  --fasta 'results/readthrough/transcript/*_transcript_forward.fasta' \
+  --todo "kallisto" \
+  --mean 363.4 \
+  --sd 85.53354 \
+  -resume -w /home/laurent/data/work/
+
+bin/nextflow src/pipeline.nf -c src/pipeline.config -profile docker \
+  --fastq "results/readthrough/fastq/reverse/*.fastq" \
+  --fasta 'results/readthrough/transcript/*_transcript_reverse.fasta' \
+  --todo "kallisto" \
+  --mean 363.4 \
+  --sd 85.53354 \
+  -resume -w /home/laurent/data/work/
