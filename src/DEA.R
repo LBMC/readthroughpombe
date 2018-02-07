@@ -73,12 +73,15 @@ dea_analysis <- function(
   analysis <- paste0(condition_a, "_vs_", condition_b, label)
   results_folder <- paste0(results_folder, "/", analysis, "/")
   system(paste0("mkdir -p ", results_folder))
+  condition_ab <- as.factor(gsub(
+    "(.*)_R[1-3]", "\\1",
+    colnames(sub_kallisto_results$counts), perl = T
+  ))
+  levels(condition_ab) <- c(condition_a, condition_b)
   sampletable <- data.frame(
-    condition = gsub(
-      "(.*)_R[1-3]", "\\1",
-      colnames(sub_kallisto_results$counts), perl = T
-    )
+    condition = condition_ab
   )
+  print(summary(sampletable))
   rownames(sampletable) <- colnames(sub_kallisto_results)
 
   dds <- DESeq2::DESeqDataSetFromTximport(
@@ -121,7 +124,8 @@ dea_analysis <- function(
 
 kallisto_results <- load_files_FR(RT_folder)
 condition_a <- "wt"
-conditions_b <- gsub("(.*)_R[1-3]", "\\1", names(files), perl = T)
+conditions_b <- gsub("(.*)_R[1-3]", "\\1",
+  colnames(kallisto_results$counts), perl = T)
 conditions_b <- conditions_b[!grepl(condition_a, conditions_b)]
 conditions_b <- levels(as.factor(conditions_b))
 condition_b <- conditions_b[1]
