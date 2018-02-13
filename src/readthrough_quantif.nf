@@ -75,7 +75,8 @@ process merge_annotation_forward {
   input:
     file annotation from annotation_forward_files.collect()
   output:
-    file "*annotation_forward.bed" into rt_forward
+    file "*annotation_forward.bed" into rt_forward_bed
+    file "*transcript_forward.bed" into t_forward_bed
   script:
     """
     cat ${annotation} > annotation_merge.bed
@@ -86,15 +87,19 @@ process merge_annotation_forward {
       annotation_merge_T.bed
 
     grep "transcript_RT" annotation_merge.bed | \
+      grep "ID=transcript:" | \
       awk '{if(\$2 < \$3) {print \$0}}' | \
       sed 's/\\(.*;Name=\\)\\(.*\\)\\(;Parent.*\\)/\\1\\2_RT\\3/g' | \
       sed 's/transcript:/transcript:RT_/g' > \
       annotation_merge_RT.bed
 
     cat annotation_merge_T.bed annotation_merge_RT.bed | \
+      sort -k4 | uniq | \
       bedtools sort -i stdin > annotation_forward.bed
 
-    file_handle.py -f annotation_forward.bed
+    bedtools sort -i annotation_merge_T > transcript_forward.bed
+
+    file_handle.py -f annotation_forward.bed transcript_forward.bed
     """
 }
 
@@ -105,7 +110,8 @@ process merge_annotation_reverse {
   input:
     file annotation from annotation_reverse_files.collect()
   output:
-    file "*annotation_reverse.bed" into rt_reverse
+    file "*annotation_reverse.bed" into rt_reverse_bed
+    file "*transcript_reverse.bed" into t_reverse_bed
   script:
     """
     cat ${annotation} > annotation_merge.bed
@@ -116,15 +122,19 @@ process merge_annotation_reverse {
       annotation_merge_T.bed
 
     grep "transcript_RT" annotation_merge.bed | \
+      grep "ID=transcript:" | \
       awk '{if(\$2 < \$3) {print \$0}}' | \
       sed 's/\\(.*;Name=\\)\\(.*\\)\\(;Parent.*\\)/\\1\\2_RT\\3/g' | \
       sed 's/transcript:/transcript:RT_/g' > \
       annotation_merge_RT.bed
 
     cat annotation_merge_T.bed annotation_merge_RT.bed | \
+      sort -k4 | uniq | \
       bedtools sort -i stdin > annotation_reverse.bed
 
-    file_handle.py -f annotation_reverse.bed
+      bedtools sort -i annotation_merge_T > transcript_reverse.bed
+
+      file_handle.py -f annotation_reverse.bed transcript_reverse.bed
     """
 }
 
@@ -206,108 +216,222 @@ process bam_2_fastq_reverse {
 }
 
 genome_file.into{
-  genome_file_transcript_forward;
-  genome_file_transcript_reverse;
+  genome_file_rt_forward;
+  genome_file_rt_reverse;
+  genome_file_t_forward;
+  genome_file_t_reverse
 }
 
-process transcript_forward {
+process rt_forward {
   echo params.verbose
   cpus 1
   input:
-    file genome from genome_file_transcript_forward
-    file annotation from rt_forward
+    file genome from genome_file_rt_forward
+    file annotation from rt_forward_bed
   output:
-    file "*.fasta" into transcript_forward
+    file "*.fasta" into rt_forward_fasta
   script:
   """
-    bedtools getfasta -s -name -fi ${genome} -bed ${annotation} -fo transcript_forward.fasta
-    file_handle.py -f transcript_forward.fasta
+    bedtools getfasta -s -name -fi ${genome} -bed ${annotation} -fo rt_forward.fasta
+    file_handle.py -f rt_forward.fasta
   """
 }
 
-process transcript_reverse {
-  echo params.verbose
-  publishDir "results/readthrough/transcript/", mode: 'copy'
-  cpus 1
-  input:
-    file genome from genome_file_transcript_reverse
-    file annotation from rt_reverse
-  output:
-    file "*.fasta" into transcript_reverse
-  script:
-  """
-    bedtools getfasta -s -name -fi ${genome} -bed ${annotation} -fo transcript_reverse.fasta
-    file_handle.py -f transcript_reverse.fasta
-  """
-}
-
-process indexing_forward {
+process rt_reverse {
   echo params.verbose
   publishDir "results/readthrough/transcript/", mode: 'copy'
   cpus 1
   input:
-    file genome from transcript_forward
+    file genome from genome_file_rt_reverse
+    file annotation from rt_reverse_bed
   output:
-    file "*index*" into index_forward
+    file "*.fasta" into rt_reverse_fasta
   script:
   """
-    kallisto index -k 31 --make-unique -i forward.index ${genome} &> kallisto_index_forward_report.txt
-    file_handle.py -f *index*
+    bedtools getfasta -s -name -fi ${genome} -bed ${annotation} -fo rt_reverse.fasta
+    file_handle.py -f rt_reverse.fasta
   """
 }
 
-process indexing_reverse {
+process t_forward {
   echo params.verbose
   cpus 1
   input:
-    file genome from transcript_reverse
+    file genome from genome_file_t_forward
+    file annotation from t_forward_bed
   output:
-    file "*index*" into index_reverse
+    file "*.fasta" into t_forward_fasta
   script:
   """
-    kallisto index -k 31 --make-unique -i reverse.index ${genome} &> kallisto_index_reverse_report.txt
+    bedtools getfasta -s -name -fi ${genome} -bed ${annotation} -fo t_forward.fasta
+    file_handle.py -f t_forward.fasta
+  """
+}
+
+process t_reverse {
+  echo params.verbose
+  publishDir "results/readthrough/transcript/", mode: 'copy'
+  cpus 1
+  input:
+    file genome from genome_file_t_reverse
+    file annotation from t_reverse_bed
+  output:
+    file "*.fasta" into t_reverse_fasta
+  script:
+  """
+    bedtools getfasta -s -name -fi ${genome} -bed ${annotation} -fo t_reverse.fasta
+    file_handle.py -f t_reverse.fasta
+  """
+}
+
+process rt_indexing_forward {
+  echo params.verbose
+  publishDir "results/readthrough/transcript/", mode: 'copy'
+  cpus 1
+  input:
+    file genome from rt_forward_fasta
+  output:
+    file "*index*" into rt_forward_index
+  script:
+  """
+    kallisto index -k 31 --make-unique -i forward.index ${genome} &> kallisto_rt_index_forward_report.txt
     file_handle.py -f *index*
   """
 }
 
-process quantification_forward {
+process rt_indexing_reverse {
+  echo params.verbose
+  cpus 1
+  input:
+    file genome from rt_reverse_fasta
+  output:
+    file "*index*" into rt_reverse_index
+  script:
+  """
+    kallisto index -k 31 --make-unique -i reverse.index ${genome} &> kallisto_rt_index_reverse_report.txt
+    file_handle.py -f *index*
+  """
+}
+
+process t_indexing_forward {
+  echo params.verbose
+  publishDir "results/readthrough/transcript/", mode: 'copy'
+  cpus 1
+  input:
+    file genome from t_forward_fasta
+  output:
+    file "*index*" into t_forward_index
+  script:
+  """
+    kallisto index -k 31 --make-unique -i forward.index ${genome} &> kallisto_t_index_forward_report.txt
+    file_handle.py -f *index*
+  """
+}
+
+process t_indexing_reverse {
+  echo params.verbose
+  cpus 1
+  input:
+    file genome from t_reverse_fasta
+  output:
+    file "*index*" into t_reverse_index
+  script:
+  """
+    kallisto index -k 31 --make-unique -i reverse.index ${genome} &> kallisto_t_index_reverse_report.txt
+    file_handle.py -f *index*
+  """
+}
+
+fastq_forward.into{
+  fastq_forward_rt;
+  fastq_forward_t
+}
+
+fastq_reverse.into{
+  fastq_reverse_rt;
+  fastq_reverse_t
+}
+
+process quantification_rt_forward {
   echo params.verbose
   cpus 4
   publishDir "results/readthrough/quantification/forward/", mode: 'copy'
   input:
-    file index from index_forward.collect()
-    file fastq from fastq_forward
+    file index from rt_forward_index.collect()
+    file fastq from fastq_forward_rt
   output:
-    file "*" into quantification_forward
+    file "*" into quantification_forward_rt
   script:
   tagname = (fastq =~ /(.*\/){0,1}d{0,1}(.*)\.fast[aq](\.gz){0,1}/)[0][2]
   """
     kallisto quant -i *forward.index -t ${task.cpus} --single -l ${params.mean_size} \
-      -s ${params.sd_size} -o ./ ${fastq} &> ${tagname}_kallisto_report.txt
-    mv abundance.tsv ${tagname}.tsv
-    mv run_info.json ${tagname}_info.json
-    mv abundance.h5 ${tagname}.h5
+      -s ${params.sd_size} -o ./ ${fastq} &> ${tagname}_rt_kallisto_report.txt
+    mv abundance.tsv ${tagname}_rt.tsv
+    mv run_info.json ${tagname}_info_rt.json
+    mv abundance.h5 ${tagname}_rt.h5
     file_handle.py -f *
   """
 }
 
-process quantification_reverse {
+process quantification_rt_reverse {
   echo params.verbose
   cpus 4
   publishDir "results/readthrough/quantification/reverse/", mode: 'copy'
   input:
-    file index from index_reverse.collect()
-    file fastq from fastq_reverse
+    file index from rt_reverse_index.collect()
+    file fastq from fastq_reverse_rt
   output:
-    file "*" into quantification_reverse
+    file "*" into quantification_reverse_rt
   script:
   tagname = (fastq =~ /(.*\/){0,1}d{0,1}(.*)\.fast[aq](\.gz){0,1}/)[0][2]
   """
     kallisto quant -i *reverse.index -t ${task.cpus} --single -l ${params.mean_size} \
-      -s ${params.sd_size} -o ./ ${fastq} &> ${tagname}_kallisto_report.txt
-    mv abundance.tsv ${tagname}.tsv
-    mv run_info.json ${tagname}_info.json
-    mv abundance.h5 ${tagname}.h5
+      -s ${params.sd_size} -o ./ ${fastq} &> ${tagname}_rt_kallisto_report.txt
+    mv abundance.tsv ${tagname}_rt.tsv
+    mv run_info.json ${tagname}_info_rt.json
+    mv abundance.h5 ${tagname}_rt.h5
+    file_handle.py -f *
+  """
+}
+
+process quantification_t_forward {
+  echo params.verbose
+  cpus 4
+  publishDir "results/readthrough/quantification/forward/", mode: 'copy'
+  input:
+    file index from t_forward_index.collect()
+    file fastq from fastq_forward_t
+  output:
+    file "*" into quantification_forward_t
+  script:
+  tagname = (fastq =~ /(.*\/){0,1}d{0,1}(.*)\.fast[aq](\.gz){0,1}/)[0][2]
+  """
+    kallisto quant -i *forward.index -t ${task.cpus} --single -l ${params.mean_size} \
+      -s ${params.sd_size} -o ./ ${fastq} &> ${tagname}_t_kallisto_report.txt
+    mv abundance.tsv ${tagname}_t.tsv
+    mv run_info.json ${tagname}_info_t.json
+    mv abundance.h5 ${tagname}_t.h5
+    file_handle.py -f *
+  """
+}
+
+process quantification_t_reverse {
+  echo params.verbose
+  cpus 4
+  publishDir "results/readthrough/quantification/reverse/", mode: 'copy'
+  input:
+    file index from t_reverse_index.collect()
+    file fastq from fastq_reverse_t
+  output:
+    file "*" into quantification_reverse_t
+  script:
+  tagname = (fastq =~ /(.*\/){0,1}d{0,1}(.*)\.fast[aq](\.gz){0,1}/)[0][2]
+  """
+    kallisto quant -i *reverse.index -t ${task.cpus} --single -l ${params.mean_size} \
+      -s ${params.sd_size} -o ./ ${fastq} &> ${tagname}_t_kallisto_report.txt
+    mv abundance.tsv ${tagname}_t.tsv
+    mv run_info.json ${tagname}_info_t.json
+    mv abundance.h5 ${tagname}_t.h5
     file_handle.py -f *
   """
 }
