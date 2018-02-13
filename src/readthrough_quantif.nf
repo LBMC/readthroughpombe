@@ -97,7 +97,9 @@ process merge_annotation_forward {
       sort -k4 | uniq | \
       bedtools sort -i stdin > annotation_forward.bed
 
-    bedtools sort -i annotation_merge_T > transcript_forward.bed
+    cat annotation_merge_T.bed | \
+      sort -k4 | uniq | \
+      bedtools sort -i stdin > transcript_forward.bed
 
     file_handle.py -f annotation_forward.bed transcript_forward.bed
     """
@@ -111,7 +113,7 @@ process merge_annotation_reverse {
     file annotation from annotation_reverse_files.collect()
   output:
     file "*annotation_reverse.bed" into rt_reverse_bed
-    file "*transcript_reverse.bed" into t_reverse_bed
+    file "**transcript_reverse.bed" into t_reverse_bed
   script:
     """
     cat ${annotation} > annotation_merge.bed
@@ -132,7 +134,9 @@ process merge_annotation_reverse {
       sort -k4 | uniq | \
       bedtools sort -i stdin > annotation_reverse.bed
 
-      bedtools sort -i annotation_merge_T > transcript_reverse.bed
+    cat annotation_merge_T.bed | \
+      sort -k4 | uniq | \
+      bedtools sort -i stdin > transcript_reverse.bed
 
       file_handle.py -f annotation_reverse.bed transcript_reverse.bed
     """
