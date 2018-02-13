@@ -5,13 +5,14 @@ library("DESeq2")
 library("BiocParallel")
 register(BiocParallel::MulticoreParam(4))
 library("ggplot2")
-results_folder <- "results/readthrough/DEA/"
-system(paste0("mkdir -p ", results_folder))
-RT_folder <- "results/readthrough/quantification/"
 
-load_files <- function(folder, way) {
+load_files <- function(folder, way, analysis = "rt") {
   files <- list.files(paste0(folder, way))
-  files <- files[grepl(".*tsv", files)]
+  if (analysis = "rt") {
+    files <- files[grepl("_rt.*tsv", files)]
+  } else {
+    files <- files[grepl("_t.*tsv", files)]
+  }
   files <- paste0(folder, way, "/", files)
   names(files) <- gsub(".*PLBD[0-9]{1,2}_(.*)_sorted.*", "\\1", files, perl = T)
   names(files) <- gsub("-", "_", names(files), perl = T)
@@ -19,9 +20,9 @@ load_files <- function(folder, way) {
   return(kallisto_results)
 }
 
-load_files_FR <- function(folder) {
-  kallisto_results_F <- load_files(folder, "forward")
-  kallisto_results_R <- load_files(folder, "reverse")
+load_files_FR <- function(folder, analysis = "rt") {
+  kallisto_results_F <- load_files(folder, "forward", analysis)
+  kallisto_results_R <- load_files(folder, "reverse", analysis)
   kallisto_results <- kallisto_results_F
   for (results_type in names(kallisto_results)) {
     kallisto_results[[results_type]] <- rbind(
@@ -122,7 +123,13 @@ dea_analysis <- function(
   )
 }
 
-kallisto_results <- load_files_FR(RT_folder)
+################################################################################
+
+results_folder <- "results/readthrough/DEA/RT/"
+system(paste0("mkdir -p ", results_folder))
+RT_folder <- "results/readthrough/quantification/"
+
+kallisto_results <- load_files_FR(RT_folder, "rt")
 condition_a <- "wt"
 conditions_b <- gsub("(.*)_R[1-3]", "\\1",
   colnames(kallisto_results$counts), perl = T)
@@ -142,4 +149,26 @@ for (condition_b in conditions_b) {
       label = ifelse(keep_RT, "_RT", "")
     )
   }
+}
+
+results_folder <- "results/readthrough/DEA/T/"
+system(paste0("mkdir -p ", results_folder))
+kallisto_results <- load_files_FR(RT_folder, "t")
+condition_a <- "wt"
+conditions_b <- gsub("(.*)_R[1-3]", "\\1",
+  colnames(kallisto_results$counts), perl = T)
+conditions_b <- conditions_b[!grepl(condition_a, conditions_b)]
+conditions_b <- levels(as.factor(conditions_b))
+condition_b <- conditions_b[1]
+for (condition_b in conditions_b) {
+  sub_kallisto_results <- extract_condition(
+    kallisto_results,
+    condition_a,
+    condition_b,
+    keep_RT
+  )
+  dea_analysis(
+    results_folder, sub_kallisto_results, condition_a, condition_b,
+    label = ""
+  )
 }
