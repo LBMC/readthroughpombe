@@ -8,7 +8,7 @@ library("ggplot2")
 
 load_files <- function(folder, way, analysis = "rt") {
   files <- list.files(paste0(folder, way))
-  if (analysis = "rt") {
+  if (analysis == "rt") {
     files <- files[grepl("_rt.*tsv", files)]
   } else {
     files <- files[grepl("_t.*tsv", files)]
