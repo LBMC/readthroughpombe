@@ -75,8 +75,8 @@ process merge_annotation_forward {
   input:
     file annotation from annotation_forward_files.collect()
   output:
-    file "*annotation_forward.bed" into rt_forward_bed
-    file "*transcript_forward.bed" into t_forward_bed
+    file "*RT_annotation_forward.bed" into rt_forward_bed
+    file "*transcript_annotation_forward.bed" into t_forward_bed
   script:
     """
     cat ${annotation} > annotation_merge.bed
@@ -94,14 +94,14 @@ process merge_annotation_forward {
       annotation_merge_RT.bed
 
     cat annotation_merge_T.bed annotation_merge_RT.bed | \
-      sort -k4 | uniq | \
-      bedtools sort -i stdin > annotation_forward.bed
+      sort -k4 -u | \
+      bedtools sort -i stdin > RT_annotation_forward.bed
 
     cat annotation_merge_T.bed | \
-      sort -k4 | uniq | \
-      bedtools sort -i stdin > transcript_forward.bed
+      sort -k4 -u | \
+      bedtools sort -i stdin > transcript_annotation_forward.bed
 
-    file_handle.py -f annotation_forward.bed transcript_forward.bed
+    file_handle.py -f RT_annotation_forward.bed transcript_annotation_forward.bed
     """
 }
 
@@ -112,8 +112,8 @@ process merge_annotation_reverse {
   input:
     file annotation from annotation_reverse_files.collect()
   output:
-    file "*annotation_reverse.bed" into rt_reverse_bed
-    file "**transcript_reverse.bed" into t_reverse_bed
+    file "*RT_annotation_reverse.bed" into rt_reverse_bed
+    file "*transcript_annotation_reverse.bed" into t_reverse_bed
   script:
     """
     cat ${annotation} > annotation_merge.bed
@@ -131,14 +131,14 @@ process merge_annotation_reverse {
       annotation_merge_RT.bed
 
     cat annotation_merge_T.bed annotation_merge_RT.bed | \
-      sort -k4 | uniq | \
-      bedtools sort -i stdin > annotation_reverse.bed
+      sort -k4 -u | \
+      bedtools sort -i stdin > RT_annotation_reverse.bed
 
     cat annotation_merge_T.bed | \
-      sort -k4 | uniq | \
-      bedtools sort -i stdin > transcript_reverse.bed
+      sort -k4 -u | \
+      bedtools sort -i stdin > transcript_annotation_reverse.bed
 
-      file_handle.py -f annotation_reverse.bed transcript_reverse.bed
+    file_handle.py -f RT_annotation_reverse.bed transcript_annotation_reverse.bed
     """
 }
 
