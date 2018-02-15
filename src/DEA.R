@@ -92,13 +92,13 @@ dea_analysis <- function(
     sampletable,
     ~condition
   )
+  dds$condition <- relevel(dds$condition, ref = condition_a)
   dds <- DESeq2::DESeq(dds, parallel = TRUE)
-  dds$condition <- factor(dds$condition, levels = c(condition_a, condition_b))
   ntd <- DESeq2::normTransform(dds)
   res <- results(
     dds,
     lfcThreshold = lfcthreshold,
-    altHypothesis = "greaterAbs",
+    altHypothesis = althypothesis,
     parallel = TRUE
   )
   print(head(res))
