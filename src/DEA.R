@@ -70,19 +70,21 @@ dea_analysis <- function(
   sub_kallisto_results,
   condition_a,
   condition_b,
-  label = "") {
+  label = "",
+  lfcthreshold = 0.5,
+  althypothesis = "greaterAbs") {
   analysis <- paste0(condition_a, "_vs_", condition_b, label)
-  results_folder <- paste0(results_folder, "/", analysis, "/")
+  results_folder <- paste0(
+    results_folder, "/",
+    analysis, "_lfc_", althypothesis, "_than_", lfcthreshold, "/")
   system(paste0("mkdir -p ", results_folder))
   condition_ab <- as.factor(gsub(
     "(.*)_R[1-3]", "\\1",
     colnames(sub_kallisto_results$counts), perl = T
   ))
-  levels(condition_ab) <- c(condition_a, condition_b)
   sampletable <- data.frame(
     condition = condition_ab
   )
-  print(summary(sampletable))
   rownames(sampletable) <- colnames(sub_kallisto_results)
 
   dds <- DESeq2::DESeqDataSetFromTximport(
@@ -91,13 +93,15 @@ dea_analysis <- function(
     ~condition
   )
   dds <- DESeq2::DESeq(dds, parallel = TRUE)
+  dds$condition <- factor(dds$condition, levels = c(condition_a, condition_b))
   ntd <- DESeq2::normTransform(dds)
   res <- results(
     dds,
-    lfcThreshold = .5,
+    lfcThreshold = lfcthreshold,
     altHypothesis = "greaterAbs",
     parallel = TRUE
   )
+  print(head(res))
 
   pdf(file = paste0(results_folder, analysis, "_DispEsts.pdf"))
   DESeq2::plotDispEsts(dds)
@@ -121,6 +125,7 @@ dea_analysis <- function(
     as.data.frame(res),
     file = paste0(results_folder, analysis, ".csv")
   )
+  system(paste0("~/scripts/file_handle.py -f ", results_folder, "*"))
 }
 
 ################################################################################
@@ -146,8 +151,18 @@ for (condition_b in conditions_b) {
     )
     dea_analysis(
       results_folder, sub_kallisto_results, condition_a, condition_b,
-      label = ifelse(keep_RT, "_RT", "")
+      label = ifelse(keep_RT, "_RT", ""),
+      lfcthreshold = 0,
+      althypothesis = ifelse(keep_RT, "greater", "greaterAbs")
     )
+    if (!keep_RT) {
+      dea_analysis(
+        results_folder, sub_kallisto_results, condition_a, condition_b,
+        label = "",
+        lfcthreshold = 0.5,
+        althypothesis = "greaterAbs"
+      )
+    }
   }
 }
 
@@ -167,8 +182,12 @@ for (condition_b in conditions_b) {
     condition_b,
     keep_RT
   )
-  dea_analysis(
-    results_folder, sub_kallisto_results, condition_a, condition_b,
-    label = ""
-  )
+  for (lfcthreshold in c(0, 0.5)) {
+    dea_analysis(
+      results_folder, sub_kallisto_results, condition_a, condition_b,
+      label = "",
+      lfcthreshold = lfcthreshold,
+      althypothesis = "greaterAbs"
+    )
+  }
 }
