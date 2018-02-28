@@ -7,4 +7,4 @@ bin/nextflow src/readthrough_quantif.nf -c src/pipe/conf/readthrough_docker.conf
   --bam "results/mapping/mapping/2018_01_19_*_rev_sort.bam" \
   --mean_size 363.4 \
   --sd_size 85.53354 \
-  -resume -w /home/laurent/data/work/
+  -resume -w /home/laurent/data/work/-with-dag results/readthrough/quantification_dag.pdf -with-timeline results/readthrough/quantification_timeline
