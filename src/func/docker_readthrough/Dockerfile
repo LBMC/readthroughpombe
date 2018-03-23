@@ -30,7 +30,14 @@ ENV PACKAGES curl=7.47.0* \
     libncurses5=6.0+20160213-1* \
     libncurses5-dev=6.0+20160213-1* \
     libfreetype6=2.6.1-0.1* \
-    bedtools=2.25.0-1
+    bedtools=2.25.0-1 \
+    libcurl3 \
+    python-pycurl \
+    python3-pip \ 
+    python3-setuptools \
+    python3-pycurl \
+    libcurl4-gnutls-dev \
+    python3-dev
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends ${PACKAGES} && \
@@ -79,3 +86,6 @@ RUN  curl -k -L https://github.com/pachterlab/kallisto/releases/download/v${KALL
   tar xzf kallisto_linux-v${KALLISTO_VERSION}.tar.gz && \
   cp kallisto_linux-v${KALLISTO_VERSION}/kallisto /usr/local/bin/ && \
   cd .. && rm -Rf kallisto_linux-v${KALLISTO_VERSION}*
+
+# install deeptools
+RUN pip3 install deeptools
