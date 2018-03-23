@@ -60,6 +60,21 @@ annotation_reverse_files = Channel
     exit 1, "Cannot find any annotation file matching: ${params.annotation_forward}"
   }
 
+process index_bams {
+  echo params.verbose
+  publishDir "results/readthrough/metagene/bams/", mode: 'copy'
+  cpus 1
+  input:
+    set val(bam_names), file(bams) from bam_files
+  output:
+    file "*.bam*" into ibam_files
+  script:
+    """
+    samtools index ${bams[0]}
+    file_handle.py -f ${bams[0]}*
+    """
+}
+
 process merge_annotation {
   echo params.verbose
   publishDir "results/readthrough/metagene/", mode: 'copy'
@@ -83,10 +98,10 @@ process merge_annotation {
 
 process compute_bigwig {
   echo params.verbose
-  publishDir "results/readthrough/metagene/", mode: 'copy'
+  publishDir "results/readthrough/metagene/bigwig/", mode: 'copy'
   cpus 10
   input:
-    set val(bam_names), file(bams) from bam_files
+    set val(bam_names), file(bams) from ibam_files
   output:
     file "*.bw" into rt_bw
   script:
@@ -108,7 +123,7 @@ map{
 
 process compute_matrix {
   echo params.verbose
-  publishDir "results/readthrough/metagene/", mode: 'copy'
+  publishDir "results/readthrough/metagene/matrix/", mode: 'copy'
   cpus 10
   input:
     file bw from rt_bw_grouped
@@ -118,7 +133,7 @@ process compute_matrix {
   script:
     condition = (bw[0] =~ /^.*\d{4}_\d{2}_\d{2}_[a-zA-Z0-9]+_(.*)_R._.*$/)[0][1]
     """
-    computeMatrix reference-point -S ${bw} -R ${bed} --skipZeros --referencePoint TSS -b 1000 -a 1000 -o ${condition}.mat -p ${task.cpus}
+    computeMatrix reference-point -S ${bw} -R ${bed} --skipZeros --referencePoint TSS -b 200 -a 200 -o ${condition}.mat -p ${task.cpus}
     file_handle.py -f ${condition}.mat
     """
 }
