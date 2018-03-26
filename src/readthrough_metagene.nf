@@ -43,7 +43,7 @@ params.bam = ""
 params.mean_size = 200
 
 bam_files = Channel
-  .fromFilePairs(params.bam)
+  .fromPath(params.bam)
   .ifEmpty {
     exit 1, "Cannot find any bam file matching: ${params.bam}"
   }
@@ -65,13 +65,13 @@ process index_bams {
   publishDir "results/readthrough/metagene/bams/", mode: 'copy'
   cpus 1
   input:
-    set val(bam_names), file(bams) from bam_files
+    file bams from bam_files
   output:
     file "*.bam*" into ibam_files
   script:
     """
-    samtools index ${bams[0]}
-    file_handle.py -f ${bams[0]}*
+    samtools index ${bams}
+    file_handle.py -f ${bams}*
     """
 }
 
@@ -101,14 +101,14 @@ process compute_bigwig {
   publishDir "results/readthrough/metagene/bigwig/", mode: 'copy'
   cpus 10
   input:
-    set val(bam_names), file(bams) from ibam_files
+    file bams from ibam_files
   output:
     file "*.bw" into rt_bw
   script:
     """
-    bamCoverage --bam  ${bams[0]} --outFileFormat bigwig -o ${bams[0]}.bw\
+    bamCoverage --bam  ${bams} --outFileFormat bigwig -o ${bams}.bw\
       --binSize 10 -p ${task.cpus} --normalizeUsing BPM --extendReads ${params.mean_size}
-    file_handle.py -f ${bams[0]}.bw
+    file_handle.py -f ${bams}.bw
     """
 }
 
