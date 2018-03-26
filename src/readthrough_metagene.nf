@@ -71,6 +71,7 @@ process index_bams {
   script:
     """
     samtools index ${bams}
+    mv ${bams} ${bams}d
     file_handle.py -f ${bams}*
     """
 }
@@ -101,11 +102,13 @@ process compute_bigwig {
   publishDir "results/readthrough/metagene/bigwig/", mode: 'copy'
   cpus 10
   input:
-    file bams from ibam_files
+    set file(bais), file(bams) from ibam_files
   output:
     file "*.bw" into rt_bw
   script:
+    bams = (bams =~ /^(.*)d$/)[0][1]
     """
+    mv ${bams}d ${bams}
     bamCoverage --bam  ${bams} --outFileFormat bigwig -o ${bams}.bw\
       --binSize 10 -p ${task.cpus} --normalizeUsing BPM --extendReads ${params.mean_size}
     file_handle.py -f ${bams}.bw
@@ -124,7 +127,7 @@ map{
 process compute_matrix {
   echo params.verbose
   publishDir "results/readthrough/metagene/matrix/", mode: 'copy'
-  cpus 10
+  cpus 11
   input:
     file bw from rt_bw_grouped
     file bed from rt_bed
