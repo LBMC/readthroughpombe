@@ -78,7 +78,6 @@ process index_bams {
 
 process merge_annotation_forward {
   echo params.verbose
-  publishDir "results/readthrough/transcript/", mode: 'copy'
   cpus 1
   input:
     file annotation from annotation_forward_files.collect()
@@ -100,15 +99,15 @@ process merge_annotation_forward {
       sed 's/transcript:/transcript:RT_/g' > \
       annotation_merge_RT.bed
 
-    cat annotation_merge_T.bed annotation_merge_RT.bed | \
+    cat annotation_merge_RT.bed | \
       sort -k4 -u | \
       bedtools sort -i stdin > RT_annotation_forward.bed
 
     cat annotation_merge_T.bed | \
       sort -k4 -u | \
-      bedtools sort -i stdin > transcript_annotation_forward.bed
+      bedtools sort -i stdin > T_annotation_forward.bed
 
-    bedtools subtract -a RT_annotation_forward.bed -b transcript_annotation_forward.bed > R_annotation_forward.bed
+    bedtools subtract -s -a RT_annotation_forward.bed -b T_annotation_forward.bed > R_annotation_forward.bed
 
     file_handle.py -f R_annotation_forward.bed
     """
@@ -116,7 +115,6 @@ process merge_annotation_forward {
 
 process merge_annotation_reverse {
   echo params.verbose
-  publishDir "results/readthrough/transcript/", mode: 'copy'
   cpus 1
   input:
     file annotation from annotation_reverse_files.collect()
@@ -138,15 +136,15 @@ process merge_annotation_reverse {
       sed 's/transcript:/transcript:RT_/g' > \
       annotation_merge_RT.bed
 
-    cat annotation_merge_T.bed annotation_merge_RT.bed | \
+    cat annotation_merge_RT.bed | \
       sort -k4 -u | \
       bedtools sort -i stdin > RT_annotation_reverse.bed
 
     cat annotation_merge_T.bed | \
       sort -k4 -u | \
-      bedtools sort -i stdin > transcript_annotation_reverse.bed
+      bedtools sort -i stdin > T_annotation_reverse.bed
 
-    bedtools subtract -a RT_annotation_reverse.bed -b transcript_annotation_reverse.bed > R_annotation_reverse.bed
+    bedtools subtract -s -a RT_annotation_reverse.bed -b T_annotation_reverse.bed > R_annotation_reverse.bed
 
     file_handle.py -f R_annotation_reverse.bed
     """
@@ -184,7 +182,7 @@ process compute_bigwig {
     """
     mv ${bams}d ${bams}
     bamCoverage --bam  ${bams} --outFileFormat bigwig -o ${bams}.bw\
-      --binSize 10 -p ${task.cpus} --normalizeUsing BPM --extendReads ${params.mean_size}
+      --binSize 10 -p ${task.cpus} --normalizeUsing CPM
     file_handle.py -f ${bams}.bw
     """
 }
