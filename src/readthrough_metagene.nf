@@ -61,7 +61,7 @@ annotation_reverse_files = Channel
 
 process index_bams {
   echo params.verbose
-  publishDir "results/readthrough/metagene/bams/", mode: 'copy'
+  publishDir "results/readthrough/bams/metagene/", mode: 'copy'
   cpus 1
   input:
     file bams from bam_files
@@ -173,14 +173,14 @@ process compute_bigwig {
   publishDir "results/readthrough/metagene/bigwig/", mode: 'copy'
   cpus 10
   input:
-    set file(bais), file(bams) from ibam_files.collect()
+    set file(bais), file(bams) from ibam_files
   output:
     file "*.bw" into rt_bw
   script:
     bams = (bams =~ /^(.*)d$/)[0][1]
     """
     mv ${bams}d ${bams}
-    bamCoverage --bam  ${bams} --outFileFormat bigwig -o ${bams}.bw\
+    bamCoverage --bam ${bams} --outFileFormat bigwig -o ${bams}.bw\
       --binSize 10 -p ${task.cpus} --normalizeUsing CPM
     file_handle.py -f ${bams}.bw
     """
@@ -200,15 +200,14 @@ process compute_matrix {
   publishDir "results/readthrough/metagene/matrix/", mode: 'copy'
   cpus 11
   input:
-    file bw from rt_bw_grouped
+    file bw from rt_bw_grouped.collect()
     file bed from rt_bed
   output:
     file "*.mat" into rt_mat
   script:
-    condition = (bw[0] =~ /^.*\d{4}_\d{2}_\d{2}_[a-zA-Z0-9]+_(.*)_R._.*$/)[0][1]
     """
-    computeMatrix reference-point -S ${bw} -R ${bed} --referencePoint TSS -b 200 -a 200 -o ${condition}.mat -p ${task.cpus}
-    file_handle.py -f ${condition}.mat
+    computeMatrix reference-point -S ${bw} -R ${bed} --referencePoint TSS -b 200 -a 200 -o metagene.mat -p ${task.cpus}
+    file_handle.py -f metagene.mat
     """
 }
 
