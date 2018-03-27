@@ -76,23 +76,97 @@ process index_bams {
     """
 }
 
+process merge_annotation_forward {
+  echo params.verbose
+  publishDir "results/readthrough/transcript/", mode: 'copy'
+  cpus 1
+  input:
+    file annotation from annotation_forward_files.collect()
+  output:
+    file "*R_annotation_forward.bed" into rt_forward_bed
+  script:
+    """
+    cat ${annotation} > annotation_merge.bed
+
+    grep "ID=transcript:" annotation_merge.bed | \
+      grep -v "transcript_RT" | \
+      awk '{if(\$2 < \$3) {print \$0}}' > \
+      annotation_merge_T.bed
+
+    grep "transcript_RT" annotation_merge.bed | \
+      grep "ID=transcript:" | \
+      awk '{if(\$2 < \$3) {print \$0}}' | \
+      sed 's/\\(.*;Name=\\)\\(.*\\)\\(;Parent.*\\)/\\1\\2_RT\\3/g' | \
+      sed 's/transcript:/transcript:RT_/g' > \
+      annotation_merge_RT.bed
+
+    cat annotation_merge_T.bed annotation_merge_RT.bed | \
+      sort -k4 -u | \
+      bedtools sort -i stdin > RT_annotation_forward.bed
+
+    cat annotation_merge_T.bed | \
+      sort -k4 -u | \
+      bedtools sort -i stdin > transcript_annotation_forward.bed
+
+    bedtools subtract -a RT_annotation_forward.bed -b transcript_annotation_forward.bed > R_annotation_forward.bed
+
+    file_handle.py -f R_annotation_forward.bed
+    """
+}
+
+process merge_annotation_reverse {
+  echo params.verbose
+  publishDir "results/readthrough/transcript/", mode: 'copy'
+  cpus 1
+  input:
+    file annotation from annotation_reverse_files.collect()
+  output:
+    file "*R_annotation_reverse.bed" into rt_reverse_bed
+  script:
+    """
+    cat ${annotation} > annotation_merge.bed
+
+    grep "ID=transcript:" annotation_merge.bed | \
+      grep -v "transcript_RT" | \
+      awk '{if(\$2 < \$3) {print \$0}}' > \
+      annotation_merge_T.bed
+
+    grep "transcript_RT" annotation_merge.bed | \
+      grep "ID=transcript:" | \
+      awk '{if(\$2 < \$3) {print \$0}}' | \
+      sed 's/\\(.*;Name=\\)\\(.*\\)\\(;Parent.*\\)/\\1\\2_RT\\3/g' | \
+      sed 's/transcript:/transcript:RT_/g' > \
+      annotation_merge_RT.bed
+
+    cat annotation_merge_T.bed annotation_merge_RT.bed | \
+      sort -k4 -u | \
+      bedtools sort -i stdin > RT_annotation_reverse.bed
+
+    cat annotation_merge_T.bed | \
+      sort -k4 -u | \
+      bedtools sort -i stdin > transcript_annotation_reverse.bed
+
+    bedtools subtract -a RT_annotation_reverse.bed -b transcript_annotation_reverse.bed > R_annotation_reverse.bed
+
+    file_handle.py -f R_annotation_reverse.bed
+    """
+}
+
 process merge_annotation {
   echo params.verbose
   publishDir "results/readthrough/metagene/", mode: 'copy'
   cpus 1
   input:
-    file annotation_forward from annotation_forward_files.collect()
-    file annotation_reverse from annotation_reverse_files.collect()
+    file annotation_forward from rt_forward_bed.collect()
+    file annotation_reverse from rt_reverse_bed.collect()
   output:
     file "*RT_annotation.bed" into rt_bed
   script:
     """
-    cat ${annotation_forward} ${annotation_reverse} |
-      sort -k4 -u | \
+    cat ${annotation_forward} ${annotation_reverse} | \
       awk '{if(\$2 < \$3) {print \$0}}' | \
-      bedtools sort -i stdin > annotation.bed
-    bedtools cluster -s -i annotation.bed |
       bedtools sort -i stdin > RT_annotation.bed
+
     file_handle.py -f RT_annotation.bed
     """
 }
@@ -136,7 +210,7 @@ process compute_matrix {
   script:
     condition = (bw[0] =~ /^.*\d{4}_\d{2}_\d{2}_[a-zA-Z0-9]+_(.*)_R._.*$/)[0][1]
     """
-    computeMatrix reference-point -S ${bw} -R ${bed} --skipZeros --referencePoint TSS -b 200 -a 200 -o ${condition}.mat -p ${task.cpus}
+    computeMatrix reference-point -S ${bw} -R ${bed} --referencePoint TSS -b 200 -a 200 -o ${condition}.mat -p ${task.cpus}
     file_handle.py -f ${condition}.mat
     """
 }
