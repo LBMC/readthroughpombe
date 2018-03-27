@@ -40,7 +40,6 @@ params.verbose = false
 params.annotation_forward = ""
 params.annotation_reverse = ""
 params.bam = ""
-params.mean_size = 200
 
 bam_files = Channel
   .fromPath(params.bam)
@@ -174,7 +173,7 @@ process compute_bigwig {
   publishDir "results/readthrough/metagene/bigwig/", mode: 'copy'
   cpus 10
   input:
-    set file(bais), file(bams) from ibam_files
+    set file(bais), file(bams) from ibam_files.collect()
   output:
     file "*.bw" into rt_bw
   script:
