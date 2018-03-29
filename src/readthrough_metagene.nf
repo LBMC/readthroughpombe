@@ -59,22 +59,6 @@ annotation_reverse_files = Channel
     exit 1, "Cannot find any annotation file matching: ${params.annotation_forward}"
   }
 
-process index_bams {
-  echo params.verbose
-  publishDir "results/readthrough/bams/metagene/", mode: 'copy'
-  cpus 1
-  input:
-    file bams from bam_files
-  output:
-    file "*.bam*" into ibam_files
-  script:
-    """
-    samtools index ${bams}
-    mv ${bams} ${bams}d
-    file_handle.py -f ${bams}*
-    """
-}
-
 process merge_annotation_forward {
   echo params.verbose
   cpus 1
@@ -168,6 +152,47 @@ process merge_annotation {
     """
 }
 
+bam_files.groupBy {
+  str -> (str =~ /^.*\d{4}_\d{2}_\d{2}_[a-zA-Z0-9]+_(.*)_.*$/)[0][1]
+}
+.flatMap().
+map{
+  it -> it.getValue()
+}
+.set{bams_grouped}
+
+process merge_bams {
+  echo params.verbose
+  publishDir "results/readthrough/bams/metagene/", mode: 'copy'
+  cpus 1
+  input:
+    file bams from bams_grouped
+  output:
+    file "*.bam*" into bams_merged
+  script:
+    condition = (bams[0] =~ /^\d{4}_\d{2}_\d{2}_(.*)_[a-zA-Z0-9]+\..*/)[0][1]
+    """
+    samtools merge ${condition}.bam ${bams}
+    file_handle.py -f ${condition}.bam
+    """
+}
+
+process index_bams {
+  echo params.verbose
+  publishDir "results/readthrough/bams/metagene/", mode: 'copy'
+  cpus 1
+  input:
+    file bams from bams_merged
+  output:
+    file "*.bam*" into ibam_files
+  script:
+    """
+    samtools index ${bams}
+    mv ${bams} ${bams}d
+    file_handle.py -f ${bams}*
+    """
+}
+
 process compute_bigwig {
   echo params.verbose
   publishDir "results/readthrough/metagene/bigwig/", mode: 'copy'
@@ -186,21 +211,12 @@ process compute_bigwig {
     """
 }
 
-rt_bw.groupBy {
-  str -> (str =~ /^.*\d{4}_\d{2}_\d{2}_[a-zA-Z0-9]+_(.*)_R._.*$/)[0][1]
-}
-.flatMap().
-map{
-  it -> it.getValue()
-}
-.set{rt_bw_grouped}
-
 process compute_matrix {
   echo params.verbose
   publishDir "results/readthrough/metagene/matrix/", mode: 'copy'
   cpus 11
   input:
-    file bw from rt_bw_grouped.collect()
+    file bw from rt_bw.collect()
     file bed from rt_bed
   output:
     file "*.mat" into rt_mat
@@ -227,5 +243,4 @@ process compute_plot {
     file_handle.py -f ${mat}.pdf ${mat}_hm.pdf
     """
 }
-
 
