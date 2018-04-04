@@ -11,9 +11,15 @@ file_handle.py -f *.bam
 rm *cdc15*
 cd ~/projects/readthroughpombe/
 
+mkdir results/readthrough/metagene/bed/
+cd results/readthrough/metagene/bed/
+ln -s ../../DEA/RT/wt_vs_cut14_208_RT_lfc_greater_than_0/2018_02_15_wt_vs_cut14_208_RT.csv.bed RT_cut14_208.bed
+ln -s ../../DEA/RT/wt_vs_rrp6D_RT_lfc_greater_than_0/2018_02_15_wt_vs_rrp6D_RT.csv.bed RT_rrp6D.bed
+file_handle.py -f *.bed
+cd ~/projects/readthroughpombe/
+
 bin/nextflow src/readthrough_metagene.nf -c src/pipe/conf/readthrough_docker.config \
-  --annotation_forward "results/readthrough/peak_calling/2018_02_28_*_RT_forward.bed" \
-  --annotation_reverse "results/readthrough/peak_calling/2018_02_28_*_RT_reverse.bed" \
+  --annotation "results/readthrough/peak_calling/2018_02_28_*_RT_forward.bed" \
   --bam "results/readthrough/bams/metagene/*.bam" \
   -resume -w /home/laurent/data/work/ -with-dag results/readthrough/metagene_dag.pdf \
   -with-timeline results/readthrough/metagene_timeline
