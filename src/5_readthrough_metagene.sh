@@ -1,16 +1,14 @@
 # script to plot metagene of the readthrough events
 
 mkdir -p results/readthrough/bams/metagene/
+rm results/readthrough/bams/metagene/*.bam*
 cd results/readthrough/bams/metagene
-ln -sf ../cut14/2018_01_19_PLBD11_wt_R3_sorted.bam .
-ln -sf ../cut14/2018_01_19_PLBD12_cut14-208_R3_sorted.bam .
-ln -sf ../cut14/2018_01_19_PLBD1_wt_R1_sorted.bam .
-ln -sf ../cut14/2018_01_19_PLBD2_cut14-208_R1_sorted.bam .
-ln -sf ../cut14/2018_01_19_PLBD6_wt_R2_sorted.bam .
-ln -sf ../cut14/2018_01_19_PLBD7_cut14-208_R2_sorted.bam .
-ln -sf ../rrp6D/2018_01_19_PLBD10_rrp6D_R2_sorted.bam .
-ln -sf ../rrp6D/2018_01_19_PLBD15_rrp6D_R3_sorted.bam .
-ln -sf ../rrp6D/2018_01_19_PLBD5_rrp6D_R1_sorted.bam .
+find ../../../mapping/bams/ -name "*.bam" | wc -l
+find ../../../mapping/bams/ -name "*.bam" | perl -pe "s/(.*(PLBD\d+)-(.+)-Galaxy.*)/\2 \3 \1/g" | sort -k1 > target.txt
+find ../../../mapping/mapping/ -name "*.bam" | perl -pe "s/.*(PLBD\d+)_(.*)_R\d.*/\1 \1_\2/g" | sort -k1 > link.txt
+join target.txt link.txt | awk '{system("ln -s "$3" "$4"_"$2".bam")}'
+file_handle.py -f *.bam
+rm *cdc15*
 cd ~/projects/readthroughpombe/
 
 bin/nextflow src/readthrough_metagene.nf -c src/pipe/conf/readthrough_docker.config \
