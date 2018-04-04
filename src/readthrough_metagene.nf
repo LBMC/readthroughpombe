@@ -153,7 +153,7 @@ process merge_annotation {
 }
 
 bam_files.groupBy {
-  str -> (str =~ /^.*\d{4}_\d{2}_\d{2}_[a-zA-Z0-9]+_(.*)_.*$/)[0][1]
+  str -> (str =~ /^.*\d{4}_\d{2}_\d{2}_([a-zA-Z0-9]+_.*)_.*$/)[0][1]
 }
 .flatMap().
 map{
@@ -163,7 +163,6 @@ map{
 
 process merge_bams {
   echo params.verbose
-  publishDir "results/readthrough/bams/metagene/", mode: 'copy'
   cpus 1
   input:
     file bams from bams_grouped
@@ -177,12 +176,28 @@ process merge_bams {
     """
 }
 
-process index_bams {
+process sort_bams {
   echo params.verbose
-  publishDir "results/readthrough/bams/metagene/", mode: 'copy'
-  cpus 1
+  publishDir "results/readthrough/metagene/bams/", mode: 'copy', pattern: "_sort.bam"
+  cpus 4
   input:
     file bams from bams_merged
+  output:
+    file "*.bam*" into bams_sorted
+  script:
+    file_name = (bams =~ /^(.*)\.bam/)[0][1]
+    """
+    samtools sort -@ ${task.cpus} -o ${file_name}_sort.bam ${bams}
+    file_handle.py -f ${file_name}_sort.bam
+    """
+}
+
+process index_bams {
+  echo params.verbose
+  publishDir "results/readthrough/metagene/bams/", mode: 'copy', pattern: ".bam.bai"
+  cpus 1
+  input:
+    file bams from bams_sorted
   output:
     file "*.bam*" into ibam_files
   script:
@@ -196,7 +211,7 @@ process index_bams {
 process compute_bigwig {
   echo params.verbose
   publishDir "results/readthrough/metagene/bigwig/", mode: 'copy'
-  cpus 10
+  cpus 11
   input:
     set file(bais), file(bams) from ibam_files
   output:
@@ -206,7 +221,7 @@ process compute_bigwig {
     """
     mv ${bams}d ${bams}
     bamCoverage --bam ${bams} --outFileFormat bigwig -o ${bams}.bw\
-      --binSize 10 -p ${task.cpus} --normalizeUsing CPM
+      --binSize 10 -p ${task.cpus} --normalizeUsing BPM
     file_handle.py -f ${bams}.bw
     """
 }
@@ -236,9 +251,8 @@ process compute_plot {
   output:
     file "*.pdf" into rt_pdf
   script:
-    condition = (mat =~ /^\d{4}_\d{2}_\d{2}_(.*)\..*/)[0][1]
     """
-    plotProfile -m ${mat} --perGroup -o ${mat}.pdf --plotTitle "${condition}"
+    plotProfile -m ${mat} --perGroup -o ${mat}.pdf --plotTitle "metagene"
     plotHeatmap -m ${mat} --kmean 2 -out ${mat}_hm.pdf
     file_handle.py -f ${mat}.pdf ${mat}_hm.pdf
     """
