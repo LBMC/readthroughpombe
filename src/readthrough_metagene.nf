@@ -37,8 +37,7 @@
 */
 
 params.verbose = false
-params.annotation_forward = ""
-params.annotation_reverse = ""
+params.annotation = ""
 params.bam = ""
 
 bam_files = Channel
@@ -47,104 +46,23 @@ bam_files = Channel
     exit 1, "Cannot find any bam file matching: ${params.bam}"
   }
 
-annotation_forward_files = Channel
-  .fromPath(params.annotation_forward)
+annotation_files = Channel
+  .fromPath(params.annotation)
   .ifEmpty {
-    exit 1, "Cannot find any annotation file matching: ${params.annotation_forward}"
+    exit 1, "Cannot find any annotation file matching: ${params.annotation}"
   }
-
-annotation_reverse_files = Channel
-  .fromPath(params.annotation_reverse)
-  .ifEmpty {
-    exit 1, "Cannot find any annotation file matching: ${params.annotation_forward}"
-  }
-
-process merge_annotation_forward {
-  echo params.verbose
-  cpus 1
-  input:
-    file annotation from annotation_forward_files.collect()
-  output:
-    file "*R_annotation_forward.bed" into rt_forward_bed
-  script:
-    """
-    cat ${annotation} > annotation_merge.bed
-
-    grep "ID=transcript:" annotation_merge.bed | \
-      grep -v "transcript_RT" | \
-      awk '{if(\$2 < \$3) {print \$0}}' > \
-      annotation_merge_T.bed
-
-    grep "transcript_RT" annotation_merge.bed | \
-      grep "ID=transcript:" | \
-      awk '{if(\$2 < \$3) {print \$0}}' | \
-      sed 's/\\(.*;Name=\\)\\(.*\\)\\(;Parent.*\\)/\\1\\2_RT\\3/g' | \
-      sed 's/transcript:/transcript:RT_/g' > \
-      annotation_merge_RT.bed
-
-    cat annotation_merge_RT.bed | \
-      sort -k4 -u | \
-      bedtools sort -i stdin > RT_annotation_forward.bed
-
-    cat annotation_merge_T.bed | \
-      sort -k4 -u | \
-      bedtools sort -i stdin > T_annotation_forward.bed
-
-    bedtools subtract -s -a RT_annotation_forward.bed -b T_annotation_forward.bed > R_annotation_forward.bed
-
-    file_handle.py -f R_annotation_forward.bed
-    """
-}
-
-process merge_annotation_reverse {
-  echo params.verbose
-  cpus 1
-  input:
-    file annotation from annotation_reverse_files.collect()
-  output:
-    file "*R_annotation_reverse.bed" into rt_reverse_bed
-  script:
-    """
-    cat ${annotation} > annotation_merge.bed
-
-    grep "ID=transcript:" annotation_merge.bed | \
-      grep -v "transcript_RT" | \
-      awk '{if(\$2 < \$3) {print \$0}}' > \
-      annotation_merge_T.bed
-
-    grep "transcript_RT" annotation_merge.bed | \
-      grep "ID=transcript:" | \
-      awk '{if(\$2 < \$3) {print \$0}}' | \
-      sed 's/\\(.*;Name=\\)\\(.*\\)\\(;Parent.*\\)/\\1\\2_RT\\3/g' | \
-      sed 's/transcript:/transcript:RT_/g' > \
-      annotation_merge_RT.bed
-
-    cat annotation_merge_RT.bed | \
-      sort -k4 -u | \
-      bedtools sort -i stdin > RT_annotation_reverse.bed
-
-    cat annotation_merge_T.bed | \
-      sort -k4 -u | \
-      bedtools sort -i stdin > T_annotation_reverse.bed
-
-    bedtools subtract -s -a RT_annotation_reverse.bed -b T_annotation_reverse.bed > R_annotation_reverse.bed
-
-    file_handle.py -f R_annotation_reverse.bed
-    """
-}
 
 process merge_annotation {
   echo params.verbose
-  publishDir "results/readthrough/metagene/", mode: 'copy'
+  publishDir "results/readthrough/metagene/bed/", mode: 'copy'
   cpus 1
   input:
-    file annotation_forward from rt_forward_bed.collect()
-    file annotation_reverse from rt_reverse_bed.collect()
+    file annotation from annotation_files.collect()
   output:
     file "*RT_annotation.bed" into rt_bed
   script:
     """
-    cat ${annotation_forward} ${annotation_reverse} | \
+    cat ${annotation} | \
       awk '{if(\$2 < \$3) {print \$0}}' | \
       bedtools sort -i stdin > RT_annotation.bed
 
@@ -153,7 +71,7 @@ process merge_annotation {
 }
 
 bam_files.groupBy {
-  str -> (str =~ /^.*\d{4}_\d{2}_\d{2}_([a-zA-Z0-9]+_.*)_.*$/)[0][1]
+  str -> (str =~ /^.*\d{4}_\d{2}_\d{2}_[a-zA-Z0-9]+_(.*)_.*$/)[0][1]
 }
 .flatMap().
 map{
