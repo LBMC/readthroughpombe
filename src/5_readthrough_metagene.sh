@@ -24,3 +24,9 @@ bin/nextflow src/readthrough_metagene.nf -c src/pipe/conf/readthrough_docker.con
   -resume -w /home/laurent/data/work/ -with-dag results/readthrough/metagene_dag.pdf \
   -with-timeline results/readthrough/metagene_timeline
 
+bin/nextflow src/readthrough_metagene.nf -c src/pipe/conf/readthrough_sge.config \
+  --annotation "results/readthrough/peak_calling/2018_02_28_*_RT_forward.bed" \
+  --bam "results/readthrough/bams/metagene/*.bam" \
+  -resume -w /home/laurent/data/work/ -with-dag results/readthrough/metagene_dag.pdf \
+  -with-timeline results/readthrough/metagene_timeline
+
