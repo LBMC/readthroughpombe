@@ -71,7 +71,7 @@ process merge_annotation {
 }
 
 bam_files.groupBy {
-  str -> (str =~ /^.*\d{5}_\d{2}_\d{2}_[a-zA-Z0-9]+_(.*)_.*$/)[0][1]
+  str -> (str =~ /^.*\d{4}_\d{2}_\d{2}_[a-zA-Z0-9]+_(.*)_.*$/)[0][1]
 }
 .flatMap().
 map{
