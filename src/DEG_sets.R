@@ -28,77 +28,208 @@ results <- data.frame(
 )
 
 results$signif <- ifelse(results$padj_rrp6D < 0.05, "rrp6D", "no")
-results$signif <- ifelse(results$padj_cut14 < 0.05, "cut14", results$signif)
-results$signif <- ifelse(results$padj_rrp6D < 0.05 & results$padj_cut14 < 0.05, "both", results$signif)
+results$signif <- ifelse(results$padj_cut14 < 0.05, "cut14-208", results$signif)
+results$signif <- ifelse(results$padj_rrp6D < 0.05 & results$padj_cut14 < 0.05, "cut14-208 & rrp6D", results$signif)
 results$signif_pos <- results$padj_rrp6D < 0.05 &
   results$padj_cut14 < 0.05 &
   results$log2FoldChange_rrp6D > 0 &
   results$log2FoldChange_cut14 > 0 
 
-model_stat <- lm(stat_cut14 ~ stat_rrp6D + signif:stat_rrp6D, data = results)
-summary(model_stat)
-model_log <- lm(log2FoldChange_cut14 ~ log2FoldChange_rrp6D + signif_pos + signif_pos:log2FoldChange_rrp6D, data = results)
-summary(model_log)
-
-ggplot(data = results, aes(x = stat_cut14, y = stat_rrp6D, color = signif, alpha = signif != "no")) +
-  geom_point(size = 1) +
-  theme_bw()
-
-ggplot(data = results[results$stat_cut14 != 0 & results$stat_rrp6D != 0, ], aes(x = stat_cut14, y = stat_rrp6D, color = signif, alpha = signif != "no")) +
-  geom_point(size = 1) +
-  theme_bw()
-
-ggplot(data = results, aes(x = log2FoldChange_cut14, y = log2FoldChange_rrp6D, color = signif, alpha = signif != "no")) +
-  geom_point(size = 1) +
-  theme_bw()
-
-model <- glm(signif_pos ~ stat_rrp6D*stat_cut14, family = binomial(link='logit'), data = results)
+for (group_name in c("cut14-208", "rrp6D", "cut14-208 & rrp6D")) {
+  p <- ggplot(data = results[results$signif == group_name & !is.na(results$signif), ],
+      aes(
+        x = log2FoldChange_cut14,
+        y = log2FoldChange_rrp6D,
+      )) +
+    geom_point(
+      size = 1,
+      data = results[results$signif == "no", ],
+      aes(
+        x = log2FoldChange_cut14,
+        y = log2FoldChange_rrp6D
+      ),
+      colour = "gray" 
+    ) +
+    geom_point(
+      size = 1,
+      data = results[results$signif != "no" & !is.na(results$signif), ],
+      aes(
+        x = log2FoldChange_cut14,
+        y = log2FoldChange_rrp6D,
+        color = signif
+      )
+    ) +
+    xlim(-5, 10) +
+    ylim(-5, 10) +
+    geom_smooth(method = "lm") +
+    theme_bw() +
+    labs(
+      title = "differentially expressed genes in rrp6D and cut14-208",
+      xlab = "cut14-208 log2FoldChange",
+      ylab = "rrp6D log2FoldChange",
+      color = "differentially expressed"
+    )
+  print(p)
+  ggsave(
+    filename = paste0(
+      "results/readthrough/DEA/cut14_208_vs_rrp6D_lm_",
+      group_name,
+      ".pdf"
+    ), plot = p,
+    width = 29.7, height = 21, units = "cm", scale = 2
+  )
+}
+results$signif <- as.factor(results$signif)
+results$signif <- relevel(results$signif, "no")
+model <- lm(data = results, log2FoldChange_rrp6D ~ log2FoldChange_cut14*signif)
 summary(model)
-model <- glm(signif_pos ~ stat_rrp6D*stat_cut14, family = binomial(link='logit'), data = results[results$stat_cut14 != 0 & results$stat_rrp6D != 0, ])
+rmodel <- MASS::rlm(data = results, log2FoldChange_rrp6D ~ log2FoldChange_cut14*signif)
 summary(model)
-model <- glm(signif_pos ~ log2FoldChange_rrp6D*log2FoldChange_cut14, family = binomial(link='logit'), data = results)
-summary(model)
+model$coefficients
+rmodel$coefficients
 
-results <- data.frame(
-  gene = results_list[["rrp6D"]][["RT"]]$X,
-  log2FoldChange_rrp6D = results_list[["rrp6D"]][["RT"]]$log2FoldChange,
-  log2FoldChange_cut14 = results_list[["cut14_208"]][["RT"]]$log2FoldChange,
-  stat_rrp6D = results_list[["rrp6D"]][["RT"]]$stat,
-  stat_cut14 = results_list[["cut14_208"]][["RT"]]$stat,
-  pvalue_rrp6D = results_list[["rrp6D"]][["RT"]]$pvalue,
-  pvalue_cut14 = results_list[["cut14_208"]][["RT"]]$pvalue,
-  padj_rrp6D = results_list[["rrp6D"]][["RT"]]$padj,
-  padj_cut14 = results_list[["cut14_208"]][["RT"]]$padj
+p <- ggplot() +
+  geom_abline(slope = 1, intercept = 0) +
+  geom_point(
+    size = 1,
+    data = results[results$signif == "no", ],
+    aes(
+      x = log2FoldChange_cut14,
+      y = log2FoldChange_rrp6D
+    ),
+    colour = "gray" 
+  ) +
+  geom_point(
+    size = 1,
+    data = results[results$signif != "no" & !is.na(results$signif), ],
+    aes(
+      x = log2FoldChange_cut14,
+      y = log2FoldChange_rrp6D,
+      color = signif
+    )
+  ) +
+  annotate("text",
+    x = 5,
+    y = ( rmodel$coefficients[2] + rmodel$coefficients[7] ) * 5 + rmodel$coefficients[1] + rmodel$coefficients[4] + 1,
+    label = paste0("italic(slope) == ", rmodel$coefficients[2] + rmodel$coefficients[7]),
+    colour = "#00BA38",
+    size = 10,
+    parse = TRUE
+  ) +
+  annotate("text",
+    x = 5,
+    y = ( rmodel$coefficients[2] + rmodel$coefficients[6] ) * 5 + rmodel$coefficients[1] + rmodel$coefficients[3] - 1,
+    label = paste0("italic(slope) == ", rmodel$coefficients[2] + rmodel$coefficients[6]),
+    colour = "#F8766D",
+    size = 10,
+    parse = TRUE
+  ) +
+  annotate("text",
+    x = 5,
+    y = ( rmodel$coefficients[2] + rmodel$coefficients[8] ) * 5 + rmodel$coefficients[1] + rmodel$coefficients[5] + 2,
+    label = paste0("italic(slope) == ", rmodel$coefficients[2] + rmodel$coefficients[8]),
+    colour = "#619CFF",
+    size = 10,
+    parse = TRUE
+  ) +
+  geom_abline(
+    slope = rmodel$coefficients[2] + rmodel$coefficients[6], 
+    intercept = rmodel$coefficients[1] + rmodel$coefficients[3],
+    col="#F8766D"
+  ) +
+  geom_abline(
+    slope = rmodel$coefficients[2] + rmodel$coefficients[8], 
+    intercept = rmodel$coefficients[1] + rmodel$coefficients[5],
+    col="#619CFF"
+  ) +
+  geom_abline(
+    slope = rmodel$coefficients[2] + rmodel$coefficients[7], 
+    intercept = rmodel$coefficients[1] + rmodel$coefficients[4],
+    col="#00BA38"
+  ) +
+  xlim(-5, 10) +
+  ylim(-5, 10) +
+  theme_bw() +
+  labs(
+    title = "differentially expressed genes in rrp6D and cut14-208 (rlm)",
+    xlab = "cut14-208 log2FoldChange",
+    ylab = "rrp6D log2FoldChange",
+    color = "differentially expressed"
+  )
+print(p)
+ggsave(
+  filename = paste0(
+    "results/readthrough/DEA/cut14_208_vs_rrp6D_rlm_.pdf"
+  ), plot = p,
+  width = 29.7, height = 21, units = "cm", scale = 2
 )
 
-results$signif <- ifelse(results$padj_rrp6D < 0.05, "rrp6D", "no")
-results$signif <- ifelse(results$padj_cut14 < 0.05, "cut14", results$signif)
-results$signif <- ifelse(results$padj_rrp6D < 0.05 & results$padj_cut14 < 0.05, "both", results$signif)
-results$signif_pos <- results$padj_rrp6D < 0.05 &
-  results$padj_cut14 < 0.05 &
-  results$log2FoldChange_rrp6D > 0 &
-  results$log2FoldChange_cut14 > 0 
-
-model_stat <- lm(stat_cut14 ~ stat_rrp6D + signif:stat_rrp6D, data = results)
-summary(model_stat)
-model_log <- lm(log2FoldChange_cut14 ~ log2FoldChange_rrp6D + signif_pos + signif_pos:log2FoldChange_rrp6D, data = results)
-summary(model_log)
-
-ggplot(data = results, aes(x = stat_cut14, y = stat_rrp6D, color = signif, alpha = signif != "no")) +
-  geom_point(size = 1) +
-  theme_bw()
-
-ggplot(data = results[results$stat_cut14 != 0 & results$stat_rrp6D != 0, ], aes(x = stat_cut14, y = stat_rrp6D, color = signif, alpha = signif != "no")) +
-  geom_point(size = 1) +
-  theme_bw()
-
-ggplot(data = results, aes(x = log2FoldChange_cut14, y = log2FoldChange_rrp6D, color = signif, alpha = signif != "no")) +
-  geom_point(size = 1) +
-  theme_bw()
-
-model <- glm(signif_pos ~ stat_rrp6D*stat_cut14, family = binomial(link='logit'), data = results)
-summary(model)
-model <- glm(signif_pos ~ stat_rrp6D*stat_cut14, family = binomial(link='logit'), data = results[results$stat_cut14 != 0 & results$stat_rrp6D != 0, ])
-summary(model)
-model <- glm(signif_pos ~ log2FoldChange_rrp6D*log2FoldChange_cut14, family = binomial(link='logit'), data = results)
-summary(model)
+p <- ggplot() +
+  geom_abline(slope = 1, intercept = 0) +
+  geom_point(
+    size = 1,
+    data = results[results$signif == "no", ],
+    aes(
+      x = log2FoldChange_cut14,
+      y = log2FoldChange_rrp6D
+    ),
+    colour = "gray" 
+  ) +
+  geom_point(
+    size = 1,
+    data = results[results$signif != "no" & !is.na(results$signif), ],
+    aes(
+      x = log2FoldChange_cut14,
+      y = log2FoldChange_rrp6D,
+      color = signif
+    )
+  ) +
+  annotate("text",
+    x = 5,
+    y = ( model$coefficients[2] + model$coefficients[7] ) * 5 + model$coefficients[1] + model$coefficients[4] + 1,
+    label = paste0("italic(slope) == ", model$coefficients[2] + model$coefficients[7]),
+    colour = "#00BA38",
+    size = 10,
+    parse = TRUE
+  ) +
+  annotate("text",
+    x = 5,
+    y = ( model$coefficients[2] + model$coefficients[6] ) * 5 + model$coefficients[1] + model$coefficients[3] - 1,
+    label = paste0("italic(slope) == ", model$coefficients[2] + model$coefficients[6]),
+    colour = "#F8766D",
+    size = 10,
+    parse = TRUE
+  ) +
+  annotate("text",
+    x = 5,
+    y = ( model$coefficients[2] + model$coefficients[8] ) * 5 + model$coefficients[1] + model$coefficients[5] + 2,
+    label = paste0("italic(slope) == ", model$coefficients[2] + model$coefficients[8]),
+    colour = "#619CFF",
+    size = 10,
+    parse = TRUE
+  ) +
+  geom_abline(
+    slope = model$coefficients[2] + model$coefficients[6], 
+    intercept = model$coefficients[1] + model$coefficients[3], col="#F8766D") +
+  geom_abline(
+    slope = model$coefficients[2] + model$coefficients[8], 
+    intercept = model$coefficients[1] + model$coefficients[5], col="#619CFF") +
+  geom_abline(
+    slope = model$coefficients[2] + model$coefficients[7], 
+    intercept = model$coefficients[1] + model$coefficients[4], col="#00BA38") +
+  xlim(-5, 10) +
+  ylim(-5, 10) +
+  theme_bw() +
+  labs(
+    title = "differentially expressed genes in rrp6D and cut14-208 (lm)",
+    xlab = "cut14-208 log2FoldChange",
+    ylab = "rrp6D log2FoldChange",
+    color = "differentially expressed"
+  )
+print(p)
+ggsave(
+  filename = paste0(
+    "results/readthrough/DEA/cut14_208_vs_rrp6D_lm_.pdf"
+  ), plot = p,
+  width = 29.7, height = 21, units = "cm", scale = 2
+)
