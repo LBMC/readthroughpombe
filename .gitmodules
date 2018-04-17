@@ -1,3 +1,0 @@
-[submodule "src/file_handle"]
-	path = src/file_handle
-	url = gitlab_lbmc:LBMC/file_handle.git
