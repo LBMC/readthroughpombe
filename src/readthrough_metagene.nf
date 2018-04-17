@@ -54,19 +54,30 @@ annotation_files = Channel
 
 process merge_annotation {
   echo params.verbose
-  publishDir "results/readthrough/metagene/bed/", mode: 'copy'
   cpus 1
   input:
     file annotation from annotation_files.collect()
   output:
-    file "*RT_annotation.bed" into rt_bed
+    file "*RT_annotation.bed" into d_rt_bed
   script:
     """
     cat ${annotation} | \
       awk '{if(\$2 < \$3) {print \$0}}' | \
       bedtools sort -i stdin > RT_annotation.bed
+    """
+}
 
-    file_handle.py -f RT_annotation.bed
+process date_merge_annotation {
+  echo params.verbose
+  publishDir "results/readthrough/metagene/bed/", mode: 'copy'
+  cpus 1
+  input:
+    file file from d_rt_bed
+  output:
+    file "*RT_annotation.bed" into rt_bed
+  script:
+    """
+    file_handle.py -f ${file}
     """
 }
 
@@ -85,12 +96,24 @@ process merge_bams {
   input:
     file bams from bams_grouped
   output:
-    file "*.bam*" into bams_merged
+    file "*.bam*" into d_bams_merged
   script:
     condition = (bams[0] =~ /^\d{4}_\d{2}_\d{2}_(.*)_[a-zA-Z0-9]+\..*/)[0][1]
     """
     samtools merge ${condition}.bam ${bams}
-    file_handle.py -f ${condition}.bam
+    """
+}
+
+process date_merge_bams {
+  echo params.verbose
+  cpus 1
+  input:
+    file bams from d_bams_merged
+  output:
+    file "*.bam*" into bams_merged
+  script:
+    """
+    file_handle.py -f *.bam
     """
 }
 
@@ -106,7 +129,6 @@ process sort_bams {
     file_name = (bams =~ /^(.*)\.bam/)[0][1]
     """
     samtools sort -@ ${task.cpus} -o ${file_name}_sort.bam ${bams}
-    file_handle.py -f ${file_name}_sort.bam
     """
 }
 
@@ -122,7 +144,6 @@ process index_bams {
     """
     samtools index ${bams}
     mv ${bams} ${bams}d
-    file_handle.py -f ${bams}*
     """
 }
 
@@ -140,7 +161,6 @@ process compute_bigwig {
     mv ${bams}d ${bams}
     bamCoverage --bam ${bams} --outFileFormat bigwig -o ${bams}.bw\
       --binSize 10 -p ${task.cpus} --normalizeUsing BPM
-    file_handle.py -f ${bams}.bw
     """
 }
 
@@ -156,7 +176,6 @@ process compute_matrix {
   script:
     """
     computeMatrix reference-point -S ${bw} -R ${bed} --referencePoint TSS -b 200 -a 200 -o metagene.mat -p ${task.cpus}
-    file_handle.py -f metagene.mat
     """
 }
 
@@ -172,7 +191,6 @@ process compute_plot {
     """
     plotProfile -m ${mat} --perGroup -o ${mat}.pdf --plotTitle "metagene"
     plotHeatmap -m ${mat} --kmean 2 -out ${mat}_hm.pdf
-    file_handle.py -f ${mat}.pdf ${mat}_hm.pdf
     """
 }
 
