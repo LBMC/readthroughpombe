@@ -117,22 +117,24 @@ dea_analysis <- function(
     theme_bw()
   ggplot2::ggsave(file = paste0(results_folder, analysis, "_PCA.pdf"))
 
-  ggplot(as.data.frame(res), aes(x = log2FoldChange, y = pvalue, color = padj, fill = padj)) +
+  pdf(file = paste0(results_folder, analysis, "_MA.pdf"))
+  DESeq2::plotMA(res, ylim = c(-2.5, 2.5))
+  dev.off()
+
+  res <- as.data.frame(res)
+  ggplot(res, aes(x = log2FoldChange, y = pvalue, color = padj, fill = padj)) +
     geom_point() +
+    xlim(-15, 15) +
     scale_colour_gradient(high = "#000000", low = "#FF0000",
       space = "Lab", na.value = "grey50", guide = "colourbar") +
     scale_fill_gradient(high = "#000000", low = "#FF0000", space = "Lab",
       na.value = "grey50", guide = "colourbar") +
     scale_y_continuous(trans = "reverse") +
-    theme_bw()
+    theme_bw() 
   ggplot2::ggsave(file = paste0(results_folder, analysis, "_volcano.pdf"))
 
-  pdf(file = paste0(results_folder, analysis, "_MA.pdf"))
-  DESeq2::plotMA(res, ylim = c(-2.5, 2.5))
-  dev.off()
-
   write.csv(
-    as.data.frame(res),
+    res,
     file = paste0(results_folder, analysis, ".csv")
   )
   system(paste0("~/scripts/file_handle.py -f ", results_folder, "*"))
