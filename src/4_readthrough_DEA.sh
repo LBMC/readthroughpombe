@@ -1,6 +1,7 @@
 # script to run DEA on the readthrough resutls
 
 Rscript src/DEA.R
+Rscript src/DEG_set.R
 
 find results/readthrough/DEA/RT/ -name "*.csv" | while read fname;
 do
