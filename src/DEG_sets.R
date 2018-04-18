@@ -110,8 +110,39 @@ p <- ggplot() +
   ) +
   annotate("text",
     x = 5,
+    y = -5,
+    label = paste0(
+      "italic(cor) == ",
+      cor(results$log2FoldChange_rrp6D[!is.na( results$signif )],
+      results$log2FoldChange_cut14[!is.na( results$signif )]
+      )
+    ),
+    colour = "black",
+    size = 10,
+    parse = TRUE
+  ) +
+  annotate("text",
+    x = -3,
+    y = 5,
+    label = paste0(
+      "italic(cor) == ",
+      cor(results$log2FoldChange_rrp6D[results$signif %in% "no"],
+      results$log2FoldChange_cut14[results$signif %in% "no"]
+      )
+    ),
+    colour = "gray",
+    size = 10,
+    parse = TRUE
+  ) +
+  annotate("text",
+    x = 5,
     y = ( rmodel$coefficients[2] + rmodel$coefficients[7] ) * 5 + rmodel$coefficients[1] + rmodel$coefficients[4] + 1,
-    label = paste0("italic(slope) == ", rmodel$coefficients[2] + rmodel$coefficients[7]),
+    label = paste0(
+      "italic(cor) == ",
+      cor(results$log2FoldChange_rrp6D[results$signif %in% "cut14-208 & rrp6D"],
+      results$log2FoldChange_cut14[results$signif %in% "cut14-208 & rrp6D"]
+      )
+    ),
     colour = "#00BA38",
     size = 10,
     parse = TRUE
@@ -119,7 +150,12 @@ p <- ggplot() +
   annotate("text",
     x = 5,
     y = ( rmodel$coefficients[2] + rmodel$coefficients[6] ) * 5 + rmodel$coefficients[1] + rmodel$coefficients[3] - 1,
-    label = paste0("italic(slope) == ", rmodel$coefficients[2] + rmodel$coefficients[6]),
+    label = paste0(
+      "italic(cor) == ",
+      cor(results$log2FoldChange_rrp6D[results$signif %in% "cut14-208"],
+      results$log2FoldChange_cut14[results$signif %in% "cut14-208"]
+      )
+    ),
     colour = "#F8766D",
     size = 10,
     parse = TRUE
@@ -127,7 +163,12 @@ p <- ggplot() +
   annotate("text",
     x = 5,
     y = ( rmodel$coefficients[2] + rmodel$coefficients[8] ) * 5 + rmodel$coefficients[1] + rmodel$coefficients[5] + 2,
-    label = paste0("italic(slope) == ", rmodel$coefficients[2] + rmodel$coefficients[8]),
+    label = paste0(
+      "italic(cor) == ",
+      cor(results$log2FoldChange_rrp6D[results$signif %in% "rrp6D"],
+      results$log2FoldChange_cut14[results$signif %in% "rrp6D"]
+      )
+    ),
     colour = "#619CFF",
     size = 10,
     parse = TRUE
@@ -186,8 +227,39 @@ p <- ggplot() +
   ) +
   annotate("text",
     x = 5,
+    y = -5,
+    label = paste0(
+      "italic(cor) == ",
+      cor(results$log2FoldChange_rrp6D[!is.na( results$signif )],
+      results$log2FoldChange_cut14[!is.na( results$signif )]
+      )
+    ),
+    colour = "black",
+    size = 10,
+    parse = TRUE
+  ) +
+  annotate("text",
+    x = -3,
+    y = 5,
+    label = paste0(
+      "italic(cor) == ",
+      cor(results$log2FoldChange_rrp6D[results$signif %in% "no"],
+      results$log2FoldChange_cut14[results$signif %in% "no"]
+      )
+    ),
+    colour = "gray",
+    size = 10,
+    parse = TRUE
+  ) +
+  annotate("text",
+    x = 5,
     y = ( model$coefficients[2] + model$coefficients[7] ) * 5 + model$coefficients[1] + model$coefficients[4] + 1,
-    label = paste0("italic(slope) == ", model$coefficients[2] + model$coefficients[7]),
+    label = paste0(
+      "italic(cor) == ",
+      cor(results$log2FoldChange_rrp6D[results$signif %in% "cut14-208 & rrp6D"],
+      results$log2FoldChange_cut14[results$signif %in% "cut14-208 & rrp6D"]
+      )
+    ),
     colour = "#00BA38",
     size = 10,
     parse = TRUE
@@ -195,7 +267,12 @@ p <- ggplot() +
   annotate("text",
     x = 5,
     y = ( model$coefficients[2] + model$coefficients[6] ) * 5 + model$coefficients[1] + model$coefficients[3] - 1,
-    label = paste0("italic(slope) == ", model$coefficients[2] + model$coefficients[6]),
+    label = paste0(
+      "italic(cor) == ",
+      cor(results$log2FoldChange_rrp6D[results$signif %in% "cut14-208"],
+      results$log2FoldChange_cut14[results$signif %in% "cut14-208"]
+      )
+    ),
     colour = "#F8766D",
     size = 10,
     parse = TRUE
@@ -203,7 +280,12 @@ p <- ggplot() +
   annotate("text",
     x = 5,
     y = ( model$coefficients[2] + model$coefficients[8] ) * 5 + model$coefficients[1] + model$coefficients[5] + 2,
-    label = paste0("italic(slope) == ", model$coefficients[2] + model$coefficients[8]),
+    label = paste0(
+      "italic(cor) == ",
+      cor(results$log2FoldChange_rrp6D[results$signif %in% "rrp6D"],
+      results$log2FoldChange_cut14[results$signif %in% "rrp6D"]
+      )
+    ),
     colour = "#619CFF",
     size = 10,
     parse = TRUE
