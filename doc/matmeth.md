@@ -14,15 +14,33 @@ All the NGS analysis scripts are available in the following git repository: gitu
 We wrote most of these analyses as nextflow (v0.25.7) pipelines with Docker 
 (v18.02.0-ce). In those pipelines, we used the following software’s:
 
-- FastQC (v0.11.5) and MultiQC (v0.9) for the quality control analysis,
-- cutadapt (v1.14) to trim any remaining adaptors,
-- UrQt (v1.0.17) to trim reads on their quality,
-- Bowtie2 (v2.3.2) for the mapping,
-- Kallisto (v0.43.1) for the quantification
-- samtools (v1.5) and bedtools (v2.25.0) for various files transformation,
-- Music (v6613c53) for the peak detection.
+- FastQC (v0.11.5) and MultiQC (v0.9) for the quality control analysis (Andrews S. (2010). FastQC: a quality control tool for high throughput sequence data. Available online at: http://www.bioinformatics.babraham.ac.uk/projects/fastqc, doi: 10.1093/bioinformatics/btw354),
+- cutadapt (v1.14) to trim any remaining adaptors (DOI:10.14806/ej.17.1.200),
+- UrQt (v1.0.17) to trim reads on their quality (10.1186/s12859-015-0546-8),
+- Bowtie2 (v2.3.2) for the mapping (doi:10.1038/nmeth.1923),
+- Kallisto (v0.43.1) for the quantification (doi:10.1038/nbt.3519),
+- samtools (v1.5) and bedtools (v2.25.0) for various files transformation (DOI: 10.1093/bioinformatics/btp352, ),
+- Music (v6613c53) for the peak detection (doi: 10.1186/s13059-014-0474-3),
 - segkit (v0.7.2) to compute reverse complement of sequences
 - bedtools (2.25.0) for annotation and alignment processing
+- R (v3.4.4) for the statistical anaysis (@Manual{,
+  title        = {R: A Language and Environment for Statistical
+                  Computing},
+  author       = {{R Core Team}},
+  organization = {R Foundation for Statistical Computing},
+  address      = {Vienna, Austria},
+  year         = YEAR,
+  url          = {https://www.R-project.org}
+})
+- ggplot2 (v2.2.1) for the graphics ( @Book{,
+    author = {Hadley Wickham},
+    title = {ggplot2: Elegant Graphics for Data Analysis},
+    publisher = {Springer-Verlag New York},
+    year = {2009},
+    isbn = {978-0-387-98140-6},
+    url = {http://ggplot2.org},
+  })
+- DESeq2 (v1.16.1) for the differential analysis (doi: 10.1186/s13059-014-0550-8)
 
 The bash scripts corresponding to the following subsections are available in 
 the `src` folder of the git repository. The `init.sh` script contains 
@@ -106,7 +124,7 @@ The following analysis is described in the file `4_readthrough_DEA.sh`.
 With putative readthrough events annotated and quantified, we wanted to test if
 the number of fragments corresponding to the readthrough events in the mutant was
 significantly higher than in the wild type. For this we used the package DESeq2
-(v1.16.1) with R (v3.4.4). We tested for a log2 fold change superior to 0,
+with R. We tested for a log2 fold change superior to 0,
 compared to the wild type, to declare the read though form of a transcript 
 present in the mutant. For the transcript deregulation analysis we tested for log2
 fold change superior to 0.5 or inferior to -0.5. For all the analysis we selected
