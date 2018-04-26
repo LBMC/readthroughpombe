@@ -121,18 +121,21 @@ dea_analysis <- function(
   DESeq2::plotMA(res, ylim = c(-2.5, 2.5))
   dev.off()
 
-  res <- as.data.frame(res)
+  res <- na.omit(as.data.frame(res))
+  x_min <- min(res$log2FoldChange)
+  x_max <- max(res$log2FoldChange)
   ggplot(res, aes(x = log2FoldChange, y = pvalue, color = padj, fill = padj)) +
     geom_point() +
-    xlim(-15, 15) +
+    coord_cartesian(xlim=c(x_min, x_max)) +
     scale_colour_gradient(high = "#000000", low = "#FF0000",
       space = "Lab", na.value = "grey50", guide = "colourbar") +
     scale_fill_gradient(high = "#000000", low = "#FF0000", space = "Lab",
       na.value = "grey50", guide = "colourbar") +
     scale_y_continuous(trans = "reverse") +
-    theme_bw() 
-  ggplot2::ggsave(file = paste0(results_folder, analysis, "_volcano.pdf"))
-
+    theme_bw()
+  ggplot2::ggsave(file = paste0(results_folder, analysis, "_volcano.pdf"),
+    width = 6, height = 4
+  )
   write.csv(
     res,
     file = paste0(results_folder, analysis, ".csv")
