@@ -1,4 +1,4 @@
-# project initialisation
+# Condensin impiges upon gene expression by preserving the stability of the genome during mitosis
 
 Start by executing the `src/init.sh` script to install nextflow and the
 necessary dependencies. This script also perform the following renaming of the
@@ -22,120 +22,140 @@ original fastq files:
 |PLBD14.fastq.gz	| 2017_04_14_PLBD14_cdc15_118_R3.fastq.gz            |
 |PLBD15.fastq.gz	| 2017_04_14_PLBD15_rrp6D_R3.fastq.gz                |
 
-# Quality control analysis
+The fastq files are available from GEO under the accession number [GSE112281](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE112281)
 
-To run the quality control analysis you can launch the `src/pipe/QC.sh` script
+## NGS analysis
 
-# Mapping and quantification
+All the NGS analysis scripts are available in the following git repository: giturl
+We wrote most of these analyses as nextflow (v0.25.7) pipelines with Docker 
+(v18.02.0-ce). In those pipelines, we used the following software’s:
 
-To run the mapping and quantification analysis you can launch the
-`src/pipe/quantif.sh` script
+- FastQC (v0.11.5) and MultiQC (v0.9) for the quality control analysis,
+- cutadapt (v1.14) to trim any remaining adaptors,
+- UrQt (v1.0.17) to trim reads on their quality,
+- Bowtie2 (v2.3.2) for the mapping,
+- Kallisto (v0.43.1) for the quantification,
+- samtools (v1.5) and bedtools (v2.25.0) for various files transformation,
+- Music (v6613c53) for the peak detection,
+- segkit (v0.7.2) to compute reverse complement of sequences,
+- bedtools (2.25.0) for annotation and alignment processing,
+- R (v3.4.4) for the statistical anaysis ,
+- ggplot2 (v2.2.1) for the graphics,
+- DESeq2 (v1.16.1) for the differential analysis.
 
-# RNASeq pipeline
+The bash scripts corresponding to the following subsections are available in 
+the `src` folder of the git repository. The `init.sh` script contains 
+instructions to get nextflow and initialize the dockers containers.
 
-The RNASeq pipeline is based on [nextflow](https://www.nextflow.io/). This pipeline aim is to automatize the first bioinformatic steps of an NGS analysis with a focus on RNASeq.
-With this pipeline you will be able to perform:
+## quality control and strandness identification
 
-- Quality control
-- Indexing
-- Mapping
-- Quantification
+The following analysis is described in the file `1_QC_mapping.sh`.
+This first analysis uses the fastq files and the fasta file.
 
-Using different tools.
+The first step of the analysis was to perform a quality control of the NGS files and to map them on the genome to determine their strand. The reads were first process with cutadapt (-a AGATCGGAAGAG -g CTCTTCCGATCT) to remove any 
+remaining adaptors. Then the reads were processed with UrQt (--t 20). We ran
+FastQC in command line mode before and after trimming and summarized its
+output with MultiQC.
 
-If you want another tool included or if you find a bug. Please open a new issue for it [at this address](http://gitlab.biologie.ens-lyon.fr/pipelines/RNASeq/issues).
+After the quality control, we built the reverse complement of the reads in 
+the fastq files with seqkit.
+
+Finally, we indexed the genome (-build) and mapped the trimmed fastq 
+(--very-sensitive) with Bowtie2. We saved the mapping output in bam format with samtools (view -Sb).
+
+## readthrough detection
+
+The following analysis is described in the file `2_readthrough_detection.sh`.
+
+We define a readthrough even as a genomic region where reads map in an intergenic
+region after the 5’ end of a transcript annotation. In this section we used a
+broad peak caller for chip-seq analysis to identify genomic regions where
+enough reads are mapping to be detected as a peak. We then consider peak
+annotation, starting after an annotated transcript, as putative readthrough 
+annotation.
+
+We ran the readthrough detection independently for the rrp6D and cut14-208
+mutants. For each analysis the mutant was compared to the wild type.
+
+Bam files were sorted and filtered as forward or reverse mapping with the
+samtools tool (view -hb -F 0x10 or view -hb -f 0x10). The gff annotation file
+was converted to bed with convert2bed from bedtools. Finally, the genome was
+indexed with samtools (faidx) and the annotation file was split into a
+forward and a reverse annotation with bedtools (complement).
+
+To identify readthrough events, we started by removing any read
+corresponding to a transcript with samtools view (-hb bams -L annotation). The
+resulting bams were sorted with samtools sort. The bams and genome index were
+given to Music to compute the genome mappability and preprocess the alignments.
+The resulting sam files were sorted and dedupliated with Music.
+
+We then ran Music (-get_per_win_p_vals_vs_FC -begin_l 50 -end_l 500 -step 1.1 
+-l_mapp 50 -l_frag 363 -q_val 1 -l_p 0) to detect broad peaks, corresponding to
+genomic regions were enough reads are found but which are not corresponding to
+annotated transcripts. As Music gives a bed annotation file for each replicate,
+we merged these annotations to only retain peaks found in the majority of
+replicates (more than 2 for 3 replicates here). We then further filtered this
+annotation by removing peaks whose starting position was more than 2 reads
+length from the 5’ end of the nearest transcript on the same strand. We merged the transcripts and peaks annotation to associate a given peaks to the
+nearest transcripts.
+
+## readthrough quantification
+
+The following analysis is described in the file `3_readthrough_quantification.sh`.
+
+With the putative genomic region where readthrough event may be detected we
+consider the problem of quantifying readthrough events as an alternative splicing
+problem were mRNA fragments can correspond to the sort original form of the transcript or to long reathrough form of the transcript.
+
+To have comparable analysis between rrp6D and cut14-208, we start by merging their respective readthrough annotations and sorting them with bedtools (sort).
+The analysis was run separately for the forward and reverse strand of the genome.
+
+We extracted the forward and reverse reads from the bam files obtained in the
+readthrough detection analysis with bedtools (bamtofastq). We generated the
+list of transcript sequences from the genome and the annotation with bedtools
+(getfasta -s). The transcript sequences were then indexed with kallisto (index
+-k 31 --make-unique). The quantification was done with kallisto (quant --single
+-l 363.4 -s 85.53354). We ran the quantification separately on the transcript alone and on
+the transcript with readthrough annotation.
+
+## readthrough differential expression analysis
+ 
+The following analysis is described in the file `4_readthrough_DEA.sh`.
+
+With putative readthrough events annotated and quantified, we wanted to test if
+the number of fragments corresponding to the readthrough events in the mutant was
+significantly higher than in the wild type. For this we used the package DESeq2
+with R. We tested for a log2 fold change superior to 0,
+compared to the wild type, to declare the read though form of a transcript 
+present in the mutant. For the transcript deregulation analysis we tested for log2
+fold change superior to 0.5 or inferior to -0.5. For all the analysis we selected
+p-values with an FDR <= 0.05.
 
 
-## project initialisation
 
-Start by executing selectively the content of the `src/init.sh` script.
 
-### Docker installation
 
-With the Docker installation every step of the pipeline is launched within a Docker container. This is the recommended installation for your personal computer as you don't have to manage the different version and install of the pipeline tools.
 
-To install nextflow with docker you need to run the following commands, which require Java 7 or higher to be installed on your computer:
 
-```sh
-mkdir bin
-cd bin
-wget -qO- get.nextflow.io | bash
-cd ..
-```
 
-Then you can build the pipeline docker image with the following command:
 
-```sh
-docker build src/func/docker -t 'pipeline:0.0.1'
-```
 
-### local installation
 
-With the local installation, every step of the pipeline is launched locally. For this, you need to install and manage all the tools used by the pipeline.
 
-Follow the instruction of the `src/init.sh` script to install all the required tools.
 
-### PSMN installation
 
-With the PSMN installation, every step of the pipeline is launched as a `qsub` command. The nextflow process needs to stay alive for the duration of the pipeline. Thus, we advise you to launch the pipeline within a `tmux` instance.
 
-To use the pipeline on the PSMN you need to be able to load the LBMC modules.
-To do so follow the instructions on the [PSMN/modules repository](http://gitlab.biologie.ens-lyon.fr/PSMN/modules/tree/master).
 
-Then you can use the following command to load the nextflow module.
 
-```sh
-module load nextflow/0.25.1
-```
 
-## Testing
 
-You can test the pipeline with the scripts from the folder `tests`.
 
-First get the test data set with the following commands:
 
-```sh
-git submodule init
-git submodule update
-```
 
-Then you can launch
 
-- `bash tests/pipeline_docker_test.sh` to test your docker installation
-- `bash tests/pipeline_local_test.sh` to test your local installation
-- `bash tests/pipeline_docker_test.sh` to test your PSMN installation
 
-## Project personnalisation
 
-You can modify the configuration file `src/pipeline.config`. If you are working with single-end sequencing data, don't forget to specify the `mean` and `sd` parameter for the size distribution of your library fragments length (not read size).
 
-## Pipeline commands
 
-To launch the pipeline you need to use the following command:
 
-```sh
-bin/nextflow src/pipeline.nf -c src/pipeline.config -profile <profile> --fastq "path_to_fastq_files" --todo "fastqc+cutadapt+urqt+fastqc+multiqc"
-```
 
-with :
-
-- `<profile>`: `docker`, `local` or `sge` (on the PSMN).
-- `path_to_fastq_files`: the path to your fastq files. You can use `*.fastq` for single-end or `*_R{1,2}.fastq` for paired-end data.
-- The `--todo` argument specify the chain of steps you wan't the pipeline to take. Here we run `fastqc`, then `cutadapt` to remove the adaptor, then `urqt` to trim by quality then `fastq` on the trimmed data and finally `multiqc`.
-- On the PSMN one the nextflow modules is loaded it is directly available so you don't need to specify `bin/nextflow`, only `nextflow`.
-
-For the mapping and quantification step, you need to specify a reference (in the `fasta` format) and an annotation file (in `gff(3)` or `gtf` format).
-
-```sh
-bin/nextflow src/pipeline.nf -c src/pipeline.config -profile docker --fastq "path_to_fastq_files" --fasta "path_to_fasta_files" --annot "path_to_annotation_files" --todo "fastqc+cutadapt+cutadapt+fastqc+multiqc+split_ref+kallisto"
-```
-
-Here are some example of the `--todo` parameter:
-
-- `"fastqc+cutadapt+urqt+fastqc+multiqc"`
-- `"fastqc+cutadapt+cutadapt+fastqc+multiqc"`
-- `"fastqc+cutadapt+cutadapt+fastqc+multiqc+split_ref+kallisto"`
-- `"fastqc+cutadapt+cutadapt+fastqc+multiqc+bowtie2+htseq"`
-- `"fastqc+cutadapt+cutadapt+fastqc+multiqc+bowtie2+rsem"`
-
-You can see more examples in the `tests` folder scripts.
