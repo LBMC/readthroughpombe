@@ -124,7 +124,7 @@ dea_analysis <- function(
   res <- na.omit(as.data.frame(res))
   x_min <- min(res$log2FoldChange)
   x_max <- max(res$log2FoldChange)
-  ggplot(res, aes(x = log2FoldChange, y = pvalue, color = padj, fill = padj)) +
+  ggplot(res, aes(x = log2FoldChange, y = log(pvalue), color = padj, fill = padj)) +
     geom_point() +
     coord_cartesian(xlim=c(x_min, x_max)) +
     scale_colour_gradient(high = "#000000", low = "#FF0000",
