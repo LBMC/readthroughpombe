@@ -1,3 +1,3 @@
 #!/bin/sh
 
-Rscript readthrough_orientation.R
+Rscript src/readthrough_orientation.R
