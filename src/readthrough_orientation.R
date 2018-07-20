@@ -38,7 +38,12 @@ DE_bed %>% pull(strand) %>% as.factor() %>% table()
 DE_bed %>% pull(closest_strand) %>% as.factor() %>% table()
 table(DE_bed %>% pull(strand) %>% paste0("RT") %>% as.factor(),
       DE_bed %>% pull(closest_strand) %>% paste0("closest") %>% as.factor()) %>%
-print()
+  print()
+table(DE_bed %>% pull(strand) %>% paste0("RT") %>% as.factor(),
+      DE_bed %>% pull(closest_strand) %>% paste0("closest") %>% as.factor()) %>%
+  as.matrix() %>%
+  chisq.test()
+
 
 # we want to look if the closest transcript to the cut14 specific DEG are more
 # in the same strand or in the opposite strand
@@ -81,3 +86,8 @@ DE_bed %>% pull(closest_strand) %>% as.factor() %>% table()
 table(DE_bed %>% pull(strand) %>% paste0("RT") %>% as.factor(),
       DE_bed %>% pull(closest_strand) %>% paste0("closest") %>% as.factor()) %>%
 print()
+
+table(DE_bed %>% pull(strand) %>% paste0("RT") %>% as.factor(),
+      DE_bed %>% pull(closest_strand) %>% paste0("closest") %>% as.factor()) %>%
+  as.matrix() %>%
+  chisq.test()
