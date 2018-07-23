@@ -1,10 +1,41 @@
 library("tidyverse")
 
+bed_colnames <- c("chrom", "chromStart", "chromEnd", "name", "score",
+                  "strand", "specie", "type", "score_2", "infos")
+
+# we want to look if the closest transcript to each transcripts are more in the
+# same strand or in the opposite strand
+file_T <- "results/readthrough/DEA/T/wt_vs_cut14_208_lfc_greaterAbs_than_0.5/2018_02_15_wt_vs_cut14_208.csv.DE.csv.all.bed"
+all_bed <- read_tsv(file_T, col_names = FALSE) %>%
+  setNames(bed_colnames) %>%
+  mutate(DE = FALSE,
+         chromMiddle = round(abs(chromStart - chromEnd) / 2) +
+         ifelse(strand %in% "+",chromStart, chromEnd),
+         closest_pos = NA,
+         closest_strand = NA)
+
+for (i in all_bed %>% nrow() %>% seq_len()) {
+  chrom <- all_bed %>% select(chrom) %>% slice(i)
+  pos <- all_bed %>% select(chromEnd) %>% slice(i) %>% as.integer()
+  all_bed$closest_pos[i] <- all_bed %>%
+          filter(chrom == chrom) %>%
+          pull(chromMiddle) %>%
+          -pos %>%
+          abs() %>%
+          which.min()
+  all_bed$closest_strand[i] <- all_bed %>%
+    filter(chrom == chrom) %>%
+    slice(all_bed$closest_pos[i]) %>%
+    pull(strand)
+}
+
+table(all_bed %>% pull(strand) %>% paste0("RT") %>% as.factor(),
+      all_bed %>% pull(closest_strand) %>% paste0("closest") %>% as.factor()) %>%
+  print()
+
 # we want to look if the closest transcript to the RT are more in the same
 # strand or in the opposite strand for cut14
 
-bed_colnames <- c("chrom", "chromStart", "chromEnd", "name", "score",
-                  "strand", "specie", "type", "score_2", "infos")
 file_RT <- "results/readthrough/DEA/RT/wt_vs_cut14_208_RT_lfc_greater_than_0/2018_02_15_wt_vs_cut14_208_RT.csv.bed"
 file_T <- "results/readthrough/DEA/T/wt_vs_cut14_208_lfc_greaterAbs_than_0.5/2018_02_15_wt_vs_cut14_208.csv.DE.csv.all.bed"
 
