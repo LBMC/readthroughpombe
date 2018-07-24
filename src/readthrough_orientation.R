@@ -1,17 +1,18 @@
 rm(list = ls())
 library("tidyverse")
+options(warn = 2)
 
 bed_colnames <- c("chrom", "chromStart", "chromEnd", "name", "score",
                   "strand", "specie", "type", "score_2", "infos")
 
 find_closest <- function(x, x2, i) {
-  chrom2 <- x2 %>% select(chrom) %>% slice(i)
+  chrom2 <- x2 %>% select(chrom) %>% slice(i) %>% as.character()
   chromStart2 <- x2 %>% select(chromStart) %>% slice(i) %>% as.integer()
   chromEnd2 <- x2 %>% select(chromEnd) %>% slice(i) %>% as.integer()
-  strand2 <- x2 %>% select(strand) %>% slice(i) %>% as.integer()
+  strand2 <- x2 %>% select(strand) %>% slice(i) %>% as.character()
   pos <- x %>%
     filter(chrom %in% chrom2) %>%
-    filter(!(chromStart == chromStart2 & chromEnd <= chromEnd2 & strand == strand2)) %>%
+    filter(!(chromStart == chromStart2 & chromEnd <= chromEnd2 & strand %in% strand2)) %>%
     pull(chromMiddle) %>%
     -chromEnd2 %>%
     abs() %>%
