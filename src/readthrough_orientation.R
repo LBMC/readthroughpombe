@@ -55,6 +55,18 @@ surival_prob <- function(coefficients){
 }
 
 glm_binom <- function(x1, x2) {
+  for (i in x1 %>% nrow() %>% seq_len()) {
+    test <- x2 %>%
+      filter(chrom %in% ( x1 %>% slice(i) %>% select(chrom) %>% as.character() ) &
+             chromStart == ( x1 %>% slice(i) %>% select(chromStart) %>% as.integer() ) &
+             chromEnd >= ( x1 %>% slice(i) %>% select(chromEnd) %>% as.integer() ) &
+             strand %in% ( x1 %>% slice(i) %>% select(strand) %>% as.character() )
+            ) %>%
+      nrow()
+    if (test >= 1) {
+      x1 <- x1 %>% slice(-i)
+    }
+  }
   data <- rbind(tibble(strand = x1 %>% pull(strand) %>% as.factor(),
                      closest = x1 %>% pull(closest_strand) %>% as.factor(),
                      type = "transcript"),
@@ -116,3 +128,4 @@ DE_cut14only_table
 
 glm_binom(all_bed, RT_cut14_bed)
 glm_binom(all_bed, RT_rrp6D_bed)
+glm_binom(all_bed, DE_cut14only_bed)
