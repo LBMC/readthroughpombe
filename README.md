@@ -134,7 +134,12 @@ fold change superior to 0.5 or inferior to -0.5. For all the analysis we selecte
 p-values with an FDR <= 0.05.
 
 
+## readthrough orientation analysis
 
+The following analysis is described in the file `5_readthrough_orientation.sh`.
+
+With the list of readthrough events detected and the list of transcript we
+performed an R analysis to quantify convergent and divergent transcripts. 
 
 
 
