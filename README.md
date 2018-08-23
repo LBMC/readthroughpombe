@@ -1,5 +1,7 @@
 # Condensin impiges upon gene expression by preserving the stability of the genome during mitosis
 
+S. pombe ASM294v2.30 fasta and gff3 were downloaded from [ebi genome](ftp://ftp.ebi.ac.uk/pub/databases/pombase/pombe/Chromosome\_Dumps/Schizosaccharomyces\_pombe.ASM294v2.30.dna.genome.fa.gz) and [ebi annotation](ftp://ftp.ebi.ac.uk/pub/databases/pombase/pombe/Chromosome\_Dumps/gff3/schizosaccharomyces\_pombe.chr.gff3) on 9th August 2017.
+
 Start by executing the `src/init.sh` script to install nextflow and the
 necessary dependencies. This script also perform the following renaming of the
 original fastq files:
